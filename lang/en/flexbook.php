@@ -88,3 +88,4 @@ $string['visibilityonnav'] = 'Visibility on navigation';
 $string['visibilityonnav_desc'] = 'If enabled, the interaction will be visible on the control bar.';
 $string['xpcounter'] = 'XP counter';
 $string['youmustcompletethisinteractionfirst'] = 'You must complete this interaction first.';
+$string['flexbook:addinstance'] = 'Add Flexbook instance';

@@ -1,0 +1,576 @@
+.path-mod-flexbook.distraction-free #flexbook-container {
+    top: 70px;
+    height: calc(var(--ivdvh) - 70px);
+}
+
+.path-mod-flexbook.distraction-free .navbar.fixed-top {
+    border-bottom: 0;
+}
+
+.path-mod-flexbook #controller.fb {
+    z-index: 1032;
+    width: 100%;
+    max-width: unset;
+}
+
+.path-mod-flexbook #controller.fb .annotation-item {
+    height: 8px;
+    width: 8px;
+    background: rgba(255, 255, 255, 0.4);
+    margin: 4px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all ease-in-out 300ms;
+}
+
+.path-mod-flexbook:not(.darkmode) #controller.fb .annotation-item {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.path-mod-flexbook #controller.fb .annotation-item:hover,
+.path-mod-flexbook #controller.fb .annotation-item.active {
+    opacity: 1;
+    transform: scale(1.2);
+    transition: all ease-in-out 300ms;
+}
+
+.path-mod-flexbook #controller.fb .annotation-item.active {
+    width: 10px;
+    height: 10px;
+    background: #fff;
+}
+
+.path-mod-flexbook:not(.darkmode) #controller.fb .annotation-item.active {
+    background: #000;
+}
+
+.path-mod-flexbook #controller.fb .annotation-item.completed {
+    background-color: greenyellow;
+}
+
+.path-mod-flexbook #controller.fb .annotation-item.no-completion {
+    background-color: var(--ivgray);
+}
+
+#page-mod-flexbook-interactions #separator {
+    cursor: col-resize;
+}
+
+#page-mod-flexbook-interactions #separator i {
+    top: 30dvh;
+}
+
+#page-mod-flexbook-interactions #separator:hover {
+    width: 5px;
+    transition: background-color ease-in-out 300ms;
+    background-color: #328cdb;
+    z-index: 105;
+    margin-inline-start: -2.5px;
+}
+
+#page-mod-flexbook-interactions #wrapper > .iv-row {
+    min-width: 100%;
+    min-height: 100%;
+    display: flex;
+    flex-wrap: wrap;
+    margin-inline-end: -15px;
+    margin-inline-start: -15px;
+}
+
+#page-mod-flexbook-interactions #wrapper #player-region {
+    width: 60%;
+}
+
+#page-mod-flexbook-interactions #wrapper #content-region {
+    width: 100%;
+    height: 100%;
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+#page-mod-flexbook-interactions #wrapper {
+    height: 100%;
+    position: relative;
+}
+
+#page-mod-flexbook-interactions tr.ui-sortable-placeholder {
+    height: 1px;
+    background-color: var(--ivlight) !important;
+    border: 0 !important;
+}
+
+#page-mod-flexbook-interactions #annotationwrapper tr.annotation.ui-sortable-helper {
+    position: relative;
+    background-color: var(--ivlight) !important;
+}
+
+#page-mod-flexbook-interactions .more-actions-menu {
+    min-width: unset;
+    position: absolute;
+    right: 1rem;
+    top: 30px;
+    z-index: 1050;
+}
+
+.path-mod-flexbook .toast-default {
+    background: #000 !important;
+    color: var(--ivwhite) !important;
+}
+
+#page-mod-flexbook-interactions .handle {
+    cursor: move;
+}
+
+#page-mod-flexbook-interactions #annotationwrapper tr.annotation.selected {
+    background-color: var(--ivlight) !important;
+}
+
+.path-mod-flexbook #controller.fb .annotation-item.chapter {
+    width: 8px !important;
+    height: 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.5) !important;
+    background-color: var(--ivblack) !important;
+    border-radius: 50% !important;
+}
+
+.path-mod-flexbook #annotation-content-wrapper #message.hasiframe > #content {
+    height: calc(100% - 65px);
+}
+
+#page-mod-flexbook-view #wrapper {
+    max-width: 100%;
+    touch-action: pan-y;
+}
+
+.path-mod-interactivevideo #controller.fb {
+    height: 55px;
+    z-index: 0;
+}
+
+.path-mod-flexbook:not(.embed-mode) #controller.fb,
+.path-mod-interactivevideo.distraction-free:not(.embed-mode) #controller.fb {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.path-mod-interactivevideo.distraction-free:not(.embed-mode) #controller.fb {
+    transform: translateX(-50%);
+    left: 50%;
+}
+
+.path-mod-interactivevideo #video-wrapper.fb {
+    padding-bottom: unset;
+    height: calc(var(--ivdvh) - 125px);
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.path-mod-interactivevideo.path-mod-flexbook #interactivevideo-container {
+    width: 100%;
+}
+
+.path-mod-interactivevideo.path-mod-flexbook #video-info #play {
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%);
+}
+
+.path-mod-flexbook #message {
+    transition: transform ease-in-out 500ms;
+}
+
+.path-mod-flexbook .slide-out-start.active {
+    transform: translateX(-100%);
+    transition: transform ease-in-out 500ms;
+}
+
+.path-mod-flexbook .slide-out-end.active {
+    transform: translateX(100%);
+    transition: transform ease-in-out 500ms;
+}
+
+#wrapper:fullscreen,
+#wrapper.fullscreen {
+    max-width: none !important;
+    width: 100% !important;
+    height: 100% !important;
+    background: #000;
+}
+
+#wrapper:fullscreen #video-wrapper,
+#wrapper.fullscreen #video-wrapper {
+    height: calc(100% - 55px);
+    width: 100%;
+    max-width: none;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#wrapper:fullscreen #controller.fb,
+#wrapper.fullscreen #controller.fb {
+    max-width: none !important;
+    width: 100% !important;
+}
+
+#wrapper:fullscreen #controller.fb .annotation-item,
+#wrapper.fullscreen #controller.fb .annotation-item {
+    background: rgba(255, 255, 255, 0.4) !important;
+}
+
+#wrapper:fullscreen #controller.fb .annotation-item.active,
+#wrapper.fullscreen #controller.fb .annotation-item.active {
+    background: #fff !important;
+}
+
+.path-mod-flexbook #video-wrapper #message:not(.show) {
+    display: none !important;
+}
+
+.path-mod-flexbook #video-wrapper #message.show {
+    display: flex !important;
+}
+
+@media (min-width: 1199.98px) {
+    .path-mod-interactivevideo #interactivevideo-container.chapter-open #controller.fb,
+    .path-mod-interactivevideo.embed-mode #interactivevideo-container.chapter-open #controller.fb {
+        right: 0;
+        width: calc(100% - 400px);
+        transition: left 300ms, width 300ms;
+        left: unset;
+        transform: unset;
+        max-width: unset;
+    }
+}
+
+.path-mod-interactivevideo #chapter-container-left.fb {
+    height: 100%;
+}
+
+.path-mod-interactivevideo:is(.path-mod-flexbook) #closechapter {
+    display: block;
+    width: 24px;
+    height: 24px;
+    right: 1rem;
+    position: absolute;
+}
+
+.path-mod-flexbook:not(.darkmode) #wrapper:not(.fullscreen) #controller.fb .btn-dark {
+    color: #000 !important;
+    border: 0;
+    background-color: var(--ivsecondary);
+}
+
+.path-mod-flexbook:not(.darkmode) #wrapper:not(.fullscreen) #controller.fb .btn-dark:hover {
+    opacity: 0.8;
+}
+
+.path-mod-interactivevideo #wrapper.fullscreen #video-wrapper.fb {
+    position: absolute;
+    top: 0;
+    width: 100%;
+    height: calc(var(--ivdvh) - 55px);
+    padding: 0;
+    border-radius: 0;
+    border: none !important;
+}
+
+.path-mod-interactivevideo #wrapper.fullscreen #video-wrapper.fb:not([data-ratio]) {
+    width: 100% !important;
+}
+
+.path-mod-interactivevideo #wrapper.fullscreen:has(#video-wrapper.fb) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.path-mod-flexbook .toast.fb .toast-body::before {
+    display: none;
+}
+
+.path-mod-flexbook .toast.fb .toast-body {
+    display: flex;
+    align-items: center;
+}
+
+.path-mod-flexbook .toast.fb .toast-emoji {
+    background: rgba(255, 255, 255, 0.5);
+    width: 40px;
+    height: 40px;
+    margin-inline-end: 0.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-size: 25px;
+}
+
+.path-mod-flexbook #message #title.hide-header {
+    position: absolute;
+    right: 0;
+    background: transparent !important;
+    border: 0;
+}
+
+.path-mod-flexbook #message #title.hide-header .modal-title {
+    display: none !important;
+}
+
+.path-mod-flexbook #message #title.hide-header #refresh,
+.path-mod-flexbook #message #title.hide-header #delete-completiondata {
+    background: rgba(0, 0, 0, .5);
+    color: #fff;
+    padding: 0.25rem !important;
+    border-radius: 50%;
+}
+
+.path-mod-flexbook #message #title.hide-header #refresh:hover,
+.path-mod-flexbook #message #title.hide-header #delete-completiondata:hover {
+    background: #000;
+}
+
+/* Duolingo Theme Styles */
+.path-mod-flexbook.duolingotheme .btn {
+    border-radius: 12px !important;
+    border-bottom: 4px solid rgba(0, 0, 0, 0.2) !important;
+    transition: transform 0.1s, border-bottom-width 0.1s !important;
+    font-weight: 700 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-top: 0 !important;
+    height: 36px;
+    min-width: 36px;
+}
+
+.path-mod-flexbook.duolingotheme .btn-group {
+    display: inline-flex;
+    gap: 8px;
+}
+
+.path-mod-flexbook.duolingotheme .btn-group > .btn {
+    border-radius: 12px !important;
+    flex: none !important;
+}
+
+.path-mod-flexbook.duolingotheme .btn:not(#play):active {
+    transform: translateY(2px) !important;
+    border-bottom-width: 2px !important;
+}
+
+.path-mod-flexbook.duolingotheme .btn-success {
+    background-color: #58cc02 !important;
+    border-bottom-color: #46a302 !important;
+    color: #fff !important;
+}
+
+.path-mod-flexbook.duolingotheme .btn-primary {
+    background-color: #1cb0f6 !important;
+    border-bottom-color: #1899d6 !important;
+    color: #fff !important;
+}
+
+.path-mod-flexbook.duolingotheme .btn-dark,
+.path-mod-flexbook.duolingotheme #controller.fb .btn-dark {
+    background-color: #f7f7f7 !important;
+    border-bottom-color: #e5e5e5 !important;
+    color: #4b4b4b !important;
+}
+
+.path-mod-flexbook.duolingotheme .btn-dark:hover {
+    background-color: #e5e5e5 !important;
+    border-bottom-color: #d1d1d1 !important;
+}
+
+/* Dark Mode Overrides */
+.path-mod-flexbook.duolingotheme.darkmode .btn-dark,
+.path-mod-flexbook.duolingotheme.darkmode #controller.fb .btn-dark {
+    background-color: #35454c !important;
+    border-bottom-color: #202f36 !important;
+    color: #fff !important;
+}
+
+.path-mod-flexbook.duolingotheme.darkmode .btn-dark:hover {
+    background-color: #4a5c66 !important;
+}
+
+.path-mod-flexbook.duolingotheme .toast.fb {
+    border: 2px solid #e5e5e5 !important;
+    border-bottom: 4px solid #e5e5e5 !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+    color: #4b4b4b !important;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+.path-mod-flexbook.duolingotheme.darkmode .toast.fb:not(.toast-success):not(.toast-danger):not(.toast-warning):not(.toast-info) {
+    background-color: #1b292f !important;
+    border-color: #35454c !important;
+    border-bottom-color: #35454c !important;
+    color: #fff !important;
+}
+
+.path-mod-flexbook.duolingotheme .toast.fb.toast-success {
+    background-color: #58cc02 !important;
+    border-color: #46a302 !important;
+    border-bottom-color: #46a302 !important;
+    color: #fff !important;
+}
+
+.path-mod-flexbook.duolingotheme .toast.fb.toast-danger {
+    background-color: #ff4b4b !important;
+    border-color: #d33131 !important;
+    border-bottom-color: #d33131 !important;
+    color: #fff !important;
+}
+
+.path-mod-flexbook.duolingotheme .toast.fb.toast-warning {
+    background-color: #ffb020 !important;
+    border-color: #e69a00 !important;
+    border-bottom-color: #e69a00 !important;
+    color: #fff !important;
+}
+
+.path-mod-flexbook.duolingotheme .toast.fb.toast-info {
+    background-color: #1cb0f6 !important;
+    border-color: #1899d6 !important;
+    border-bottom-color: #1899d6 !important;
+    color: #fff !important;
+}
+
+.path-mod-flexbook.duolingotheme .toast.fb.toast-success .toast-emoji,
+.path-mod-flexbook.duolingotheme .toast.fb.toast-danger .toast-emoji,
+.path-mod-flexbook.duolingotheme .toast.fb.toast-warning .toast-emoji,
+.path-mod-flexbook.duolingotheme .toast.fb.toast-info .toast-emoji {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+    border-color: rgba(255, 255, 255, 0.4) !important;
+}
+
+.path-mod-flexbook.duolingotheme .toast.fb .toast-emoji {
+    background: #f7f7f7 !important;
+    border: 2px solid #e5e5e5;
+}
+
+/* Animations */
+@keyframes duolingoSlideIn {
+    from {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes duolingoSlideOut {
+    from {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateY(-100%);
+        opacity: 0;
+    }
+}
+
+.path-mod-flexbook.duolingotheme .toast.fb {
+    display: none;
+}
+
+.path-mod-flexbook.duolingotheme .toast.fb.showing,
+.path-mod-flexbook.duolingotheme .toast.fb.show {
+    display: block !important;
+    animation: duolingoSlideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+}
+
+.path-mod-flexbook.duolingotheme .toast.fb.hiding {
+    display: block !important;
+    animation: duolingoSlideOut 0.3s ease-in forwards !important;
+}
+
+.path-mod-flexbook.duolingotheme #controller.fb {
+    border-top: 0 !important;
+    background-color: transparent !important;
+}
+
+.path-mod-flexbook.duolingotheme.darkmode #controller.fb {
+    background-color: transparent !important;
+    border-top: 0 !important;
+}
+
+.path-mod-flexbook.duolingotheme .annotation-item {
+    background: #e5e5e5 !important;
+}
+
+.path-mod-flexbook.duolingotheme .annotation-item.active {
+    background: #1cb0f6 !important;
+}
+
+.path-mod-flexbook.duolingotheme .annotation-item.completed {
+    background: #58cc02 !important;
+}
+
+#page-mod-flexbook-report th.rotate {
+    height: 140px;
+    min-width: 30px;
+    white-space: nowrap;
+    overflow: hidden;
+    position: relative;
+}
+
+#page-mod-flexbook-report th.rotate > div {
+    transform: rotate3d(0, 0, 1, -90deg);
+    width: 30px;
+    display: flex;
+    justify-content: start;
+    left: calc(50% - 16px);
+    position: absolute;
+    bottom: 1.75rem;
+}
+
+#page-mod-flexbook-report.bs-5 th.rotate > div {
+    bottom: 1rem;
+}
+
+[dir="rtl"] #page-mod-flexbook-report th.rotate > div {
+    transform: rotate3d(0, 0, 1, 90deg);
+}
+
+#page-mod-flexbook-report th.rotate > div .rotate-0 {
+    transform: rotate(90deg);
+}
+
+#page-mod-flexbook-report th.rotate > div > a {
+    margin-inline-start: 0.25rem;
+}
+
+#page-mod-flexbook-report th:not(.rotate) {
+    vertical-align: middle;
+}
+
+#page-mod-flexbook-report .completiontablewrapper {
+    max-height: calc(var(--ivdvh) - 200px);
+}
+
+#page-mod-flexbook-report.embed-mode .completiontablewrapper {
+    max-height: calc(var(--ivdvh) - 120px);
+}
+
+#page-mod-flexbook-report.embed-mode .navbar {
+    display: none !important;
+}
+
+#page-mod-flexbook-report.embed-mode #reporttable {
+    margin-top: 0 !important;
+}
+
+.path-mod-interactivevideo.path-mod-flexbook:not(.embed-mode) #interactivevideo-container:has([data-ratio]) {
+    height: calc(var(--ivdvh) - 70px);
+    align-content: center;
+}
+
+.path-mod-interactivevideo.path-mod-flexbook:not(.embed-mode) #interactivevideo-container:has([data-ratio]):has(#controller:not(.d-none)) {
+    padding-bottom: 55px;
+}

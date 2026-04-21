@@ -1,0 +1,81 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_flexbook/canvas/completionbutton
+
+    TODO describe template completionbutton
+
+    Example context (json):
+    {
+    }
+}}
+
+{{^refreshonly}}
+<button
+    id="completiontoggle"
+    class="btn-rounded btn btn-flex text-truncate mark-{{#iscompleted}}undone btn-success{{/iscompleted}}{{^iscompleted}}done btn-secondary{{/iscompleted}} btn-sm border-0 {{^manual}}disabled{{/manual}} iv-mr-1"
+    data-id="{{id}}"
+    title="{{#str}}togglecompletion, mod_interactivevideo{{/str}}"
+    aria-label="{{#str}}togglecompletion, mod_interactivevideo{{/str}}"
+    aria-pressed="{{#iscompleted}}true{{/iscompleted}}{{^iscompleted}}false{{/iscompleted}}"
+    {{^manual}}disabled{{/manual}}
+    type="button"
+>
+    <i
+        class="bi bi-{{#iscompleted}}check2{{/iscompleted}}{{^iscompleted}}circle{{/iscompleted}}"
+        aria-hidden="true"
+    ></i>
+    <span class="iv-ml-2 d-none d-sm-block">
+        {{#iscompleted}}
+            {{#manual}}
+            {{#str}}completionmarkincomplete, mod_interactivevideo{{/str}}
+            {{/manual}}
+            {{^manual}}
+            {{#str}}completed, mod_interactivevideo{{/str}}
+            {{/manual}}
+        {{/iscompleted}}
+        {{^iscompleted}}
+            {{#manual}}
+            {{#str}}completionmarkcomplete, mod_interactivevideo{{/str}}
+            {{/manual}}
+            {{^manual}}
+            {{#str}}incomplete, mod_interactivevideo{{/str}}
+            {{/manual}}
+        {{/iscompleted}}
+    </span>
+</button>
+{{/refreshonly}}
+
+{{#isPlayerMode}}
+    <button
+        id="refresh"
+        class="btn btn-flex iv-ml-1 border-0 p-0"
+        type="button"
+        data{{bs}}-toggle="tooltip"
+        data{{bs}}-container="#wrapper"
+        data{{bs}}-trigger="hover"
+        title="{{#str}}refresh, mod_interactivevideo{{/str}}"
+        aria-label="{{#str}}refresh, mod_interactivevideo{{/str}}"
+        data-id="{{id}}"
+    >
+        <i class="bi bi-arrow-repeat fs-25px" aria-hidden="true"></i>
+        <span class="sr-only">
+            {{#str}}refresh, mod_interactivevideo{{/str}}
+        </span>
+    </button>
+{{/isPlayerMode}}
+

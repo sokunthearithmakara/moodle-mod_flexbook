@@ -1,0 +1,93 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_flexbook/editor/annotationlistitem
+
+    TODO describe template annotationlistitem
+
+    Example context (json):
+    {
+    }
+}}
+
+<table>
+    <tr id="annotation-template"
+        class="annotation listItem border-bottom d-none"
+        data-id="0"
+        data-type="">
+        <td>
+            <div class="d-flex align-items-center">
+                <div class="handle">
+                    <i class="iv-mr-2 bi bi-grip-vertical"></i>
+                </div>
+            </div>
+        </td>
+        <td class="w-100">
+            <div class="w-100 d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center flex-grow-1 type-name">
+                    <span class="border-0 btn btn-sm type-icon iv-mr-2" title="">
+                        <i class="fa fa-fw"></i>
+                    </span>
+                    <span data-editable="title"
+                            class="title iv-font-weight-bold text-primary cursor-pointer"></span>
+                    <input type="text"
+                            data-field="title"
+                            class="form-control form-control-sm d-none">
+                </div>
+                <div class="btns d-flex align-items-center position-relative">
+                    <span data-editable="xp"
+                            title="{{#str}}xppoint, mod_interactivevideo{{/str}}"
+                            class="border-0 p-1 btn btn-sm xp">
+                        <span></span>
+                        <i class="iv-mr-2 bi bi-star iv-ml-1"></i>
+                    </span>
+                    <input type="number"
+                            min="0"
+                            data-field="xp"
+                            class="form-control form-control-sm d-none">
+                    <button class="border-0 more-actions btn btn-sm"
+                            title="{{#str}}actions, mod_flexbook{{/str}}">
+                        <i class="bi bi-three-dots-vertical"></i>
+                    </button>
+                </div>
+            </div>
+        </td>
+    </tr>
+</table>
+<div class="more-actions-menu dropdown-menu dropdown-menu-right d-none">
+    <div class="dropdown-item cursor-pointer edit">
+        <i class="iv-mr-2 bi bi-pencil-square"></i>
+            <span>{{#str}}edit, mod_interactivevideo{{/str}}</span>
+    </div>
+    <div class="dropdown-item cursor-pointer copy">
+        <i class="iv-mr-2 bi bi-copy"></i>
+        <span>{{#str}}clone, mod_interactivevideo{{/str}}</span>
+    </div>
+    <div class="dropdown-item cursor-pointer delete">
+        <i class="iv-mr-2 bi bi-trash3-fill text-danger"></i>
+        <span>{{#str}}delete, mod_interactivevideo{{/str}}</span>
+    </div>
+    <div class="dropdown-divider"></div>
+    <div class="dropdown-item cursor-pointer insertbefore">
+        <i class="iv-mr-2 bi bi-plus-lg"></i>
+        <span>{{#str}}insertbefore, mod_flexbook{{/str}}</span>
+    </div>
+    <div class="dropdown-item cursor-pointer insertafter">
+        <i class="iv-mr-2 bi bi-plus-lg"></i>
+        <span>{{#str}}insertafter, mod_flexbook{{/str}}</span>
+    </div>
+</div>

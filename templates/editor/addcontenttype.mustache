@@ -1,0 +1,67 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_flexbook/editor/addcontenttype
+
+    TODO describe template addcontenttype
+
+    Example context (json):
+    {
+    }
+}}
+<div class="modal fade" id="contentmodal-original" role="dialog" aria-labelledby="contentmodal-original" aria-hidden="true" tabindex="-1">
+    <div class="modal-dialog modal-dialog-scrollable" role="document">
+        <div class="modal-content iv-rounded-lg">
+            <div class="modal-header align-items-center flex-column">
+            <div class="w-100 d-flex align-items-center justify-content-between">
+                <h5 class="modal-title">{{#str}}selectacontenttypetoadd, mod_interactivevideo{{/str}}</h5>
+                <button type="button" class="btn p-0 border-0" data{{bs}}-dismiss="modal" aria-label="Close">
+                   <i class="bi bi-x-lg fa-fw fs-25px"></i>
+                </button>
+                </div>
+            <div class="w-100 d-flex align-items-center">
+                <input type="text" class="form-control form-control-sm w-100 mt-3" id="contentsearch" placeholder="{{#str}}search, mod_interactivevideo{{/str}}" tabindex="0">
+                </div>
+            </div>
+            <div class="p-0 modal-body" id="addcontentdropdown">
+                {{#contenttype}}
+                {{^hideonchooser}}
+                    <span class="cursor-pointer dropdown-item text-wrap px-4 py-3 border-bottom d-flex w-100 {{^description}}align-items-center{{/description}} {{^description}}align-items-start{{/description}}"
+                        data-type="{{{name}}}" tabindex="0" type="button">
+                        <i class="iv-mr-4 {{{icon}}} {{^hascompletion}}text-secondary{{/hascompletion}}"></i>
+                        <div class="w-100">
+                            <div class="d-flex w-100 justify-content-between">
+                            <span class="iv-font-weight-bold contenttype-title">{{{title}}}
+                            {{#pro}}<span class=" iv-ml-2 badge iv-badge-success">Pro</span>{{/pro}}
+                            </span>
+                            {{#fbtutorial}}
+                            <span>
+                            <a class="text-muted iv-font-weight-bold text-{{#bs}}end{{/bs}}{{^bs}}right{{/bs}}" href="{{{fbtutorial}}}" target="_blank"><i class="bi bi-youtube tutorial" title="{{#str}}tutorial, interactivevideo{{/str}}"></i></a>
+                            </span>
+                            {{/fbtutorial}}
+                            </div>
+                            {{#fbdescription}}
+                            <p class="iv-font-weight-light mb-0">{{{fbdescription}}}</p>
+                            {{/fbdescription}}
+                            </div>
+                    </span>
+                {{/hideonchooser}}
+                {{/contenttype}}
+            </div>
+        </div>
+    </div>
+</div>

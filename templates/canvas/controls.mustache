@@ -1,0 +1,107 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_flexbook/canvas/controls
+
+    TODO describe template controls
+
+    Example context (json):
+    {
+    }
+}}
+<div class="mt-0 mt-md-2 row p-0 px-2 opacity-1 fb align-items-center no-pointer-events {{^displayoptions.controlbar}}d-none h-0{{/displayoptions.controlbar}}" dir="ltr" id="controller" role="group" aria-label="{{#str}}controlbar, mod_flexbook{{/str}}">
+    <div class="col-6 col-sm-4 d-flex align-items-center justify-content-start px-0">
+        {{#displayoptions.chaptertoggle}}
+            <div id="chaptertoggle" class="iv-mr-1">
+                <button id="chapterbutton"
+                    data{{bs}}-toggle="tooltip" data{{bs}}-container="#wrapper"
+                      data{{bs}}-trigger="hover"
+                      data{{bs}}-title="{{#str}}togglechapter, mod_interactivevideo{{/str}}"
+                        type="button"
+                        class="btn btn-dark btn-sm btn-rounded iv-font-weight-bold text-uppercase"
+                        aria-label="{{#str}}togglechapter, mod_interactivevideo{{/str}}"
+                        title="{{#str}}togglechapter, mod_interactivevideo{{/str}}">
+                    <i class="bi bi-collection" aria-hidden="true"></i>
+                </button>
+            </div>
+        {{/displayoptions.chaptertoggle}}
+        {{#displayoptions.xpcounter}}
+        <button id="xpcounter"
+                    data{{bs}}-toggle="tooltip" data{{bs}}-container="#wrapper"
+                      data{{bs}}-trigger="hover"
+                      data{{bs}}-title="{{#str}}xp, mod_interactivevideo{{/str}}"
+                        type="button"
+                        class="btn btn-dark btn-sm btn-rounded iv-font-weight-bold text-uppercase mx-1"
+                        aria-label="{{#str}}xp, mod_interactivevideo{{/str}}"
+                        title="{{#str}}xp, mod_interactivevideo{{/str}}">
+                    <i class="bi bi-star iv-mr-2" aria-hidden="true"></i><span id="xpearned">0</span>/<span id="xptotal">0</span>
+                </button>
+        {{/displayoptions.xpcounter}}
+    </div>
+    <div class="col-4 top-bar d-none d-sm-flex align-items-center justify-content-center px-0 {{^displayoptions.interactionbar}}invisible{{/displayoptions.interactionbar}}">
+    <span class="annotation-item"></span>
+    </div>
+    <div class="col-6 col-sm-4 d-flex align-items-center justify-content-end px-0">
+        {{#displayoptions.interactionnavigation}}
+        <div class="btn-group btn-rounded mx-1" id="anno-nav">
+            <button id="prevanno" data{{bs}}-toggle="tooltip" data{{bs}}-container="#wrapper"
+                data{{bs}}-trigger="hover"
+                data{{bs}}-title="{{#str}}previousanno, mod_flexbook{{/str}}"
+                    class="iv-ml-2 btn btn-sm btn-dark  btn-rounded iv-font-weight-bold text-uppercase">
+                <i class="bi bi-chevron-left dir-rtl-hide"></i>
+                <i class="bi bi-chevron-right dir-ltr-hide"></i>
+            </button>
+            {{#displayoptions.interactioncounter}}
+            <button id="currentanno" data{{bs}}-toggle="tooltip" data{{bs}}-container="#wrapper"
+                data{{bs}}-trigger="hover"
+                data{{bs}}-title="{{#str}}currentanno, mod_flexbook{{/str}}"
+                    class="btn btn-dark btn-sm iv-font-weight-bold no-pointer">
+                <span id="thisanno">0</span>/<span id="totalannos">0</span>
+            </button>
+            {{/displayoptions.interactioncounter}}
+            <button id="nextanno" data{{bs}}-toggle="tooltip" data{{bs}}-container="#wrapper"
+                data{{bs}}-trigger="hover"
+                data{{bs}}-title="{{#str}}nextanno, mod_flexbook{{/str}}"
+                    class="btn btn-dark btn-sm btn-rounded iv-font-weight-bold text-uppercase">
+                <i class="bi bi-chevron-right dir-rtl-hide"></i>
+                <i class="bi bi-chevron-left dir-ltr-hide"></i>
+            </button>
+        </div>
+        {{/displayoptions.interactionnavigation}}
+        <button id="share"
+                data{{bs}}-toggle="tooltip" data{{bs}}-container="#wrapper"
+                data{{bs}}-trigger="hover"
+                data{{bs}}-title="{{#str}}sharethismoment,mod_interactivevideo{{/str}}"
+                type="button"
+                class="btn border-0 btn-sm btn-dark btn-rounded text-white mx-1 {{^displayoptions.share}}d-none{{/displayoptions.share}}"
+                aria-label="{{#str}}sharethismoment, mod_interactivevideo{{/str}}"
+                title="{{#str}}sharethismoment, mod_interactivevideo{{/str}}">
+            <i class="bi bi-share" aria-hidden="true"></i>
+        </button>
+        <button id="fullscreen"
+            data{{bs}}-toggle="tooltip" data{{bs}}-container="#wrapper"
+              data{{bs}}-trigger="hover"
+              data{{bs}}-title="{{#str}}togglefullscreen,mod_interactivevideo{{/str}}"
+                    type="button"
+                    class="btn border-0 btn-sm btn-dark btn-rounded text-white mx-1 {{^displayoptions.fullscreen}}d-none{{/displayoptions.fullscreen}}"
+                    aria-label="{{#str}}togglefullscreen, mod_interactivevideo{{/str}}"
+                    title="{{#str}}togglefullscreen, mod_interactivevideo{{/str}}">
+                <i class="bi bi-fullscreen" aria-hidden="true"></i>
+            </button>
+    </div>
+
+</div>

@@ -1,0 +1,67 @@
+{{!
+This file is part of Moodle - http://moodle.org/
+Moodle is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+Moodle is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with Moodle. If not, see <http://www.gnu.org/licenses />.
+}}
+{{!
+@template mod_flexbook/canvas/player
+TODO describe template player
+Example context (json):
+{
+}
+}}
+
+<div id="interactivevideo-container"
+     class="container-fluid {{#displayoptions.distractionfreemode}}px-sm-3 position-absolute{{/displayoptions.distractionfreemode}}{{^displayoptions.distractionfreemode}}p-0{{/displayoptions.distractionfreemode}}"
+     data-complete="{{completed}}"
+     role="main"
+     aria-label="{{#str}}interactivevideo, mod_interactivevideo{{/str}}">
+
+    <div class="row justify-content-center mx-0">
+        <div class="col-12 px-0">
+            <div id="wrapper"
+                 class="position-relative mx-auto"
+                 role="region"
+                 aria-label="{{#str}}videoplayer, mod_interactivevideo{{/str}}">
+
+                <div id="video-wrapper" {{#displayoptions.aspectratio}} data-ratio="{{displayoptions.aspectratio}}" {{/displayoptions.aspectratio}}
+                     class="d-none align-items-center justify-content-center {{^darkmode}}border{{/darkmode}} fb">
+
+                    {{! Start of toolbar }}
+                    <div id="toolbar"
+                         class="bg-transparent pt-5 position-fixed"
+                         role="toolbar"
+                         aria-label="{{#str}}videotoolbar, mod_interactivevideo{{/str}}">
+                    </div>
+                    {{! End of toolbar }}
+
+                    {{> mod_interactivevideo/backgroundloading}}
+
+                    {{^displayoptions.disablechapternavigation}}
+                        {{> mod_flexbook/canvas/chapterpanel}}
+                    {{/displayoptions.disablechapternavigation}}
+
+                    {{> mod_flexbook/canvas/startscreen}}
+                    {{> mod_flexbook/canvas/endscreen}}
+                    {{> mod_flexbook/canvas/annotationcanvas}}
+                </div>
+
+                {{> mod_flexbook/canvas/controls}}
+            </div>
+        </div>
+    </div>
+</div>
+
+{{> mod_interactivevideo/blocksettingshack }}
+
+{{#hascourseindex}}
+{{> mod_interactivevideo/courseindex}}
+{{/hascourseindex}}

@@ -36,9 +36,9 @@ class custom_completion extends activity_custom_completion {
     /**
      * activity_custom_completion constructor.
      *
-     * @param cm_info $cm
-     * @param int $userid
-     * @param array|null $completionstate The current state of the core completion criteria
+     * @param \cm_info $cm The course module info.
+     * @param int $userid The user ID.
+     * @param array|null $completionstate The current state of the core completion criteria.
      */
     public function __construct(\cm_info $cm, int $userid, ?array $completionstate = null) {
         $allsubplugins = explode(',', get_config('mod_flexbook', 'enablecontenttypes'));
@@ -70,16 +70,74 @@ class custom_completion extends activity_custom_completion {
             throw new moodle_exception("Custom completion rule '$rule' is not used by this activity.");
         }
 
-        return COMPLETION_INCOMPLETE;
+        if ($rule === 'completionpercentage') {
+            $userid = $this->userid;
+            $cm = $this->cm;
+            $completionpercentage = $cm->customdata['customcompletionrules']['completionpercentage'];
+
+            $items = $DB->get_records(
+                'flexbook_items',
+                ['annotationid' => $cm->instance, 'hascompletion' => 1]
+            );
+
+            if (empty($items)) {
+                return COMPLETION_COMPLETE;
+            }
+
+            $relevantitems = array_map(function ($item) {
+                return $item->id;
+            }, $items);
+
+            $usercompletion = $DB->get_field(
+                'flexbook_completion',
+                'completeditems',
+                ['userid' => $userid, 'cmid' => $cm->id]
+            );
+            if (!$usercompletion) {
+                return COMPLETION_INCOMPLETE;
+            }
+            $usercompletion = json_decode($usercompletion, true);
+            $usercompletion = array_intersect($usercompletion, $relevantitems);
+            $usercompletioncount = count($usercompletion);
+
+            $percentage = ($usercompletioncount / count($relevantitems)) * 100;
+
+            if ($percentage >= $completionpercentage) {
+                return COMPLETION_COMPLETE;
+            }
+            return COMPLETION_INCOMPLETE;
+        } else if ($rule === 'reachend') {
+            $userid = $this->userid;
+            $cm = $this->cm;
+            $usercompletion = $DB->get_field(
+                'flexbook_completion',
+                'timeended',
+                ['userid' => $userid, 'cmid' => $cm->id]
+            );
+            if (!$usercompletion) {
+                return COMPLETION_INCOMPLETE;
+            }
+            if ($usercompletion > 0) {
+                return COMPLETION_COMPLETE;
+            }
+            return COMPLETION_INCOMPLETE;
+        } else {
+            foreach ($this->subplugins as $class) {
+                if ($class::get_state($rule, $this->cm, $this->userid)) {
+                    return COMPLETION_COMPLETE;
+                }
+            }
+            return COMPLETION_INCOMPLETE;
+        }
     }
 
     /**
      * Fetch the list of custom completion rules that this module defines.
      *
-     * @return array
+     * @return string[] The list of custom completion rules.
      */
     public static function get_defined_custom_rules(): array {
-        $rules = ['completionpercentage'];
+        $rules = ['completionpercentage', 'reachend'];
         $allsubplugins = explode(',', get_config('mod_flexbook', 'enablecontenttypes'));
         foreach ($allsubplugins as $subplugin) {
             $class = $subplugin . '\\fbcompletion';
@@ -93,12 +151,13 @@ class custom_completion extends activity_custom_completion {
     /**
      * Returns an associative array of the descriptions of custom completion rules.
      *
-     * @return array
+     * @return string[] The list of custom completion rule descriptions.
      */
     public function get_custom_rule_descriptions(): array {
         $completionpercentage = $this->cm->customdata['customcompletionrules']['completionpercentage'];
         $description = [
             'completionpercentage' => get_string('completiondetail:percentage', 'flexbook', $completionpercentage),
+            'reachend' => get_string('completiondetail:reachend', 'flexbook'),
         ];
         $extendedcompletion = $this->cm->customdata['extendedcompletion'];
         $extendedcompletion = json_decode($extendedcompletion, true);
@@ -118,7 +177,7 @@ class custom_completion extends activity_custom_completion {
     /**
      * Returns an array of all completion rules, in the order they should be displayed to users.
      *
-     * @return array
+     * @return string[] The list of completion rules.
      */
     public function get_sort_order(): array {
         $customrules = $this->get_defined_custom_rules();

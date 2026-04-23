@@ -79,7 +79,8 @@ $PAGE->set_title(get_string('interactionsin', 'interactivevideo', format_string(
 $PAGE->set_heading(format_string($course->fullname));
 $PAGE->set_context($modulecontext);
 $PAGE->set_pagelayout('embedded');
-$PAGE->add_body_class('path-mod-interactivevideo page-interactions distraction-free ' . $moduleinstance->type . ($CFG->branch >= 500 ? ' bs-5' : ''));
+$PAGE->add_body_class('path-mod-interactivevideo page-interactions distraction-free '
+    . $moduleinstance->type . ($CFG->branch >= 500 ? ' bs-5' : ''));
 $PAGE->requires->js_init_code('window.M.version = ' . $CFG->branch . ';', true);
 
 // Sort the content types by title.
@@ -147,10 +148,11 @@ $datafortemplate = [
     "interactionsurl" => '',
     "useravatar" => $primarymenu['user'],
     "viewurl" => new moodle_url('/mod/flexbook/view.php', ['id' => $cm->id]),
-    "backupurl" => has_capability('moodle/backup:backupactivity', $modulecontext) ? new moodle_url(
-        '/backup/backup.php',
-        ['cm' => $cm->id, 'id' => $course->id]
-    ) : '',
+    "backupurl" => has_capability('moodle/backup:backupactivity', $modulecontext)
+        ? new moodle_url(
+            '/backup/backup.php',
+            ['cm' => $cm->id, 'id' => $course->id]
+        ) : '',
     "restoreurl" => has_capability('moodle/restore:restoreactivity', $modulecontext) ? new moodle_url(
         '/backup/restorefile.php',
         ['contextid' => $modulecontext->id]

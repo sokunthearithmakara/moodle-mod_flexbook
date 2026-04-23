@@ -61,7 +61,7 @@ class actions extends external_api {
     /**
      * Validate edit permission
      *
-     * @param mixed $contextid
+     * @param int $contextid The context ID.
      * @return void
      */
     public static function validate_edit_context($contextid) {
@@ -76,7 +76,7 @@ class actions extends external_api {
     /**
      * Validate view permission
      *
-     * @param mixed $contextid
+     * @param int $contextid The context ID.
      * @return void
      */
     public static function validate_view_context($contextid) {
@@ -140,10 +140,10 @@ class actions extends external_api {
     /**
      * Delete a flexbook item
      *
-     * @param mixed $contextid The context ID where the item will be deleted.
-     * @param mixed $id The ID of the item to be deleted.
-     * @param mixed $cmid The course module ID.
-     * @return void
+     * @param int $contextid The context ID where the item will be deleted.
+     * @param int $id The ID of the item to be deleted.
+     * @param int $cmid The course module ID.
+     * @return array The result of the deletion.
      */
     public static function delete($contextid, $id, $cmid) {
         self::validate_parameters(self::delete_parameters(), ['contextid' => $contextid, 'id' => $id, 'cmid' => $cmid]);
@@ -183,10 +183,10 @@ class actions extends external_api {
     /**
      * Update sequence of a flexbook item
      *
-     * @param int $contextid The context ID where the item will be deleted.
+     * @param int $contextid The context ID where the item will be updated.
      * @param int $instanceid The flexbook instance ID.
-     * @param mixed $sequence The sequence of the item.
-     * @return void
+     * @param string $sequence The sequence of the item.
+     * @return array The result of the update.
      */
     public static function update_sequence($contextid, $instanceid, $sequence) {
         global $DB;
@@ -209,7 +209,7 @@ class actions extends external_api {
     /**
      * Update sequence return fields
      *
-     * @return external_description
+     * @return \external_description
      */
     public static function update_sequence_returns() {
         return new external_single_structure([
@@ -385,7 +385,8 @@ class actions extends external_api {
 
     /**
      * Return the description of the return value of save_progress function
-     * @return external_description
+     *
+     * @return \external_description
      */
     public static function save_progress_returns() {
         return new external_single_structure([
@@ -405,6 +406,7 @@ class actions extends external_api {
             'completionid' => new external_value(PARAM_INT, 'The completion record ID', VALUE_REQUIRED),
             'details' => new external_value(PARAM_TEXT, 'JSON encoded interaction data (timespent + views)', VALUE_REQUIRED),
             'lastviewed' => new external_value(PARAM_INT, 'Last viewed annotation ID', VALUE_DEFAULT, 0),
+            'reachend' => new external_value(PARAM_BOOL, 'Whether the user reached the end', VALUE_DEFAULT, false),
         ]);
     }
 
@@ -415,33 +417,61 @@ class actions extends external_api {
      * @param int $completionid The flexbook_completion record ID.
      * @param string $details JSON encoded object with timespent and views maps.
      * @param int $lastviewed Last annotation ID the user viewed.
+     * @param bool $reachend Whether the user reached the end.
      * @return array
      */
-    public static function save_interaction_data($contextid, $completionid, $details, $lastviewed = 0) {
-        global $DB;
+    public static function save_interaction_data($contextid, $completionid, $details, $lastviewed = 0, $reachend = false) {
+        global $DB, $CFG;
         self::validate_parameters(self::save_interaction_data_parameters(), [
             'contextid' => $contextid,
             'completionid' => $completionid,
             'details' => $details,
             'lastviewed' => $lastviewed,
+            'reachend' => $reachend,
         ]);
 
         self::validate_view_context($contextid);
 
         if ($completionid > 0) {
-            $DB->set_field('flexbook_completion', 'details', $details, ['id' => $completionid]);
-            if ($lastviewed > 0) {
-                $DB->set_field('flexbook_completion', 'lastviewed', $lastviewed, ['id' => $completionid]);
+            $record = $DB->get_record('flexbook_completion', ['id' => $completionid], 'id, userid, cmid, courseid');
+            if ($record) {
+                $DB->set_field('flexbook_completion', 'details', $details, ['id' => $completionid]);
+                if ($lastviewed > 0) {
+                    $DB->set_field('flexbook_completion', 'lastviewed', $lastviewed, ['id' => $completionid]);
+                }
+                if ($reachend) {
+                    $timeended = $DB->get_field('flexbook_completion', 'timeended', ['id' => $completionid]);
+                    if (!$timeended) {
+                        $DB->set_field('flexbook_completion', 'timeended', time(), ['id' => $completionid]);
+
+                        // Trigger completion state update.
+                        $modinfo = get_fast_modinfo($record->courseid);
+                        $cm = $modinfo->get_cm($record->cmid);
+                        if ($cm->completion > 1) {
+                            require_once($CFG->dirroot . '/lib/completionlib.php');
+                            $course = new \stdClass();
+                            $course->id = $record->courseid;
+                            $completion = new \completion_info($course);
+                            $completion->update_state($cm);
+                            $overallcomplete = $completion->internal_get_state($cm, $record->userid, null);
+                        }
+                    }
+                }
             }
         }
 
-        return ['status' => 'success', 'data' => json_encode(['details' => $details, 'lastviewed' => $lastviewed])];
+        return ['status' => 'success', 'data' => json_encode([
+            'details' => $details,
+            'lastviewed' => $lastviewed,
+            'reachend' => $reachend,
+            'overallcomplete' => ($overallcomplete == COMPLETION_COMPLETE || $overallcomplete == COMPLETION_COMPLETE_PASS),
+        ])];
     }
 
     /**
      * Return the description of the return value of save_interaction_data function.
      *
-     * @return external_description
+     * @return \external_description
      */
     public static function save_interaction_data_returns() {
         return new external_single_structure([
@@ -494,7 +524,7 @@ class actions extends external_api {
     /**
      * Get report data returns
      *
-     * @return external_description
+     * @return \external_description
      */
     public static function get_report_data_returns() {
         return new external_single_structure([
@@ -552,7 +582,7 @@ class actions extends external_api {
     /**
      * Delete progress returns
      *
-     * @return external_description
+     * @return \external_description
      */
     public static function delete_progress_returns() {
         return new external_single_structure([
@@ -605,7 +635,7 @@ class actions extends external_api {
     /**
      * Delete completion data returns
      *
-     * @return external_description
+     * @return \external_description
      */
     public static function delete_completion_data_returns() {
         return new external_single_structure([
@@ -659,7 +689,7 @@ class actions extends external_api {
     /**
      * Get logs returns
      *
-     * @return external_description
+     * @return \external_description
      */
     public static function get_logs_returns() {
         return new external_single_structure([
@@ -715,7 +745,7 @@ class actions extends external_api {
     /**
      * Save log returns
      *
-     * @return external_description
+     * @return \external_description
      */
     public static function save_log_returns() {
         return new external_single_structure([

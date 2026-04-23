@@ -35,9 +35,9 @@ class course_module_viewed extends \core\event\course_module_viewed {
     /**
      * Creates an instance of event
      *
-     * @param \stdClass $record
-     * @param \cm_info|\stdClass $cm
-     * @param \stdClass $course
+     * @param \stdClass $record The flexbook record.
+     * @param \cm_info|\stdClass $cm The course module info.
+     * @param \stdClass $course The course record.
      * @return course_module_viewed
      */
     public static function create_from_record($record, $cm, $course) {

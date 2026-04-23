@@ -30,7 +30,7 @@ define('FLEXBOOK_EVENT_TYPE_DUE', 'due');
  * Return if the plugin supports $feature.
  *
  * @param string $feature Constant representing the feature.
- * @return true | null True if the feature is supported, null otherwise.
+ * @return bool|string|null True if the feature is supported, null otherwise.
  */
 function flexbook_supports($feature) {
     global $CFG;
@@ -51,7 +51,7 @@ function flexbook_supports($feature) {
         return false;
     }
     if ($feature === FEATURE_MOD_PURPOSE) {
-        return MOD_PURPOSE_CONTENT;
+        return MOD_PURPOSE_INTERACTIVECONTENT;
     }
     if ($CFG->branch >= 501 && $feature === FEATURE_MOD_OTHERPURPOSE) {
         return MOD_PURPOSE_ASSESSMENT;
@@ -79,7 +79,7 @@ function flexbook_get_subplugins($classname) {
 /**
  * Format display options array.
  *
- * @param object $moduleinstance Instance of flexbook.
+ * @param \stdClass $moduleinstance Instance of flexbook.
  * @return array Array of display options.
  */
 function flexbook_display_options($moduleinstance) {
@@ -107,15 +107,14 @@ function flexbook_display_options($moduleinstance) {
 }
 
 /**
- * Saves a new instance of the mod_interactivevideo into the database.
+ * Saves a new instance of the mod_flexbook into the database.
  *
  * Given an object containing all the necessary data, (defined by the form
  * in mod_form.php) this function will create a new instance and return the id
  * number of the instance.
  *
- * @param object $moduleinstance An object from the form.
- * @param mod_flexbook_mod_form $mform The form.
- * @param bool $batch True if the function is called from bulk insert.
+ * @param \stdClass $moduleinstance An object from the form.
+ * @param \mod_flexbook_mod_form $mform The form.
  * @return int The id of the newly inserted record.
  */
 function flexbook_add_instance($moduleinstance, $mform = null) {
@@ -188,8 +187,8 @@ function flexbook_add_instance($moduleinstance, $mform = null) {
  * Given an object containing all the necessary data (defined in mod_form.php),
  * this function will update an existing instance with new data.
  *
- * @param object $moduleinstance An object from the form in mod_form.php.
- * @param mod_flexbook_mod_form $mform The form.
+ * @param \stdClass $moduleinstance An object from the form in mod_form.php.
+ * @param \mod_flexbook_mod_form $mform The form.
  * @return bool True if successful, false otherwise.
  */
 function flexbook_update_instance($moduleinstance, $mform = null) {
@@ -247,7 +246,7 @@ function flexbook_update_instance($moduleinstance, $mform = null) {
 }
 
 /**
- * Removes an instance of the mod_interactivevideo from the database.
+ * Removes an instance of the mod_flexbook from the database.
  *
  * @param int $id Id of the module instance.
  * @return bool True if successful, false on failure.
@@ -299,13 +298,10 @@ function flexbook_delete_instance($id) {
  * The file area 'intro' for the activity introduction field is added automatically
  * by {@see file_browser::get_file_info_context_module()}.
  *
- * @package     mod_flexbook
- * @category    files
- *
- * @param stdClass $course
- * @param stdClass $cm
- * @param stdClass $context
- * @return string[].
+ * @param \stdClass $course The course object.
+ * @param \stdClass $cm The course module object.
+ * @param \stdClass $context The context object.
+ * @return array The list of file areas.
  */
 function flexbook_get_file_areas($course, $cm, $context) {
     return [
@@ -322,19 +318,16 @@ function flexbook_get_file_areas($course, $cm, $context) {
 /**
  * File browsing support for mod_flexbook file areas.
  *
- * @package     mod_flexbook
- * @category    files
- *
- * @param file_browser $browser
- * @param array $areas
- * @param stdClass $course
- * @param stdClass $cm
- * @param stdClass $context
- * @param string $filearea
- * @param int $itemid
- * @param string $filepath
- * @param string $filename
- * @return file_info Instance or null if not found.
+ * @param \file_browser $browser The file browser.
+ * @param array $areas The file areas.
+ * @param \stdClass $course The course object.
+ * @param \stdClass $cm The course module object.
+ * @param \stdClass $context The context object.
+ * @param string $filearea The name of the file area.
+ * @param int $itemid The item ID.
+ * @param string $filepath The file path.
+ * @param string $filename The file name.
+ * @return \file_info|null Instance or null if not found.
  */
 function flexbook_get_file_info($browser, $areas, $course, $cm, $context, $filearea, $itemid, $filepath, $filename) {
     return null;
@@ -343,16 +336,14 @@ function flexbook_get_file_info($browser, $areas, $course, $cm, $context, $filea
 /**
  * Serves the files from the mod_flexbook file areas.
  *
- * @package     mod_flexbook
- * @category    files
- *
- * @param stdClass $course The course object.
- * @param stdClass $cm The course module object.
- * @param stdClass $context The mod_flexbook's context.
+ * @param \stdClass $course The course object.
+ * @param \stdClass $cm The course module object.
+ * @param \context $context The mod_flexbook's context.
  * @param string $filearea The name of the file area.
  * @param array $args Extra arguments (itemid, path).
  * @param bool $forcedownload Whether or not force download.
  * @param array $options Additional options affecting the file serving.
+ * @return void
  */
 function flexbook_pluginfile($course, $cm, $context, $filearea, $args, $forcedownload, $options = []) {
 
@@ -384,8 +375,8 @@ function flexbook_pluginfile($course, $cm, $context, $filearea, $args, $forcedow
  * This function is called when the context for the page is a mod_flexbook module.
  * This is not called by AJAX so it is safe to rely on the $PAGE.
  *
- * @param settings_navigation $settingsnav {@see settings_navigation}
- * @param navigation_node $interactivevideonode {@see navigation_node}
+ * @param \settings_navigation $settingsnav The settings navigation.
+ * @param \navigation_node $interactivevideonode The flexbook node.
  */
 function flexbook_extend_settings_navigation($settingsnav, $interactivevideonode = null) {
     $page = $settingsnav->get_page();
@@ -421,8 +412,8 @@ function flexbook_extend_settings_navigation($settingsnav, $interactivevideonode
  * Given a course_module object, this function returns any "extra" information that may be needed
  * when printing this activity in a course listing.  See get_array_of_activities() in course/lib.php.
  *
- * @param stdClass $coursemodule The coursemodule object (record).
- * @return cached_cm_info An object on information that the courses
+ * @param \stdClass $coursemodule The coursemodule object (record).
+ * @return \cached_cm_info|false An object on information that the courses
  *                        will know about (most noticeably, an icon).
  */
 function flexbook_get_coursemodule_info($coursemodule) {
@@ -464,76 +455,6 @@ function flexbook_get_coursemodule_info($coursemodule) {
     return $result;
 }
 
-/**
- * Create an afterlink action buttons.
- *
- * @param cm_info $cm
- * @return string
- */
-function flexbook_afterlink(cm_info $cm) {
-    // Set after link.
-    $afterlink = '';
-
-    $context = context_module::instance($cm->id);
-    if (has_capability('mod/flexbook:edit', $context)) {
-        $afterlink .= html_writer::link(
-            'javascript:void(0)',
-            '<i class="fa fa-edit" aria-hidden="true"></i>',
-            [
-                'class' => 'p-1 iv-mr-1 iv_quickform',
-                'title' => get_string('editwithctrlclick', 'mod_interactivevideo'),
-                'aria-label' => get_string('editwithctrlclick', 'mod_interactivevideo'),
-                'data-contextid' => $context->id,
-                'data-courseid' => $cm->course,
-                'data-cmid' => $cm->id,
-                'data-interaction' => $cm->instance,
-                'data-href' => new \moodle_url('/course/modedit.php?', ['update' => $cm->id]),
-            ]
-        );
-
-        $afterlink .= html_writer::link(
-            new \moodle_url('/mod/flexbook/interactions.php', ['id' => $cm->id]),
-            '<i class="fa fa-bullseye" aria-hidden="true"></i>',
-            [
-                'class' => 'p-1 iv-mr-1',
-                'title' => get_string('interactions', 'mod_flexbook'),
-                'aria-label' => get_string('interactions', 'mod_flexbook'),
-            ]
-        );
-    }
-    if (has_capability('mod/flexbook:viewreport', $context)) {
-        $afterlink .= html_writer::link(
-            'javascript:void(0)',
-            '<i class="fa fa-table" aria-hidden="true"></i>',
-            [
-                'class' => 'p-1 iv-mr-1 launch-report',
-                'title' => get_string('reportwithctrlclick', 'mod_interactivevideo'),
-                'aria-label' => get_string('reportwithctrlclick', 'mod_interactivevideo'),
-                'data-title' => $cm->get_name(),
-                'data-href' => new \moodle_url('/mod/flexbook/report.php', ['id' => $cm->id, 'group' => 0]),
-            ]
-        );
-    }
-
-    return $afterlink;
-}
-
-/**
- * Dynamically updates the course module information.
- *
- * @param cm_info $cm The course module information object.
- */
-function flexbook_cm_info_dynamic(cm_info $cm) {
-    global $PAGE;
-    if (strpos($PAGE->bodyclasses, 'path-course-view') === false) { // MUST be in course view only.
-        return;
-    }
-
-    $afterlink = flexbook_afterlink($cm);
-
-    $cm->set_after_link($afterlink);
-}
-
 if ($CFG->branch <= 403) {
     /**
      * Adds JavaScript before the footer is rendered.
@@ -555,9 +476,9 @@ if ($CFG->branch <= 403) {
  *
  * Needed by {@see grade_update_mod_grades()}.
  *
- * @param stdClass $moduleinstance Instance object with extra cmidnumber and modname property.
+ * @param \stdClass $moduleinstance Instance object with extra cmidnumber and modname property.
  * @param mixed $grades Null to update all grades, false to delete all grades, or array of user grades.
- * @return void.
+ * @return void
  */
 function flexbook_grade_item_update($moduleinstance, $grades = null) {
     global $CFG;
@@ -598,8 +519,8 @@ function flexbook_grade_item_update($moduleinstance, $grades = null) {
 /**
  * Delete grade item for given mod_flexbook instance.
  *
- * @param stdClass $moduleinstance Instance object.
- * @return grade_item.
+ * @param \stdClass $moduleinstance Instance object.
+ * @return int 0 if successful, a error code otherwise.
  */
 function flexbook_grade_item_delete($moduleinstance) {
     global $CFG;
@@ -625,8 +546,9 @@ function flexbook_grade_item_delete($moduleinstance) {
  *
  * Needed by {@see grade_update_mod_grades()}.
  *
- * @param stdClass $moduleinstance Instance object with extra cmidnumber and modname property.
+ * @param \stdClass $moduleinstance Instance object with extra cmidnumber and modname property.
  * @param int $userid Update grade of specific user only, 0 means all participants.
+ * @return void
  */
 function flexbook_update_grades($moduleinstance, $userid = 0) {
     global $CFG;
@@ -644,7 +566,7 @@ function flexbook_update_grades($moduleinstance, $userid = 0) {
 /**
  * Get user grades for the mod_flexbook module.
  *
- * @param stdClass $moduleinstance The module instance object.
+ * @param \stdClass $moduleinstance The module instance object.
  * @param int $userid The user ID (optional).
  * @return array The user grades.
  */
@@ -674,7 +596,7 @@ function flexbook_get_user_grades($moduleinstance, $userid = 0) {
 /**
  * Reset all user grades for the mod_flexbook module.
  *
- * @param stdClass $data The module instance object.
+ * @param \stdClass $data The module instance object.
  * @return array The status.
  */
 function flexbook_reset_userdata($data) {
@@ -753,7 +675,8 @@ function flexbook_reset_userdata($data) {
 /**
  * Get content of the interaction.
  *
- * @param mixed $arg
+ * @param array $arg The arguments.
+ * @return string The content.
  */
 function flexbook_output_fragment_getcontent($arg) {
     $prop = json_decode($arg['prop']);
@@ -814,7 +737,7 @@ function flexbook_core_calendar_provide_event_action(
 /**
  * This function is called when a module instance is updated.
  *
- * @param stdClass $moduleinstance The module instance object.
+ * @param \stdClass $moduleinstance The module instance object.
  * @return bool
  */
 function flexbook_update_event($moduleinstance) {
@@ -887,9 +810,9 @@ function flexbook_update_event($moduleinstance) {
 /**
  * Form elements for appearance and behavior settings.
  *
- * @param mixed $mform
- * @param mixed $current
- * @param mixed $sections
+ * @param \MoodleQuickForm $mform The form.
+ * @param \stdClass $current The current data.
+ * @param array $sections The sections to include.
  * @return void
  */
 function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['appearance', 'behavior']) {
@@ -898,7 +821,7 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
         $mform->addElement(
             'html',
             '<div class="iv-form-group row fitem"><div class="col-md-12 col-form-label d-flex pb-0  iv-pr-md-0">
-        <h5 class="w-100 border-bottom">' . get_string('appearancesettings', 'mod_interactivevideo')
+        <h5 class="w-100 border-bottom">' . get_string('appearancesettings', 'mod_flexbook')
                 . '</h5></div></div>',
         );
 
@@ -942,8 +865,8 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
         $mform->addElement(
             'advcheckbox',
             'courseindex',
-            get_string('courseindex', 'mod_interactivevideo'),
-            get_string('showindexindf', 'mod_interactivevideo'),
+            get_string('courseindex', 'mod_flexbook'),
+            get_string('showindexindf', 'mod_flexbook'),
             ['group' => 1],
             [0, 1]
         );
@@ -954,7 +877,7 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
             'advcheckbox',
             'distractionfreemode',
             '',
-            get_string('distractionfreemode', 'mod_interactivevideo'),
+            get_string('distractionfreemode', 'mod_flexbook'),
             ['group' => 1],
             [0, 1]
         );
@@ -964,7 +887,7 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
             'advcheckbox',
             'darkmode',
             '',
-            get_string('darkmode', 'mod_interactivevideo'),
+            get_string('darkmode', 'mod_flexbook'),
             ['group' => 1],
             [0, 1]
         );
@@ -976,10 +899,10 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
         // Controls before completion.
         $controls = [
             ['controlbar', 'mod_flexbook'],
-            ['interactionbar', 'mod_interactivevideo'],
-            ['chaptertoggle', 'mod_interactivevideo'],
-            ['share', 'mod_interactivevideo'],
-            ['fullscreen', 'mod_interactivevideo'],
+            ['interactionbar', 'mod_flexbook'],
+            ['chaptertoggle', 'mod_flexbook'],
+            ['share', 'mod_flexbook'],
+            ['fullscreen', 'mod_flexbook'],
             ['xpcounter', 'mod_flexbook'],
             ['interactioncounter', 'mod_flexbook'],
             ['interactionnavigation', 'mod_flexbook'],
@@ -989,7 +912,7 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
             'static',
             'beforecompletionheader',
             '',
-            '<b class="w-100 d-block">' . get_string('controlsbeforecompletion', 'mod_interactivevideo') . '</b>'
+            '<b class="w-100 d-block">' . get_string('controlsbeforecompletion', 'mod_flexbook') . '</b>'
         );
         $group = [];
         foreach ($controls as $control) {
@@ -1016,7 +939,7 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
             'static',
             'aftercompletionheader',
             '',
-            '<b class="w-100 d-block">' . get_string('controlsaftercompletion', 'mod_interactivevideo') . '</b>'
+            '<b class="w-100 d-block">' . get_string('controlsaftercompletion', 'mod_flexbook') . '</b>'
         );
         $group = [];
         foreach ($controls as $control) {

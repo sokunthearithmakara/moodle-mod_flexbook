@@ -153,7 +153,8 @@ class base_form extends \core_form\dynamic_form {
         $mform = &$this->_form;
         $annotations = $this->get_annotations() ?? [];
         $mform->addElement('hidden', 'annotations');
-        $nextannotations = ['' => get_string('next', 'mod_flexbook')] + $annotations + [999 => get_string('endscreen', 'mod_flexbook')];
+        $nextannotations = ['' => get_string('next', 'mod_flexbook')]
+            + $annotations + [999 => get_string('endscreen', 'mod_flexbook')];
         $prevannotations = ['' => get_string('previous', 'mod_flexbook'), 999 => get_string('previouslyviewed', 'mod_flexbook')]
             + $annotations;
         $mform->addElement('header', 'jumpsection', get_string('navigation', 'mod_flexbook'));
@@ -229,6 +230,12 @@ class base_form extends \core_form\dynamic_form {
         return $data;
     }
 
+    /**
+     * Process data before returning to front end.
+     *
+     * @param \stdClass $data
+     * @return \stdClass
+     */
     public function data_post_processing($fromform) {
         global $DB;
         // We don't want to use $fromform because they are a bunch of other fields.

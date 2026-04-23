@@ -27,7 +27,8 @@ class hook_callbacks {
     /**
      * Add messaging widgets after the main region content.
      *
-     * @param \core\hook\output\after_standard_main_region_html_generation $hook
+     * @param \core\hook\output\after_standard_main_region_html_generation $hook The hook instance.
+     * @return void
      */
     public static function launch_player_modal(\core\hook\output\after_standard_main_region_html_generation $hook): void {
         global $PAGE, $CFG;

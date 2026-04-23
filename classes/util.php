@@ -30,8 +30,8 @@ class util extends \interactivevideo_util {
     /**
      * Get all activity types.
      *
-     * @param bool $fromview from view.php
-     * @return array
+     * @param bool $fromview Whether called from view.php.
+     * @return array[] The list of activity types.
      */
     public static function get_all_activitytypes($fromview = false) {
         $subplugins = get_config('mod_flexbook', 'enablecontenttypes');
@@ -152,10 +152,10 @@ class util extends \interactivevideo_util {
     /**
      * Get all interactions in one interactive video module.
      *
-     * @param int $cmid cmid
-     * @param int $contextid
-     * @param bool $hascompletion
-     * @return array|null
+     * @param int $cmid The course module ID.
+     * @param int $contextid The context ID.
+     * @param bool $hascompletion Whether to filter by completion.
+     * @return array[] The list of items.
      */
     public static function get_items($cmid, $contextid, $hascompletion = false) {
         global $DB, $PAGE;
@@ -184,9 +184,9 @@ class util extends \interactivevideo_util {
     /**
      * Get one interaction by id.
      *
-     * @param int $id
-     * @param int $contextid
-     * @return mix
+     * @param int $id The item ID.
+     * @param int $contextid The context ID.
+     * @return \stdClass|null The item record.
      */
     public static function get_item($id, $contextid) {
         global $DB, $PAGE;
@@ -199,10 +199,10 @@ class util extends \interactivevideo_util {
     /**
      * Delete an item.
      *
-     * @param int $id
-     * @param int $cmid
-     * @param int $contextid
-     * @return mixed
+     * @param int $id The item ID.
+     * @param int $cmid The course module ID.
+     * @param int $contextid The context ID.
+     * @return int The deleted item ID.
      */
     public static function delete_item($id, $cmid, $contextid) {
         global $DB;
@@ -232,11 +232,11 @@ class util extends \interactivevideo_util {
     /**
      * Quick edit a flexbook item
      *
-     * @param int $id
-     * @param string $field
-     * @param string $value
-     * @param int $contextid
-     * @return mixed
+     * @param int $id The item ID.
+     * @param string $field The field name.
+     * @param string $value The field value.
+     * @param int $contextid The context ID.
+     * @return \stdClass The updated item record.
      */
     public static function quick_edit($id, $field, $value, $contextid) {
         global $DB;
@@ -250,11 +250,11 @@ class util extends \interactivevideo_util {
     /**
      * Get progress data per user.
      *
-     * @param int $cmid
-     * @param int $userid
-     * @param int $courseid
-     * @param bool $preview
-     * @return stdClass
+     * @param int $cmid The course module ID.
+     * @param int $userid The user ID.
+     * @param int $courseid The course ID.
+     * @param bool $preview Whether it's a preview mode.
+     * @return array|\stdClass The progress data.
      */
     public static function get_progress($cmid, $userid, $courseid = null, $preview = false) {
         global $DB;
@@ -302,7 +302,7 @@ class util extends \interactivevideo_util {
      *
      * @param int $cmid The ID of the course module.
      * @param int $userid The ID of the user.
-     * @param int $completeditems The number of completed items.
+     * @param string $completeditems JSON encoded string of completed items.
      * @param string $completiondetails JSON encoded string of completion details.
      * @param bool $markdone Whether to mark the item as done.
      * @param string $type The type of the interactive video.
@@ -314,7 +314,7 @@ class util extends \interactivevideo_util {
      * @param int $xp The experience points earned (optional, default is 0).
      * @param bool $updatestate Whether to update the completion state (optional, default is true).
      * @param int $courseid The ID of the course (optional, default is 0).
-     * @return stdClass The updated progress record.
+     * @return \stdClass The updated progress record.
      */
     public static function save_progress(
         $cmid,
@@ -679,13 +679,13 @@ class util extends \interactivevideo_util {
     /**
      * Save log.
      *
-     * @param int $userid
-     * @param int $annotationid
-     * @param int $cmid
-     * @param string $data
-     * @param int $contextid
-     * @param int $replace
-     * @return mixed $record
+     * @param int $userid The user ID.
+     * @param int $annotationid The annotation ID.
+     * @param int $cmid The course module ID.
+     * @param string $data The log data.
+     * @param int $contextid The context ID.
+     * @param int $replace Whether to replace existing log.
+     * @return \stdClass The saved log record.
      */
     public static function save_log($userid, $annotationid, $cmid, $data, $contextid, $replace) {
         global $DB;

@@ -114,11 +114,10 @@ Example context (json):
         {{/reporturl}}
 
         {{#settingurl}}
-        <a href="javascript:void(0)"
-           data-href="{{{settingurl}}}" data-cmid="{{cmid}}" data-courseid="{{courseid}}"
+        <a href="{{{settingurl}}}" data-cmid="{{cmid}}" data-courseid="{{courseid}}"
            data-contextid="{{contextid}}" data-interaction="{{instance}}" data-origin="navbar"
-           title="{{#str}}settingstooltip, mod_interactivevideo{{/str}}"
-           aria-label="{{#str}}settingstooltip, mod_interactivevideo{{/str}}"
+           title="{{#str}}settings, mod_interactivevideo{{/str}}"
+           aria-label="{{#str}}settings, mod_interactivevideo{{/str}}"
            data{{bs}}-toggle="tooltip" data{{bs}}-html="true" data{{bs}}-placement="bottom"
            class="btn px-1 btn-sm iv-mr-2 border-0 iv_quickform btn-hover">
             <i class="bi bi-gear fs-25px {{#darkmode}}text-white{{/darkmode}}" aria-hidden="true"></i>

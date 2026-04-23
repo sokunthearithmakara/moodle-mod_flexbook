@@ -28,8 +28,8 @@
 /**
  * Execute the plugin upgrade steps from the given old version.
  *
- * @param int $oldversion
- * @return bool
+ * @param int $oldversion The version we are upgrading from.
+ * @return bool True if successful.
  */
 function xmldb_flexbook_upgrade($oldversion) {
     global $DB;

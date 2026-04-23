@@ -40,8 +40,8 @@ class provider implements
     /**
      * Returns metadata about this plugin's privacy data.
      *
-     * @param collection $collection The collection to add metadata to.
-     * @return collection The updated collection of metadata.
+     * @param \core_privacy\local\metadata\collection $collection The collection to add metadata to.
+     * @return \core_privacy\local\metadata\collection The updated collection of metadata.
      */
     public static function get_metadata(collection $collection): collection {
         $collection->add_database_table("flexbook_completion", [
@@ -87,7 +87,7 @@ class provider implements
      * Get the list of contexts that contain user information for the specified user.
      *
      * @param int $userid The user ID.
-     * @return contextlist The list of contexts containing user information.
+     * @return \core_privacy\local\request\contextlist The list of contexts containing user information.
      */
     public static function get_contexts_for_userid(int $userid): contextlist {
         $contextlist = new contextlist();
@@ -125,7 +125,8 @@ class provider implements
     /**
      * Get the list of users in the specified context.
      *
-     * @param userlist $userlist The user list to add users to.
+     * @param \core_privacy\local\request\userlist $userlist The user list to add users to.
+     * @return void
      */
     public static function get_users_in_context(userlist $userlist) {
         $context = $userlist->get_context();
@@ -158,7 +159,8 @@ class provider implements
     /**
      * Export all user data for the specified contextlist.
      *
-     * @param approved_contextlist $contextlist The approved contextlist.
+     * @param \core_privacy\local\request\approved_contextlist $contextlist The approved contextlist.
+     * @return void
      */
     public static function export_user_data(approved_contextlist $contextlist) {
         global $DB;
@@ -317,7 +319,8 @@ class provider implements
     /**
      * Delete data for users in the approved user list.
      *
-     * @param approved_userlist $userlist The approved user list.
+     * @param \core_privacy\local\request\approved_userlist $userlist The approved user list.
+     * @return void
      */
     public static function delete_data_for_users(approved_userlist $userlist) {
         global $DB;
@@ -355,7 +358,8 @@ class provider implements
     /**
      * Delete all user data for the specified contextlist.
      *
-     * @param approved_contextlist $contextlist The approved contextlist.
+     * @param \core_privacy\local\request\approved_contextlist $contextlist The approved contextlist.
+     * @return void
      */
     public static function delete_data_for_user(approved_contextlist $contextlist) {
         global $DB;

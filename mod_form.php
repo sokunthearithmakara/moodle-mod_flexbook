@@ -35,10 +35,11 @@ class mod_flexbook_mod_form extends moodleform_mod {
 
     /**
      * Constructor for the mod_flexbook_mod_form class.
-     * @param stdClass $current
-     * @param stdClass $section
-     * @param stdClass $cm
-     * @param stdClass $course
+     *
+     * @param \stdClass $current
+     * @param \stdClass $section
+     * @param \stdClass $cm
+     * @param \stdClass $course
      */
     public function __construct($current, $section, $cm, $course) {
         $allsubplugins = explode(',', get_config('mod_flexbook', 'enablecontenttypes'));
@@ -55,6 +56,8 @@ class mod_flexbook_mod_form extends moodleform_mod {
 
     /**
      * Defines forms elements
+     *
+     * @return void
      */
     public function definition() {
         global $CFG, $PAGE;
@@ -81,7 +84,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
             'advcheckbox',
             'showdescriptiononheader',
             '',
-            get_string('displaydescriptiononactivityheader', 'mod_interactivevideo'),
+            get_string('displaydescriptiononactivityheader', 'mod_flexbook'),
             ['group' => 1],
             [0, 1]
         );
@@ -90,7 +93,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
             'advcheckbox',
             'displayasstartscreen',
             '',
-            get_string('displayasstartscreen', 'mod_interactivevideo'),
+            get_string('displayasstartscreen', 'mod_flexbook'),
             ['group' => 1],
             [0, 1]
         );
@@ -99,7 +102,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
         $mform->addElement(
             'editor',
             'endscreentext',
-            get_string('endscreentext', 'mod_interactivevideo'),
+            get_string('endscreentext', 'mod_flexbook'),
             null,
             ['maxfiles' => EDITOR_UNLIMITED_FILES, 'noclean' => true]
         );
@@ -113,13 +116,13 @@ class mod_flexbook_mod_form extends moodleform_mod {
         $mform->addElement('select', 'type', get_string('type', 'mod_flexbook'), $types);
 
         // APPEARANCE AND BEHAVIOR SETTINGS.
-        $mform->addElement('header', 'videodisplayoptions', get_string('appearanceandbehaviorsettings', 'mod_interactivevideo'));
+        $mform->addElement('header', 'videodisplayoptions', get_string('appearanceandbehaviorsettings', 'mod_flexbook'));
 
         flexbook_appearanceandbehavior_form($mform, $current);
 
         // Additional settings from external plugins.
         if (!empty($this->subplugins)) {
-            $mform->addElement('header', 'additionalsettings', get_string('additionalsettings', 'mod_interactivevideo'));
+            $mform->addElement('header', 'additionalsettings', get_string('additionalsettings', 'mod_flexbook'));
             $count = 0;
             foreach ($this->subplugins as $plugin) {
                 if (method_exists($plugin, 'definition')) {
@@ -160,7 +163,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
             'checkbox',
             $completionpercentageenabledel,
             '',
-            get_string('minimumcompletionpercentage', 'interactivevideo')
+            get_string('minimumcompletionpercentage', 'mod_flexbook')
         );
         $completionpercentageel = 'completionpercentage' . $suffix;
         $group[] = &$mform->createElement('text', $completionpercentageel, '', ['size' => 3]);
@@ -169,14 +172,24 @@ class mod_flexbook_mod_form extends moodleform_mod {
             'html',
             "<span class=\"btn\" data$bsaffix-html=\"true\" data$bsaffix-toggle=\"tooltip\" "
                 . "data$bsaffix-placement=\"right\" data$bsaffix-title=\""
-                . get_string('completionpercentagehelp', 'mod_interactivevideo')
+                . get_string('completionpercentagehelp', 'mod_flexbook')
                 . "\"><i class=\"fa fa-circle-question\"></i></span>"
         );
         $completionpercentagegroupel = 'completionpercentagegroup' . $suffix;
         $mform->addGroup($group, $completionpercentagegroupel, '', ' ', false);
         $mform->disabledIf($completionpercentageel, $completionpercentageenabledel, 'notchecked');
 
-        $return = [$completionpercentagegroupel];
+        $group = [];
+        $group[] = &$mform->createElement(
+            'checkbox',
+            'reachend' . $suffix,
+            '',
+            get_string('completionreachend', 'mod_flexbook')
+        );
+        $mform->setType('reachend' . $suffix, PARAM_INT);
+        $mform->addGroup($group, 'completionreachendgroup' . $suffix, '', ' ', false);
+
+        $return = [$completionpercentagegroupel, 'completionreachendgroup' . $suffix];
         // Get other elements from plugins.
         foreach ($this->subplugins as $class) {
             if (!method_exists($class, 'customcompletion_definition')) {
@@ -195,8 +208,8 @@ class mod_flexbook_mod_form extends moodleform_mod {
     /**
      * Determines if completion is enabled for this module.
      *
-     * @param array $data
-     * @return bool
+     * @param array $data The data from the form.
+     * @return bool True if completion is enabled.
      */
     public function completion_rule_enabled($data) {
         $hascompletion = false;
@@ -206,6 +219,11 @@ class mod_flexbook_mod_form extends moodleform_mod {
         }
         // Default completion.
         if (isset($data['completionpercentageenabled' . $suffix]) && $data['completionpercentage' . $suffix] > 0) {
+            $hascompletion = true;
+        }
+
+        // Reach end completion.
+        if (isset($data['reachend' . $suffix]) && $data['reachend' . $suffix] == 1) {
             $hascompletion = true;
         }
 
@@ -225,7 +243,9 @@ class mod_flexbook_mod_form extends moodleform_mod {
 
     /**
      * Prepare data before applying to populating form.
-     * @param array $defaultvalues
+     *
+     * @param array $defaultvalues The default values.
+     * @return void
      */
     public function data_preprocessing(&$defaultvalues) {
         if ($this->current->instance) {
@@ -293,6 +313,18 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 $defaultvalues['completionpercentage' . $suffix] = 0;
             }
 
+            // Reach end completion.
+            if (isset($defaultvalues['extendedcompletion'])) {
+                $customcompletion = json_decode($defaultvalues['extendedcompletion'], true);
+                if (isset($customcompletion['reachend']) && $customcompletion['reachend'] == 1) {
+                    $defaultvalues['reachend' . $suffix] = 1;
+                } else {
+                    $defaultvalues['reachend' . $suffix] = 0;
+                }
+            } else {
+                $defaultvalues['reachend' . $suffix] = 0;
+            }
+
             // Handle subplugin.
             foreach ($this->subplugins as $plugin) {
                 if (!method_exists($plugin, 'data_preprocessing')) {
@@ -309,7 +341,9 @@ class mod_flexbook_mod_form extends moodleform_mod {
 
     /**
      * Custom data should be added here
-     * @param stdClass $data
+     *
+     * @param \stdClass $data The data from the form.
+     * @return void
      */
     public function data_postprocessing($data) {
         $suffix = '';
@@ -325,7 +359,10 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 }
 
                 $customcompletion = [];
-
+                // Reach end completion.
+                if (isset($data->{'reachend' . $suffix}) && $data->{'reachend' . $suffix} == 1) {
+                    $customcompletion['reachend'] = 1;
+                }
                 foreach ($this->subplugins as $class) {
                     if (!method_exists($class, 'data_postprocessing')) {
                         continue;

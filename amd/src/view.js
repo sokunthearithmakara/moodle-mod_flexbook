@@ -25,6 +25,7 @@ import $ from 'jquery';
 import {getString} from 'core/str';
 import {dispatchEvent} from 'core/event_dispatcher';
 import {add as addToast} from './toast';
+import Ajax from 'core/ajax';
 import 'mod_interactivevideo/libraries/jquery-ui';
 import state from './state';
 import {safeParse} from './utils';
@@ -134,7 +135,16 @@ const init = async config => {
         stopInteractionTimer();
     });
 
-    const saveInteractionData = () => {
+    $(document).on('fb:ended', function() {
+        if (!uprogress.timeended && !state.reachendSent) {
+            saveInteractionData(true);
+            state.reachendSent = true;
+        } else {
+            saveInteractionData(false);
+        }
+    });
+
+    const saveInteractionData = (reachend = false) => {
         pauseInteractionTimer(); // Flush without resetting trackingAnnotationId.
         const lastviewed = state.currentanno ? state.currentanno.id : 0;
         const args = {
@@ -142,10 +152,25 @@ const init = async config => {
             completionid: state.config.completionid || 0,
             details: JSON.stringify(interactionData),
             lastviewed,
+            reachend,
         };
-        const url = `${M.cfg.wwwroot}/lib/ajax/service.php?sesskey=${M.cfg.sesskey}`;
-        const body = JSON.stringify([{index: 0, methodname: 'mod_flexbook_save_interaction_data', args}]);
-        navigator.sendBeacon(url, new Blob([body], {type: 'application/json'}));
+
+        if (reachend) {
+            Ajax.call([{
+                methodname: 'mod_flexbook_save_interaction_data',
+                args
+            }])[0].then(response => {
+                const data = safeParse(response.data, {});
+                if (data.overallcomplete) {
+                    state.config.isCompleted = true;
+                }
+                return data;
+            }).catch(e => window.console.error(e));
+        } else {
+            const url = `${M.cfg.wwwroot}/lib/ajax/service.php?sesskey=${M.cfg.sesskey}`;
+            const body = JSON.stringify([{index: 0, methodname: 'mod_flexbook_save_interaction_data', args}]);
+            navigator.sendBeacon(url, new Blob([body], {type: 'application/json'}));
+        }
     };
 
     document.addEventListener('visibilitychange', () => {

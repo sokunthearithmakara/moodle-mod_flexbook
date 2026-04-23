@@ -183,6 +183,30 @@ if ($getcompletion) {
     $completed = $completiondetails->get_overall_completion();
 }
 
+// Display options based on completion.
+if (isset($completed) && $completed) {
+    $appearance = $moduleinstance->displayoptions['aftercompletion'] ?? [];
+    $behavior = $moduleinstance->displayoptions['aftercompletionbehavior'] ?? [];
+} else {
+    $appearance = $moduleinstance->displayoptions['beforecompletion'] ?? [];
+    $behavior = $moduleinstance->displayoptions['beforecompletionbehavior'] ?? [];
+}
+
+foreach ($appearance as $key => $value) {
+    $moduleinstance->displayoptions[$key] = $value;
+}
+
+foreach ($behavior as $key => $value) {
+    $moduleinstance->displayoptions[$key] = $value;
+}
+
+unset(
+    $moduleinstance->displayoptions['beforecompletion'],
+    $moduleinstance->displayoptions['beforecompletionbehavior'],
+    $moduleinstance->displayoptions['aftercompletion'],
+    $moduleinstance->displayoptions['aftercompletionbehavior']
+);
+
 // Check if this activity is associated with other activities' availability.
 if ($cm->completion != COMPLETION_TRACKING_NONE && (!isset($completed) || !$completed)) {
     $withavailability = !empty($CFG->enableavailability) && core_availability\info::completion_value_used($course, $cm->id);
@@ -332,30 +356,6 @@ if ($rendernav) {
     ];
     echo $OUTPUT->render_from_template('mod_flexbook/pagenav', $datafortemplate);
 }
-
-// Display options based on completion.
-if (isset($completed) && $completed) {
-    $appearance = $moduleinstance->displayoptions['aftercompletion'];
-    $behavior = $moduleinstance->displayoptions['aftercompletionbehavior'];
-} else {
-    $appearance = $moduleinstance->displayoptions['beforecompletion'];
-    $behavior = $moduleinstance->displayoptions['beforecompletionbehavior'];
-}
-
-foreach ($appearance as $key => $value) {
-    $moduleinstance->displayoptions[$key] = $value;
-}
-
-foreach ($behavior as $key => $value) {
-    $moduleinstance->displayoptions[$key] = $value;
-}
-
-unset(
-    $moduleinstance->displayoptions['beforecompletion'],
-    $moduleinstance->displayoptions['beforecompletionbehavior'],
-    $moduleinstance->displayoptions['aftercompletion'],
-    $moduleinstance->displayoptions['aftercompletionbehavior']
-);
 
 // Get user progress.
 [$progress, $new] = mod_flexbook\util::get_progress(

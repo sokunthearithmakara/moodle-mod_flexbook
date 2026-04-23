@@ -22,10 +22,11 @@
  */
 
 import $ from 'jquery';
-import {getString} from 'core/str';
+import {get_string as getString, get_strings as getStrings} from 'core/str';
 import {dispatchEvent} from 'core/event_dispatcher';
 import {add as addToast} from './toast';
 import Ajax from 'core/ajax';
+import Notification from 'core/notification';
 import 'mod_interactivevideo/libraries/jquery-ui';
 import state from './state';
 import {safeParse} from './utils';
@@ -463,11 +464,12 @@ const init = async config => {
 
     const validateAnnotationAccess = async annotation => {
         // Check if there are incomplete annotations with "preventskip" enabled before this annotation.
+        const globalPreventskipping = doptions.preventskipping == 1;
         const incomplete = annotations.find(
             x =>
                 x.hascompletion == 1 &&
                 x.completed == false &&
-                safeParse(x.advanced, {}).preventskip == 1 &&
+                (globalPreventskipping || safeParse(x.advanced, {}).preventskip == 1) &&
                 x.order < annotation.order
         );
         if (incomplete && !state.config.iseditor) {
@@ -846,6 +848,44 @@ const init = async config => {
     $(document).on('click', '#fullscreen', function(e) {
         e.preventDefault();
         toggleFullscreen();
+    });
+
+    // Delete progress.
+    $(document).on('click', '#deleteprogress', async function(e) {
+        e.preventDefault();
+        const deleteProgress = () => {
+            Ajax.call([{
+                methodname: 'mod_flexbook_delete_progress',
+                args: {
+                    contextid: M.cfg.contextid,
+                    recordids: state.config.completionid.toString(),
+                    courseid: state.config.courseid,
+                    cmid: state.config.cmid
+                }
+            // eslint-disable-next-line promise/always-return
+            }])[0].then(() => {
+                window.location.reload();
+            }).catch(error => window.console.error(error));
+        };
+
+        const [title, question, deleteStr] = await getStrings([
+            {key: 'deletecompletion', component: 'mod_flexbook'},
+            {key: 'deletecompletiondesc', component: 'mod_flexbook'},
+            {key: 'delete', component: 'core'}
+        ]);
+
+        try {
+            Notification.deleteCancelPromise(title, question, deleteStr)
+                // eslint-disable-next-line promise/always-return
+                .then(() => {
+                    deleteProgress();
+                })
+                .catch(() => {
+                    // Cancelled.
+                });
+        } catch (error) {
+            Notification.saveCancel(title, question, deleteStr, deleteProgress);
+        }
     });
 
     // Update UI on completion.

@@ -275,8 +275,6 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 'darkmode',
                 'theme',
                 'distractionfreemode',
-                'showprogressbar',
-                'allowdeleteprogress',
                 'courseindex',
                 'beforecompletion',
                 'aftercompletion',
@@ -336,6 +334,28 @@ class mod_flexbook_mod_form extends moodleform_mod {
                     continue;
                 }
             }
+        } else {
+            // New instance, set defaults from site settings.
+            $defaultappearance = get_config('mod_flexbook', 'defaultappearance');
+            $defaultappearance = !empty($defaultappearance) ? explode(',', $defaultappearance) : [
+                'distractionfreemode',
+                'darkmode',
+                'courseindex',
+                'controlbar',
+                'interactionbar',
+                'chaptertoggle',
+            ];
+
+            foreach ($defaultappearance as $option) {
+                $defaultvalues[$option] = 1;
+            }
+
+            $defaultbehavior = flexbook_default_behavior();
+            $defaultvalues['beforecompletionbehavior'] = $defaultbehavior;
+            $defaultvalues['aftercompletionbehavior'] = $defaultbehavior;
+
+            $defaultvalues['theme'] = get_config('mod_flexbook', 'defaulttheme') ?? '';
+            $defaultvalues['aspectratio'] = get_config('mod_flexbook', 'defaultaspectratio') ?? '';
         }
     }
 

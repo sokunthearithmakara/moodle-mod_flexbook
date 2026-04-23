@@ -1,3 +1,5 @@
+/* stylelint-disable csstree/validator */
+/* stylelint-disable declaration-no-important */
 .path-mod-flexbook.distraction-free #flexbook-container {
     top: 70px;
     height: calc(var(--ivdvh) - 70px);

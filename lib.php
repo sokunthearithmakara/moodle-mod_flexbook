@@ -84,24 +84,38 @@ function flexbook_get_subplugins($classname) {
  */
 function flexbook_display_options($moduleinstance) {
     $options = [];
-    $options['theme'] = $moduleinstance->theme ?? '';
+    $options['theme'] = $moduleinstance->theme ?? get_config('mod_flexbook', 'defaulttheme') ?? '';
+
+    $defaultappearanceraw = get_config('mod_flexbook', 'defaultappearance');
+    $defaultappearance = !empty($defaultappearanceraw) ? explode(',', $defaultappearanceraw) : [
+        'distractionfreemode',
+        'darkmode',
+        'showdescriptiononheader',
+        'courseindex',
+    ];
+
+    $defaultbehaviorraw = get_config('mod_flexbook', 'defaultbehavior');
+    $defaultbehavior = !empty($defaultbehaviorraw) ? explode(',', $defaultbehaviorraw) : [];
+
     $fields = [
-        'distractionfreemode' => 1,
-        'darkmode' => 1,
-        'showdescriptiononheader' => 1,
-        'courseindex' => 1,
-        'showprogressbar' => 1,
-        'aspectratio' => '',
-        'duolingotheme' => 0,
+        'distractionfreemode' => in_array('distractionfreemode', $defaultappearance) ? 1 : 0,
+        'darkmode' => in_array('darkmode', $defaultappearance) ? 1 : 0,
+        'showdescriptiononheader' => in_array('showdescriptiononheader', $defaultappearance) ? 1 : 0,
+        'courseindex' => in_array('courseindex', $defaultappearance) ? 1 : 0,
+        'aspectratio' => get_config('mod_flexbook', 'defaultaspectratio') ?? '',
+        'duolingotheme' => in_array('duolingotheme', $defaultappearance) ? 1 : 0,
     ];
 
     foreach ($fields as $field => $default) {
         $options[$field] = $moduleinstance->$field ?? $default;
     }
+
     $options['beforecompletion'] = $moduleinstance->beforecompletion ?? flexbook_default_appearance();
     $options['aftercompletion'] = $moduleinstance->aftercompletion ?? flexbook_default_appearance();
-    $options['beforecompletionbehavior'] = $moduleinstance->beforecompletionbehavior ?? [];
-    $options['aftercompletionbehavior'] = $moduleinstance->aftercompletionbehavior ?? [];
+
+    $defaultbehaviorgroup = flexbook_default_behavior();
+    $options['beforecompletionbehavior'] = $moduleinstance->beforecompletionbehavior ?? $defaultbehaviorgroup;
+    $options['aftercompletionbehavior'] = $moduleinstance->aftercompletionbehavior ?? $defaultbehaviorgroup;
 
     return $options;
 }
@@ -285,9 +299,6 @@ function flexbook_delete_instance($id) {
 
     // Delete all the logs.
     $DB->delete_records('flexbook_log', ['cmid' => $id]);
-
-    // Delete all instances of items.
-    $DB->delete_records('flexbook_instances', ['cmid' => $id]);
 
     return true;
 }
@@ -826,7 +837,7 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
         );
 
         // Set theme.
-        if (get_config('mod_interactivevideo', 'allowcustomtheme')) {
+        if (get_config('mod_flexbook', 'allowcustomtheme')) {
             $themeobjects = get_list_of_themes();
             $themes = [];
             $themes[''] = get_string('forceno');
@@ -852,25 +863,6 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
         ];
         $mform->addElement('select', 'aspectratio', get_string('aspectratio', 'mod_flexbook'), $aspectratios);
 
-        // Duolingo theme.
-        $mform->addElement(
-            'advcheckbox',
-            'duolingotheme',
-            '',
-            get_string('kidtheme', 'mod_flexbook'),
-            ['group' => 1],
-            [0, 1]
-        );
-
-        $mform->addElement(
-            'advcheckbox',
-            'courseindex',
-            get_string('courseindex', 'mod_flexbook'),
-            get_string('showindexindf', 'mod_flexbook'),
-            ['group' => 1],
-            [0, 1]
-        );
-
         // Use distraction-free mode.
         $group = [];
         $group[] = $mform->createElement(
@@ -893,7 +885,27 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
         );
         $mform->hideIf('darkmode', 'distractionfreemode', 'eq', 0);
 
-        $mform->addGroup($group, 'beforecompletionbehavior', '', '', false);
+        // Duolingo theme.
+        $group[] = $mform->createElement(
+            'advcheckbox',
+            'duolingotheme',
+            '',
+            get_string('kidtheme', 'mod_flexbook'),
+            ['group' => 1],
+            [0, 1]
+        );
+
+        $group[] = $mform->createElement(
+            'advcheckbox',
+            'courseindex',
+            '',
+            get_string('courseindex', 'mod_flexbook'),
+            ['group' => 1],
+            [0, 1]
+        );
+        $mform->hideIf('courseindex', 'distractionfreemode', 'eq', 0);
+
+        $mform->addGroup($group, 'beforecompletion', '', '', false);
 
         // 1.4.5 options.
         // Controls before completion.
@@ -967,6 +979,78 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
             'aftercompletion' => $defaultappearance,
         ]);
     }
+
+    if (in_array('behavior', $sections)) {
+        $mform->addElement(
+            'html',
+            '<div class="iv-form-group row fitem"><div class="col-md-12 col-form-label d-flex pb-0  iv-pr-md-0">
+        <h5 class="w-100 border-bottom">' . get_string('behaviorsettings', 'mod_flexbook')
+                . '</h5></div></div>',
+        );
+
+        $behaviors = [
+            'preventskipping',
+            'allowdeleteprogress',
+        ];
+
+        // Behavior before completion.
+        $mform->addElement(
+            'static',
+            'beforecompletionbehaviorheader',
+            '',
+            '<b class="w-100 d-block">' . get_string('behaviorbeforecompletion', 'mod_interactivevideo') . '</b>'
+        );
+        $group = [];
+        foreach ($behaviors as $behavior) {
+            $group[] = $mform->createElement(
+                'advcheckbox',
+                $behavior,
+                '',
+                get_string($behavior == 'preventskipping' ? 'preventskip' : $behavior, $behavior == 'preventskipping' ? 'mod_flexbook' : 'mod_interactivevideo'),
+                ['group' => 1],
+                [0, 1]
+            );
+        }
+        $mform->addGroup(
+            $group,
+            'beforecompletionbehavior',
+            '',
+            '',
+            true
+        );
+
+        // Behavior after completion.
+        $mform->addElement(
+            'static',
+            'aftercompletionbehaviorheader',
+            '',
+            '<b class="w-100 d-block">' . get_string('behavioraftercompletion', 'mod_interactivevideo') . '</b>'
+        );
+        $group = [];
+        foreach ($behaviors as $behavior) {
+            $group[] = $mform->createElement(
+                'advcheckbox',
+                $behavior,
+                '',
+                get_string($behavior == 'preventskipping' ? 'preventskip' : $behavior, $behavior == 'preventskipping' ? 'mod_flexbook' : 'mod_interactivevideo'),
+                ['group' => 1],
+                [0, 1]
+            );
+        }
+        $mform->addGroup(
+            $group,
+            'aftercompletionbehavior',
+            '',
+            '',
+            true
+        );
+
+        $defaultbehavior = flexbook_default_behavior();
+        $mform->setDefaults([
+            'beforecompletionbehavior' => $defaultbehavior,
+            'aftercompletionbehavior' => $defaultbehavior,
+        ]);
+    }
 }
 
 /**
@@ -975,16 +1059,44 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
  * @return array
  */
 function flexbook_default_appearance() {
+    $defaultappearance = get_config('mod_flexbook', 'defaultappearance');
+    $defaultappearance = !empty($defaultappearance) ? explode(',', $defaultappearance) : [
+        'controlbar',
+        'interactionbar',
+        'chaptertoggle',
+        'share',
+        'fullscreen',
+        'xpcounter',
+        'interactioncounter',
+        'interactionnavigation',
+        'duolingotheme',
+    ];
+
     return [
-        'controlbar' => 1,
-        'interactionbar' => 1,
-        'chaptertoggle' => 1,
-        'share' => 1,
-        'fullscreen' => 1,
-        'aspectratio' => '',
-        'duolingotheme' => 0,
-        'xpcounter' => 1,
-        'interactioncounter' => 1,
-        'interactionnavigation' => 1,
+        'controlbar' => in_array('controlbar', $defaultappearance) ? 1 : 0,
+        'interactionbar' => in_array('interactionbar', $defaultappearance) ? 1 : 0,
+        'chaptertoggle' => in_array('chaptertoggle', $defaultappearance) ? 1 : 0,
+        'share' => in_array('share', $defaultappearance) ? 1 : 0,
+        'fullscreen' => in_array('fullscreen', $defaultappearance) ? 1 : 0,
+        'aspectratio' => get_config('mod_flexbook', 'defaultaspectratio') ?? '',
+        'duolingotheme' => in_array('duolingotheme', $defaultappearance) ? 1 : 0,
+        'xpcounter' => in_array('xpcounter', $defaultappearance) ? 1 : 0,
+        'interactioncounter' => in_array('interactioncounter', $defaultappearance) ? 1 : 0,
+        'interactionnavigation' => in_array('interactionnavigation', $defaultappearance) ? 1 : 0,
+    ];
+}
+
+/**
+ * Default behavior settings
+ *
+ * @return array
+ */
+function flexbook_default_behavior() {
+    $defaultbehavior = get_config('mod_flexbook', 'defaultbehavior');
+    $defaultbehavior = !empty($defaultbehavior) ? explode(',', $defaultbehavior) : [];
+
+    return [
+        'preventskipping' => in_array('preventskipping', $defaultbehavior) ? 1 : 0,
+        'allowdeleteprogress' => in_array('allowdeleteprogress', $defaultbehavior) ? 1 : 0,
     ];
 }

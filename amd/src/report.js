@@ -38,7 +38,7 @@ import Ajax from 'core/ajax';
 import state from 'mod_flexbook/state';
 
 const init = async(config) => {
-    const {flexbook: instanceid, groupid, itemids, cmid, courseid, access} = config;
+    const {groupid, itemids, cmid, courseid, access} = config;
     window.JSZip = JSZip;
     let DataTable = $.fn.dataTable;
     const isBS5 = $('body').hasClass('bs-5');

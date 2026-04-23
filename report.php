@@ -226,7 +226,7 @@ $totalxp = array_reduce($items, function ($carry, $item) {
 
 $items = array_values($items);
 
-$identity = get_config('mod_interactivevideo', 'reportfields');
+$identity = get_config('mod_flexbook', 'reportfields');
 $identity = explode(',', $identity);
 $identity = array_filter($identity);
 // Map the identity to ['name' => 'field', 'label' => 'label'].

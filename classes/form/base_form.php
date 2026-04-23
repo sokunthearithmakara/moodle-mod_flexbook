@@ -148,6 +148,8 @@ class base_form extends \core_form\dynamic_form {
 
     /**
      * Jump section fields
+     * @param bool $hascompletion
+     * @return void
      */
     public function jump_section_fields($hascompletion = false) {
         $mform = &$this->_form;
@@ -233,7 +235,7 @@ class base_form extends \core_form\dynamic_form {
     /**
      * Process data before returning to front end.
      *
-     * @param \stdClass $data
+     * @param \stdClass $fromform
      * @return \stdClass
      */
     public function data_post_processing($fromform) {

@@ -1,4 +1,4 @@
-Built with similar concepts and architecture as the Interactive Video plugin, Flexbook all
+Built with similar concepts and architecture as the Interactive Video plugin, Flexbook lets you create interactive content such as quizzes, games, and learning activities. It is a flexible and powerful tool that can be used to create engaging and interactive learning experiences for your students.
 
 ## Main Features: ##
 - Distract-Free Mode: Display video/audio in a mode that maximizes focus.

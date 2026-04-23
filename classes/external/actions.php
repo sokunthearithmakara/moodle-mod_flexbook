@@ -557,6 +557,7 @@ class actions extends external_api {
      * @return array
      */
     public static function delete_progress($contextid, $cmid, $recordids, $courseid) {
+        global $USER, $DB;
         self::validate_parameters(self::delete_progress_parameters(), [
             'contextid' => $contextid,
             'cmid' => $cmid,
@@ -565,11 +566,23 @@ class actions extends external_api {
         ]);
 
         $context = \context::instance_by_id($contextid);
-        if (!has_capability('mod/flexbook:editreport', $context)) {
-            throw new \moodle_exception('nopermission', 'error', '', $context->id);
-        }
+        $caneditreport = has_capability('mod/flexbook:editreport', $context);
+        
+        $cm = get_coursemodule_from_id('flexbook', $cmid, 0, false, MUST_EXIST);
+        $moduleinstance = $DB->get_record('flexbook', ['id' => $cm->instance], '*', MUST_EXIST);
+        $displayoptions = json_decode($moduleinstance->displayoptions, true);
+        $allowdeleteprogress = !empty($displayoptions['allowdeleteprogress']);
 
         $ids = explode(',', $recordids);
+        foreach ($ids as $id) {
+            $completion = $DB->get_record('flexbook_completion', ['id' => $id], '*', MUST_EXIST);
+            if (!$caneditreport) {
+                if (!$allowdeleteprogress || $completion->userid != $USER->id) {
+                    throw new \moodle_exception('nopermission', 'error', '', $context->id);
+                }
+            }
+        }
+
         if (count($ids) == 1) {
             util::delete_progress_by_id($contextid, $ids[0], $courseid, $cmid);
         } else {

@@ -868,7 +868,17 @@ class actions extends external_api {
      * @param int $anchorid The anchor interaction ID.
      * @return array The result of the creation.
      */
-    public static function create_interaction($contextid, $courseid, $cmid, $annotationid, $type, $title, $content = '', $draftitemid = 0, $anchorid = 0) {
+    public static function create_interaction(
+        $contextid,
+        $courseid,
+        $cmid,
+        $annotationid,
+        $type,
+        $title,
+        $content = '',
+        $draftitemid = 0,
+        $anchorid = 0
+    ) {
         self::validate_parameters(self::create_interaction_parameters(), [
             'contextid' => $contextid,
             'courseid' => $courseid,
@@ -951,14 +961,14 @@ class actions extends external_api {
 
         require_once($CFG->libdir . '/filelib.php');
         $fs = \get_file_storage();
-        $filerecord = array(
+        $filerecord = [
             'contextid' => $usercontext->id,
             'component' => 'user',
             'filearea' => 'draft',
             'itemid' => \file_get_unused_draft_itemid(),
             'filepath' => '/',
             'filename' => $filename,
-        );
+        ];
 
         $fs->create_file_from_string($filerecord, \base64_decode($filecontent));
 

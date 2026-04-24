@@ -16,14 +16,6 @@
 
 namespace mod_flexbook\courseformat;
 
-/**
- * Flexbook overview integration (for Moodle 5.1+)
- *
- * @package    mod_flexbook
- * @copyright  2026 Sokunthearith Makara <sokunthearithmakara@gmail.com>
- * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
- */
-
 use cm_info;
 use cache;
 use core\output\action_link;
@@ -31,6 +23,13 @@ use core\output\local\properties\text_align;
 use core_courseformat\local\overview\overviewitem;
 use moodle_url;
 
+/**
+ * Flexbook overview integration (for Moodle 5.1+)
+ *
+ * @package    mod_flexbook
+ * @copyright  2026 Sokunthearith Makara <sokunthearithmakara@gmail.com>
+ * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ */
 class overview extends \core_courseformat\activityoverviewbase {
     /** @var array The flexbook items. */
     private array $items;

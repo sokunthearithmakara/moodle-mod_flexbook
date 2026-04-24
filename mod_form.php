@@ -108,12 +108,9 @@ class mod_flexbook_mod_form extends moodleform_mod {
         );
         $mform->setType('endscreentext', PARAM_RAW);
 
-        $types = [
-            '' => get_string('selecttype', 'mod_flexbook'),
-            'page' => get_string('pluginname', 'mod_page'),
-            'book' => get_string('pluginname', 'mod_book'),
-        ];
-        $mform->addElement('select', 'type', get_string('type', 'mod_flexbook'), $types);
+        $mform->addElement('hidden', 'type', 'page');
+        $mform->setType('type', PARAM_TEXT);
+        $mform->setDefault('type', 'page');
 
         // APPEARANCE AND BEHAVIOR SETTINGS.
         $mform->addElement('header', 'videodisplayoptions', get_string('appearanceandbehaviorsettings', 'mod_flexbook'));

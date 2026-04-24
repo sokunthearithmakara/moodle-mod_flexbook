@@ -1006,7 +1006,8 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
                 'advcheckbox',
                 $behavior,
                 '',
-                get_string($behavior == 'preventskipping' ? 'preventskip' : $behavior, $behavior == 'preventskipping' ? 'mod_flexbook' : 'mod_interactivevideo'),
+                get_string($behavior == 'preventskipping' ? 'preventskip' : $behavior, $behavior == 'preventskipping'
+                    ? 'mod_flexbook' : 'mod_interactivevideo'),
                 ['group' => 1],
                 [0, 1]
             );
@@ -1032,7 +1033,8 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
                 'advcheckbox',
                 $behavior,
                 '',
-                get_string($behavior == 'preventskipping' ? 'preventskip' : $behavior, $behavior == 'preventskipping' ? 'mod_flexbook' : 'mod_interactivevideo'),
+                get_string($behavior == 'preventskipping' ? 'preventskip' : $behavior, $behavior == 'preventskipping'
+                    ? 'mod_flexbook' : 'mod_interactivevideo'),
                 ['group' => 1],
                 [0, 1]
             );

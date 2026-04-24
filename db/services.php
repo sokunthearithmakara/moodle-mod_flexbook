@@ -105,4 +105,11 @@ $functions = [
         'type' => 'write',
         'ajax' => true,
     ],
+    'mod_flexbook_delete_own_completion_data' => [
+        'classname' => 'mod_flexbook\external\actions',
+        'methodname' => 'delete_own_completion_data',
+        'description' => 'Delete own completion data for a specific item',
+        'type' => 'write',
+        'ajax' => true,
+    ],
 ];

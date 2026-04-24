@@ -490,6 +490,11 @@ export default class Base {
         });
     }
 
+    async postContentRender() {
+        // Do nothing.
+        return;
+    }
+
 
     // eslint-disable-next-line complexity
     async runInteraction(annotation, $wrapper) {
@@ -565,30 +570,36 @@ export default class Base {
             && annotation.requiremintime > 0) {
             let todo = await getString('todo', 'mod_interactivevideo') + ': ';
             todo += await getString("spendatleast", "mod_interactivevideo", annotation.requiremintime);
-            const infoIcon = `<i class="bi bi-info-circle-fill iv-mr-2 info"
-                data${self.isBS5 ? '-bs' : ''}-toggle="tooltip"
-                data${self.isBS5 ? '-bs' : ''}-html="true"
-                data${self.isBS5 ? '-bs' : ''}-placement="auto"
-                data${self.isBS5 ? '-bs' : ''}-container="#message"
-                title="${todo}"></i>`;
+            const infoIcon = `<i class="bi bi-info-circle-fill iv-mr-2 info" title="${todo}"></i>`;
 
             let $completiontoggle = $message.find('#completiontoggle');
             $message.find('#title .info').remove();
             $completiontoggle.before(infoIcon);
-
             // Show and hide tooltip
-            const $tooltip = $message.find('#title .info');
-            setTimeout(() => $tooltip.tooltip('show'), 1000);
-            setTimeout(() => $tooltip.tooltip('hide'), 3000);
+            const $tooltip = $(`#message[data-id='${annotation.id}'] #title .info`);
+            $tooltip.tooltip('dispose');
+            setTimeout(() => {
+                $tooltip.tooltip({
+                    container: '#message[data-id="' + annotation.id + '"]',
+                    html: true,
+                    trigger: 'hover',
+                    placement: 'auto'
+                });
+                $tooltip.tooltip('show');
+                setTimeout(() => $tooltip.tooltip('hide'), 2000);
+            }, 2000);
         }
     }
 
     // eslint-disable-next-line no-unused-vars
     async islocked(annotation, annotations) {
+        if (state.config.iseditor) {
+            return false;
+        }
         return false;
     }
 
-    async handleInlineDisplay(annotation, messageTitle, $annotationcontent) {
+    async handleInlineDisplay(annotation, messageTitle = '', $annotationcontent) {
         const advanced = safeParse(annotation.advanced, {});
         let hideheader = false;
         if (advanced.hideheader == 1) {
@@ -597,8 +608,9 @@ export default class Base {
         return new Promise((resolve) => {
             $annotationcontent.append(`<div id="message" style="z-index:105;top:0;" data-placement="inline"
          data-id="${annotation.id}" class="${annotation.type} modal" tabindex="0">
-         <div id="title" class="modal-header iv-rounded-0 ${hideheader == 1 ? "hide-header" : "shadow-sm"}">
-         ${messageTitle}</div>
+         ${messageTitle !== '' ?
+            `<div id="title" class="modal-header iv-rounded-0 ${hideheader == 1 ? "hide-header" : "shadow-sm"}">
+         ${messageTitle}</div>` : ''}
          <div class="modal-body" id="content"></div></div>`);
             $(`#message[data-id='${annotation.id}']`).fadeIn(300, function() {
                 resolve($(this));
@@ -830,8 +842,6 @@ export default class Base {
             let duration = await this.formatTime(completionDetails.duration / 1000);
             completionDetails.reportView = details.reportView ||
                 `##${completiontime}|${duration}|${Number(completionDetails.xp)}`; // ## indicates new format.
-
-            window.console.log(completionDetails);
         }
         if (action == 'mark-done') {
             completedItems.push(id.toString());
@@ -880,7 +890,7 @@ export default class Base {
                 courseid: this.course,
             }
         }])[0];
-        window.console.log(saveProgress);
+
         this.annotations = this.annotations.map(x => {
             if (x.id == id) {
                 x.completed = action == 'mark-done';
@@ -1034,7 +1044,7 @@ export default class Base {
      * @returns boolean
      */
     isClickable(annotation) {
-        if (this.isEditMode()) {
+        if (this.isEditMode() || state.config.iseditor) {
             return true;
         }
         const advanced = safeParse(annotation.advanced, {});
@@ -1048,7 +1058,7 @@ export default class Base {
      * @returns boolean
      */
     isVisible(annotation) {
-        if (this.isEditMode()) {
+        if (this.isEditMode() || state.config.iseditor) {
             return true;
         }
         const advanced = safeParse(annotation.advanced, {});
@@ -1112,7 +1122,6 @@ export default class Base {
     async getLogs(annotation, userids) {
         let self = this;
         userids = userids.join(',');
-        window.console.log(userids);
         const logs = await Ajax.call([{
             methodname: 'mod_flexbook_get_logs',
             args: {
@@ -1176,5 +1185,41 @@ export default class Base {
      */
     setModalDraggable(elem) {
         $(elem).draggable({handle: ".modal-header"});
+    }
+
+    /**
+     * Delete progress for a specific annotation
+     * @param {Object} annotation the annotation
+     * @returns {Promise}
+     */
+    async deleteProgress(annotation) {
+        let self = this;
+        let $message = $('#message[data-id=' + annotation.id + ']');
+        $message.find('#refresh').find('i').addClass('fa-spin');
+
+        self.toggleCompletion(annotation.id, 'mark-undone', 'automatic', {}, false);
+
+        $(document).off('completionupdated.deleteprogress');
+        $(document).one('completionupdated.deleteprogress', async function() {
+            try {
+                await Ajax.call([{
+                    methodname: 'mod_flexbook_delete_own_completion_data',
+                    args: {
+                        contextid: M.cfg.contextid,
+                        id: self.completionid,
+                        itemid: annotation.id,
+                        userid: self.userid,
+                    }
+                }]);
+                // Clear cache and trigger a full refresh via navigation.
+                delete self.cache[annotation.id];
+                dispatchEvent('fb:refresh_interaction', {id: annotation.id});
+                self.addNotification(await getString('progressdeleted', 'mod_flexbook'), 'success', '🗑️');
+            } catch (error) {
+                window.console.error(error);
+            } finally {
+                $message.find('#refresh').find('i').removeClass('fa-spin');
+            }
+        });
     }
 }

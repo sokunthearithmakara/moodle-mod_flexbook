@@ -567,7 +567,7 @@ class actions extends external_api {
 
         $context = \context::instance_by_id($contextid);
         $caneditreport = has_capability('mod/flexbook:editreport', $context);
-        
+
         $cm = get_coursemodule_from_id('flexbook', $cmid, 0, false, MUST_EXIST);
         $moduleinstance = $DB->get_record('flexbook', ['id' => $cm->instance], '*', MUST_EXIST);
         $displayoptions = json_decode($moduleinstance->displayoptions, true);
@@ -612,10 +612,57 @@ class actions extends external_api {
     public static function delete_completion_data_parameters() {
         return new external_function_parameters([
             'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
-            'id' => new external_value(PARAM_INT, 'The completion ID', VALUE_REQUIRED),
-            'itemid' => new external_value(PARAM_INT, 'The item ID', VALUE_REQUIRED),
-            'userid' => new external_value(PARAM_INT, 'The user ID', VALUE_REQUIRED),
+            'id' => new external_value(PARAM_INT, 'The ID of the completion record', VALUE_REQUIRED),
+            'itemid' => new external_value(PARAM_INT, 'The ID of the interaction', VALUE_REQUIRED),
+            'userid' => new external_value(PARAM_INT, 'The ID of the user', VALUE_REQUIRED),
         ]);
+    }
+
+    /**
+     * Delete own completion data parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function delete_own_completion_data_parameters() {
+        return self::delete_completion_data_parameters();
+    }
+
+    /**
+     * Delete own completion data
+     *
+     * @param int $contextid The context ID.
+     * @param int $id The ID of the completion record.
+     * @param int $itemid The ID of the interaction.
+     * @param int $userid The ID of the user.
+     * @return array The result of the deletion.
+     */
+    public static function delete_own_completion_data($contextid, $id, $itemid, $userid) {
+        global $USER;
+        self::validate_parameters(self::delete_own_completion_data_parameters(), [
+            'contextid' => $contextid,
+            'id' => $id,
+            'itemid' => $itemid,
+            'userid' => $userid,
+        ]);
+
+        if ($userid != $USER->id) {
+            throw new \moodle_exception('nopermission', 'error');
+        }
+
+        self::validate_view_context($contextid);
+
+        $result = util::delete_completion_data($id, $itemid, $userid, $contextid);
+
+        return ['status' => 'success', 'data' => $result];
+    }
+
+    /**
+     * Delete own completion data returns
+     *
+     * @return external_single_structure
+     */
+    public static function delete_own_completion_data_returns() {
+        return self::delete_completion_data_returns();
     }
 
     /**

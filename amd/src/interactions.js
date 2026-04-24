@@ -467,7 +467,6 @@ const init = async(
 
     // Re-render annotation list and timeline after an annotation is deleted.
     $(document).on('annotationdeleted', async function(e) {
-        window.console.log(e.originalEvent.detail.annotation);
         // Remove any tooltips that may be open.
         $('.tooltip').remove();
         const annotation = e.originalEvent.detail.annotation;

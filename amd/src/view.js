@@ -289,18 +289,6 @@ const init = async config => {
         return x;
     });
 
-    // Handle advanced.removeaftercompletion and advanced.removeafteractivitycompletion.
-    annotations = annotations.filter(x => {
-        const advanced = JSON.parse(x.advanced || '{}');
-        if (advanced.removeaftercompletion == 1 && x.completed == true) {
-            return false;
-        }
-        if (advanced.removeafteractivitycompletion == 1 && state.config.isCompleted == true) {
-            return false;
-        }
-        return true;
-    });
-
     state.annotations = annotations;
 
     // Update the sequence.
@@ -357,39 +345,68 @@ const init = async config => {
         $(this).tooltip('hide');
     });
 
+    /**
+     * Get visible annotations based on completion status and advanced settings.
+     * @param {Array} annos
+     * @returns {Array}
+     */
+    const getVisibleAnnotations = (annos) => {
+        if (state.config.iseditor) {
+            return annos;
+        }
+        return annos.filter(x => {
+            const advanced = safeParse(x.advanced, {});
+            if (advanced.removeaftercompletion == 1 && x.completed == true) {
+                // If it's the current one, we keep it visible until the user navigates away.
+                if (state.currentanno && state.currentanno.id == x.id) {
+                    return true;
+                }
+                return false;
+            }
+            if (advanced.removeafteractivitycompletion == 1 && state.config.isCompleted == true) {
+                if (state.currentanno && state.currentanno.id == x.id) {
+                    return true;
+                }
+                return false;
+            }
+            return true;
+        });
+    };
+
     const renderAnnotationItems = async annos => {
         annotations = annos;
+        const visibleAnnos = getVisibleAnnotations(annos);
 
         // Hide existing tooltips before emptying the bar.
         $annotationbar.find(`[data${bsAffix}-toggle="tooltip"]`).tooltip('hide');
 
         $annotationbar.empty();
-        if (annotations.length == 0) {
+        if (visibleAnnos.length == 0) {
             return;
         }
 
         // Instagram style: max 5 items, current in middle.
-        let displayAnnos = annotations;
-        if (annotations.length > 5) {
+        let displayAnnos = visibleAnnos;
+        if (visibleAnnos.length > 5) {
             const currentIndex = state.currentanno
-                ? annotations.findIndex(x => x.id == state.currentanno.id)
+                ? visibleAnnos.findIndex(x => x.id == state.currentanno.id)
                 : 0;
             let start = Math.max(0, currentIndex - 2);
-            let end = Math.min(annotations.length - 1, start + 4);
+            let end = Math.min(visibleAnnos.length - 1, start + 4);
 
             if (end - start < 4) {
                 start = Math.max(0, end - 4);
             }
-            displayAnnos = annotations.slice(start, end + 1);
+            displayAnnos = visibleAnnos.slice(start, end + 1);
         }
 
         if (state.currentanno && state.currentanno.id == 999) {
             // Get the last 5.
-            displayAnnos = annotations.slice(-5);
+            displayAnnos = visibleAnnos.slice(-5);
         }
 
         // Make sure annotations are unique.
-        annotations = annotations.filter((x, i) => annotations.findIndex(y => y.id == x.id) == i);
+        const uniqueAnnos = visibleAnnos.filter((x, i) => visibleAnnos.findIndex(y => y.id == x.id) == i);
 
         // Map annotations with show key = true if it is in the displayAnnos.
         annotations = annotations.map(x => {
@@ -398,10 +415,10 @@ const init = async config => {
         });
 
         await Promise.all(
-            annotations.map(async item => {
+            uniqueAnnos.map(async item => {
                 try {
                     item.locked = ctRenderer[item.type].renderNavItem(
-                        annotations,
+                        uniqueAnnos,
                         item,
                         $annotationbar
                     );
@@ -418,7 +435,7 @@ const init = async config => {
             boundary: 'window'
         });
 
-        state.sequence = annotations.map(x => x.id.toString());
+        state.sequence = uniqueAnnos.map(x => x.id.toString());
 
         // Select the active one.
         if (state.currentanno) {
@@ -463,6 +480,11 @@ const init = async config => {
     };
 
     const validateAnnotationAccess = async annotation => {
+        // If it's the same annotation, always allow access (used for refreshing).
+        if (state.currentanno && state.currentanno.id == annotation.id) {
+            return true;
+        }
+
         // Check if there are incomplete annotations with "preventskip" enabled before this annotation.
         const globalPreventskipping = doptions.preventskipping == 1;
         const incomplete = annotations.find(
@@ -494,7 +516,7 @@ const init = async config => {
             // Check if this current annotation can be dismissed or skipped.
             advanced = safeParse(state.currentanno.advanced, {});
             if (
-                advanced.preventskip == 1 &&
+                (globalPreventskipping || advanced.preventskip == 1) &&
                 !state.config.iseditor &&
                 state.direction == 'next' &&
                 state.currentanno.hascompletion == 1 &&
@@ -512,6 +534,8 @@ const init = async config => {
                 );
                 return false;
             }
+
+            // If interaction is locked till completed
             if (
                 advanced.locked == 1 &&
                 !state.config.iseditor &&
@@ -532,7 +556,7 @@ const init = async config => {
             }
         }
 
-        // TODO: Check if the annotation is accessible.
+        // UPCOMING FEATURE: Check if the annotation is accessible.
         let accessible = true;
         if (!accessible) {
             return false;
@@ -541,7 +565,7 @@ const init = async config => {
         return true;
     };
 
-    const animateOutCurrent = annotation => {
+    const animateOutCurrent = (annotation, force = false) => {
         const direction =
             annotation.order > (state.currentanno ? state.currentanno.order : 0)
                 ? 'start'
@@ -550,12 +574,20 @@ const init = async config => {
         let current = annotations.find(x => x.id == state.currentanno?.id);
 
         if ($activeMessage.length) {
+            const isSame = $activeMessage.attr('data-id') == annotation.id;
+            if (isSame && force) {
+                // If it is the same annotation and we're forcing a refresh, just remove it and animate in the new one.
+                $activeMessage.remove();
+                animateInNew(annotation, force);
+                return;
+            }
+
             dispatchEvent('interactionclose', {annotation: current});
             $activeMessage.addClass('slide-out-' + direction);
 
             // We're getting the currentanno again here in case the setTimeout function replaces the currentanno with the new one.
             setTimeout(() => {
-                animateInNew(annotation);
+                animateInNew(annotation, force);
 
                 $activeMessage.removeClass('active show slide-out-start slide-out-end');
                 let rerun = false;
@@ -578,11 +610,11 @@ const init = async config => {
                 }
             }, 500);
         } else {
-            animateInNew(annotation);
+            animateInNew(annotation, force);
         }
     };
 
-    const animateInNew = async annotation => {
+    const animateInNew = async (annotation, force = false) => {
         const id = annotation.id;
         if (id == 999) {
             $('#end-screen').removeClass('d-none').addClass('active show');
@@ -593,12 +625,16 @@ const init = async config => {
         }
         const $existingMessage = $wrapper.find(`#message[data-id='${id}']`);
         if ($existingMessage.length) {
-            // Show it.
-            $existingMessage.addClass('active show');
-            setTimeout(() => {
-                $videowrapper.removeClass('bg-white');
-            }, 1000);
-            return;
+            if (force) {
+                $existingMessage.remove();
+            } else {
+                // Show it.
+                $existingMessage.addClass('active show');
+                setTimeout(() => {
+                    $videowrapper.removeClass('bg-white');
+                }, 1000);
+                return;
+            }
         }
         await ctRenderer[annotation.type].runInteraction(annotation, $wrapper);
         state.direction = 'next';
@@ -608,13 +644,13 @@ const init = async config => {
         }, 1000);
     };
 
-    const navigateToAnnotation = async id => {
+    const navigateToAnnotation = async (id, force = false) => {
         if (id == 999) {
             if (state.currentanno && state.currentanno.id == 999) {
                 return;
             }
 
-            if (!(await validateAnnotationAccess({id: 999}))) {
+            if (!(await validateAnnotationAccess({id: 999, order: annotations.length + 1}))) {
                 return;
             }
 
@@ -640,9 +676,20 @@ const init = async config => {
             $('#end-screen').removeClass('active show').addClass('d-none');
         }
 
-        if (state.currentanno && state.currentanno.id == id) {
+        if (state.currentanno && state.currentanno.id == id && !force) {
             return;
         }
+
+        if (id != 999) {
+            const visible = getVisibleAnnotations(annotations);
+            if (!visible.find(x => x.id == id)) {
+                // Skip to next visible.
+                const fullIndex = annotations.findIndex(x => x.id == id);
+                const nextVisible = annotations.slice(fullIndex + 1).find(x => visible.includes(x));
+                return navigateToAnnotation(nextVisible ? nextVisible.id : 999);
+            }
+        }
+
         const annotation = annotations.find(x => x.id == id);
 
         if (!(await validateAnnotationAccess(annotation))) {
@@ -657,7 +704,7 @@ const init = async config => {
         }
 
         // Let's first handle the active message if exists. 2 things: slide it out and decide whether to remove it.
-        animateOutCurrent(annotation);
+        animateOutCurrent(annotation, force);
 
         state.currentanno = annotation;
         await renderAnnotationItems(annotations);
@@ -682,17 +729,15 @@ const init = async config => {
             delete state.nextAnno;
             return;
         }
-        window.console.log('nextAnnotation', state.currentanno);
+
         if (state.currentanno) {
             if (state.currentanno.id == 999) {
                 return;
             }
             const index = state.sequence.indexOf(state.currentanno.id.toString());
             const advanced = safeParse(state.currentanno.advanced, {});
-            window.console.log(advanced.jumpto);
             if (!advanced.jumpto || advanced.jumpto == '') {
                 const nextid = state.sequence[index + 1];
-                window.console.log('nextAnnotation', nextid);
                 if (nextid) {
                     await navigateToAnnotation(nextid);
                 } else {
@@ -888,10 +933,40 @@ const init = async config => {
         }
     });
 
+    $(document).on('click', '#delete-completiondata', async function(e) {
+        e.preventDefault();
+        const id = $(this).attr('data-id');
+
+        const deleteCompletionData = async() => {
+            const annotation = annotations.find(x => x.id == id);
+            ctRenderer[annotation.type].deleteProgress(annotation);
+        };
+
+        const [title, question, deleteStr] = await getStrings([
+            {key: 'deletethiscompletion', component: 'mod_interactivevideo'},
+            {key: 'deletethiscompletiondesc', component: 'mod_interactivevideo'},
+            {key: 'delete', component: 'mod_interactivevideo'},
+        ]);
+        try {
+            Notification.deleteCancelPromise(title, question, deleteStr)
+                .then(deleteCompletionData)
+                .catch(() => {
+                    // Cancelled.
+                });
+        } catch (error) {
+            Notification.saveCancel(title, question, deleteStr, deleteCompletionData);
+        }
+    });
+
     // Update UI on completion.
     $(document).on('requireuiupdate', function(e) {
-        const annotations = e.originalEvent.detail.annotations;
+        annotations = e.originalEvent.detail.annotations;
         renderAnnotationItems(annotations);
+    });
+
+    $(document).on('fb:refresh_interaction', async function(e) {
+        const id = e.originalEvent.detail.id;
+        await navigateToAnnotation(id, true);
     });
 
     // Implement keyboard shortcuts.

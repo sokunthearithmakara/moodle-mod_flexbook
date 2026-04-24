@@ -771,6 +771,8 @@ const init = async config => {
                 if (backto) {
                     await navigateToAnnotation(backto);
                 }
+            } else if (advanced.backto == 'previouslyviewed') {
+                window.history.back();
             } else if (advanced.backto == 'endscreen' || advanced.backto == '999') {
                 await navigateToAnnotation(999);
             } else {

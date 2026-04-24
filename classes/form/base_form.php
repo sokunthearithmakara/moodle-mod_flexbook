@@ -88,7 +88,7 @@ class base_form extends \core_form\dynamic_form {
         }
         $advancedsettings = json_decode($this->optional_param('advanced', null, PARAM_RAW));
         $data->timestamp = $this->optional_param('timestamp', 0, PARAM_FLOAT);
-        $data->title = $this->optional_param('title', get_string('defaulttitle', 'mod_flexbook'), PARAM_TEXT);
+        $data->title = $this->optional_param('title', get_string('defaulttitle', 'mod_interactivevideo'), PARAM_TEXT);
 
         // Advanced settings: is a single field that contains all the advanced settings.
         if (is_object($advancedsettings)) {
@@ -157,9 +157,11 @@ class base_form extends \core_form\dynamic_form {
         $mform->addElement('hidden', 'annotations');
         $nextannotations = ['' => get_string('next', 'mod_flexbook')]
             + $annotations + [999 => get_string('endscreen', 'mod_flexbook')];
-        $prevannotations = ['' => get_string('previous', 'mod_flexbook'), 999 => get_string('previouslyviewed', 'mod_flexbook')]
+        $prevannotations = ['' => get_string('previous', 'mod_flexbook'), 'previouslyviewed' => get_string('previouslyviewed', 'mod_flexbook')]
             + $annotations;
         $mform->addElement('header', 'jumpsection', get_string('navigation', 'mod_flexbook'));
+        // Collapse header by default.
+        $mform->setExpanded('jumpsection', false);
         $mform->addElement('select', 'backto', get_string('backto', 'mod_flexbook'), $prevannotations);
         $mform->addElement('select', 'jumpto', get_string('jumpto', 'mod_flexbook'), $nextannotations);
 

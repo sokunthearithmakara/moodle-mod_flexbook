@@ -27,7 +27,6 @@ import {add as addToast} from 'mod_flexbook/toast';
 import ModalForm from 'core_form/modalform';
 import 'mod_interactivevideo/libraries/jquery-ui';
 import {get_string as getString} from 'core/str';
-import Modal from 'core/modal';
 import Fragment from 'core/fragment';
 import ModalEvents from 'core/modal_events';
 import Ajax from 'core/ajax';
@@ -438,7 +437,14 @@ export default class Base {
         let self = this;
         annotation = this.annotations.find(x => x.id == annotation.id);
 
-        let modal = await Modal.create({
+        let ModalFactory;
+        if (window.M.version < 403) {
+            ModalFactory = await import('core/modal_factory');
+        } else {
+            ModalFactory = await import('core/modal');
+        }
+
+        let modal = await ModalFactory.create({
             title: annotation.formattedtitle,
             large: true,
             body: '',

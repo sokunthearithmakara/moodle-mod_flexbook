@@ -230,6 +230,63 @@ class util extends \interactivevideo_util {
     }
 
     /**
+     * Create a new interaction instance by routing to the plugin's own creation method.
+     *
+     * @param string $type The interaction type (plugin name).
+     * @param array $data The data for the new instance.
+     * @return \stdClass The newly created interaction record.
+     */
+    public static function create_instance($type, $data) {
+        global $DB;
+        $subplugins = self::get_all_activitytypes();
+        $plugininfo = array_filter($subplugins, fn($p) => $p['name'] === $type);
+        $plugininfo = reset($plugininfo);
+
+        if (!$plugininfo || !class_exists($plugininfo['class'])) {
+            throw new \moodle_exception('invalidinteractiontype', 'mod_flexbook', '', $type);
+        }
+
+        $class = $plugininfo['class'];
+        $plugin = new $class();
+
+        $anchorid = isset($data['anchorid']) ? (int) $data['anchorid'] : 0;
+        unset($data['anchorid']);
+
+        if (method_exists($plugin, 'create_instance')) {
+            $item = $plugin->create_instance($data);
+        } else {
+            // Fallback for simple plugins: just insert into flexbook_items.
+            $data = (object) $data;
+            $data->id = $DB->insert_record('flexbook_items', $data);
+            $item = self::get_item($data->id, $data->contextid);
+        }
+
+        // Handle sequence insertion.
+        $flexbook = $DB->get_record('flexbook', ['id' => $item->flexbookid]);
+        if ($flexbook) {
+            $sequence = explode(',', $flexbook->sequence);
+            $sequence = array_filter($sequence); // Remove empty values.
+
+            if ($anchorid && ($index = array_search($anchorid, $sequence)) !== false) {
+                // Insert after anchor.
+                array_splice($sequence, $index + 1, 0, $item->id);
+            } else {
+                // Append to end.
+                $sequence[] = $item->id;
+            }
+
+            $flexbook->sequence = implode(',', $sequence);
+            $DB->update_record('flexbook', $flexbook);
+        }
+
+        // Clear cache.
+        $cache = \cache::make('mod_flexbook', 'fb_items');
+        $cache->delete($item->cmid);
+
+        return $item;
+    }
+
+    /**
      * Quick edit a flexbook item
      *
      * @param int $id The item ID.

@@ -124,8 +124,8 @@ $asettings->add(new admin_setting_configmulticheckbox(
     [
         'distractionfreemode' => 1,
         'darkmode' => 1,
-        'showdescriptiononheader' => 1,
-        'courseindex' => 1,
+        'showdescriptiononheader' => 0,
+        'courseindex' => 0,
         'controlbar' => 1,
         'interactionbar' => 1,
         'chaptertoggle' => 1,

@@ -576,3 +576,20 @@
 .path-mod-interactivevideo.path-mod-flexbook:not(.embed-mode) #interactivevideo-container:has([data-ratio]):has(#controller:not(.d-none)) {
     padding-bottom: 55px;
 }
+
+.path-mod-flexbook #bulk-action-toolbar {
+    bottom: -100px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1060;
+    transition: bottom .4s cubic-bezier(.4, 0, .2, 1);
+    white-space: nowrap;
+}
+
+.path-mod-flexbook #savedraft[disabled] {
+    filter: grayscale(1) opacity(0.5);
+}
+
+.path-mod-flexbook tr[data-id].dnd-target {
+    background-color: rgba(0, 123, 255, 0.1);
+}

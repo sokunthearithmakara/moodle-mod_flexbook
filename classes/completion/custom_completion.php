@@ -80,8 +80,9 @@ class custom_completion extends activity_custom_completion {
                 ['annotationid' => $cm->instance, 'hascompletion' => 1]
             );
 
+            // Fallback to prevent marking complete when no items are configured.
             if (empty($items)) {
-                return COMPLETION_COMPLETE;
+                return COMPLETION_INCOMPLETE;
             }
 
             $relevantitems = array_map(function ($item) {

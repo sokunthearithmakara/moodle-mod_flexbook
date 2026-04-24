@@ -51,7 +51,7 @@ function flexbook_supports($feature) {
         return false;
     }
     if ($feature === FEATURE_MOD_PURPOSE) {
-        return MOD_PURPOSE_INTERACTIVECONTENT;
+        return MOD_PURPOSE_CONTENT;
     }
     if ($CFG->branch >= 501 && $feature === FEATURE_MOD_OTHERPURPOSE) {
         return MOD_PURPOSE_ASSESSMENT;

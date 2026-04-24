@@ -199,7 +199,29 @@ class actions extends external_api {
         self::validate_edit_context($contextid);
 
         $instanceid = (int) $instanceid;
-        $sequence = $sequence;
+
+        // Sanitise: keep only non-empty integer-like tokens so we never
+        // write arbitrary data to the sequence field.
+        $ids = array_filter(
+            array_map('intval', explode(',', $sequence)),
+            fn($id) => $id > 0
+        );
+
+        // Validate that every ID actually belongs to this flexbook instance.
+        if (!empty($ids)) {
+            [$insql, $inparams] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED);
+            $inparams['cmid'] = get_coursemodule_from_instance('flexbook', $instanceid)->id;
+            $count = $DB->count_records_select(
+                'flexbook_items',
+                "id $insql AND cmid = :cmid",
+                $inparams
+            );
+            if ($count !== count($ids)) {
+                throw new \moodle_exception('invalidsequence', 'mod_flexbook');
+            }
+        }
+
+        $sequence = implode(',', $ids);
 
         $DB->set_field('flexbook', 'sequence', $sequence, ['id' => $instanceid]);
 
@@ -812,5 +834,146 @@ class actions extends external_api {
             'status' => new external_value(PARAM_TEXT, 'The status'),
             'data' => new external_value(PARAM_RAW, 'The saved log as JSON string'),
         ]);
+    }
+    /**
+     * Create interaction parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function create_interaction_parameters() {
+        return new external_function_parameters([
+            'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
+            'courseid' => new external_value(PARAM_INT, 'The course ID', VALUE_REQUIRED),
+            'cmid' => new external_value(PARAM_INT, 'The course module ID', VALUE_REQUIRED),
+            'annotationid' => new external_value(PARAM_INT, 'The Flexbook instance ID', VALUE_REQUIRED),
+            'type' => new external_value(PARAM_TEXT, 'The interaction type', VALUE_REQUIRED),
+            'title' => new external_value(PARAM_TEXT, 'The interaction title', VALUE_REQUIRED),
+            'content' => new external_value(PARAM_RAW, 'The interaction content', VALUE_DEFAULT, ''),
+            'draftitemid' => new external_value(PARAM_INT, 'The draft item ID', VALUE_DEFAULT, 0),
+            'anchorid' => new external_value(PARAM_INT, 'The anchor interaction ID', VALUE_DEFAULT, 0),
+        ]);
+    }
+
+    /**
+     * Create interaction
+     *
+     * @param int $contextid The context ID.
+     * @param int $courseid The course ID.
+     * @param int $cmid The course module ID.
+     * @param int $annotationid The Flexbook instance ID.
+     * @param string $type The interaction type.
+     * @param string $title The interaction title.
+     * @param string $content The interaction content.
+     * @param int $draftitemid The draft item ID.
+     * @param int $anchorid The anchor interaction ID.
+     * @return array The result of the creation.
+     */
+    public static function create_interaction($contextid, $courseid, $cmid, $annotationid, $type, $title, $content = '', $draftitemid = 0, $anchorid = 0) {
+        self::validate_parameters(self::create_interaction_parameters(), [
+            'contextid' => $contextid,
+            'courseid' => $courseid,
+            'cmid' => $cmid,
+            'annotationid' => $annotationid,
+            'type' => $type,
+            'title' => $title,
+            'content' => $content,
+            'draftitemid' => $draftitemid,
+            'anchorid' => $anchorid,
+        ]);
+
+        self::validate_edit_context($contextid);
+
+        $data = [
+            'contextid' => $contextid,
+            'courseid' => $courseid,
+            'cmid' => $cmid,
+            'annotationid' => $annotationid,
+            'type' => $type,
+            'title' => $title,
+            'content' => $content,
+            'draftitemid' => $draftitemid,
+            'anchorid' => $anchorid,
+            'timestamp' => 0, // Flexbook items don't use timestamp by default.
+            'hascompletion' => 0,
+            'xp' => 0,
+            'timecreated' => time(),
+            'timemodified' => time(),
+        ];
+
+        $item = util::create_instance($type, $data);
+
+        return [
+            'status' => 'success',
+            'data' => json_encode($item),
+        ];
+    }
+
+    /**
+     * Create interaction return fields
+     *
+     * @return \external_description
+     */
+    public static function create_interaction_returns() {
+        return self::default_returns();
+    }
+    /**
+     * Upload file parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function upload_file_parameters() {
+        return new external_function_parameters([
+            'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
+            'filename' => new external_value(PARAM_FILE, 'The file name', VALUE_REQUIRED),
+            'filecontent' => new external_value(PARAM_RAW, 'The file content (base64)', VALUE_REQUIRED),
+        ]);
+    }
+
+    /**
+     * Upload file to draft area
+     *
+     * @param int $contextid The context ID.
+     * @param string $filename The file name.
+     * @param string $filecontent The file content.
+     * @return array The result of the upload.
+     */
+    public static function upload_file($contextid, $filename, $filecontent) {
+        self::validate_parameters(self::upload_file_parameters(), [
+            'contextid' => $contextid,
+            'filename' => $filename,
+            'filecontent' => $filecontent,
+        ]);
+
+        self::validate_edit_context($contextid);
+        global $CFG;
+
+        $usercontext = \context_user::instance($GLOBALS['USER']->id);
+
+        require_once($CFG->libdir . '/filelib.php');
+        $fs = \get_file_storage();
+        $filerecord = array(
+            'contextid' => $usercontext->id,
+            'component' => 'user',
+            'filearea' => 'draft',
+            'itemid' => \file_get_unused_draft_itemid(),
+            'filepath' => '/',
+            'filename' => $filename,
+        );
+
+        $fs->create_file_from_string($filerecord, \base64_decode($filecontent));
+
+        return [
+            'status' => 'success',
+            'data' => (string) $filerecord['itemid'],
+        ];
+    }
+
+    /**
+     * Upload file return fields
+     *
+     * @return \external_description
+     */
+    public static function upload_file_returns() {
+        return self::default_returns();
     }
 }

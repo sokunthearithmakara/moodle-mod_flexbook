@@ -112,4 +112,18 @@ $functions = [
         'type' => 'write',
         'ajax' => true,
     ],
+    'mod_flexbook_create_interaction' => [
+        'classname' => 'mod_flexbook\external\actions',
+        'methodname' => 'create_interaction',
+        'description' => 'Create a new flexbook interaction instance',
+        'type' => 'write',
+        'ajax' => true,
+    ],
+    'mod_flexbook_upload_file' => [
+        'classname' => 'mod_flexbook\external\actions',
+        'methodname' => 'upload_file',
+        'description' => 'Upload a file to the user draft area',
+        'type' => 'write',
+        'ajax' => true,
+    ],
 ];

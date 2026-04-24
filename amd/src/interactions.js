@@ -137,6 +137,19 @@ const init = async(
         cursor: 'move',
         items: '.listItem',
         placeholder: "ui-state-highlight",
+        start: function(e, ui) {
+            if (ui.item.hasClass('b-active')) {
+                // Hide sibling selected rows immediately so only the combined
+                // helper is visible — gives a smooth "moving all rows" feel.
+                ui.item.siblings('tr.b-active').css({opacity: '0', pointerEvents: 'none'});
+            }
+        },
+        stop: function() {
+            // Restore visibility whether the order changed or not.
+            $annotationlist.find('tr').css({opacity: '', pointerEvents: ''});
+            // Dismiss the bulk toolbar if no rows remain selected after the drag.
+            syncBulkToolbar();
+        },
         update: function(e, ui) {
             $('#savedraft').prop('disabled', false);
             const item = ui.item;
@@ -152,6 +165,13 @@ const init = async(
                     selecteditems.removeClass('active');
                 }, 1000);
             }
+            // Sync the annotations array to the new DOM order so that a
+            // subsequent renderAnnotationItems() call (e.g. after an add/clone)
+            // does not rebuild the list from the old order and undo the drag.
+            const newOrder = $annotationlist.find('tr[data-id]').not('.deleted').map(function() {
+                return $(this).data('id');
+            }).get();
+            annotations = newOrder.map(id => annotations.find(x => x.id == id)).filter(x => x);
         },
         helper: function(e, item) {
             if (!item.hasClass('b-active')) {
@@ -169,6 +189,31 @@ const init = async(
             return helper;
         },
     });
+
+    // ── Bulk-action toolbar ──────────────────────────────────────────────────
+    // The HTML is rendered server-side by mod_flexbook/editor/bulktoolbar.
+    // JS only needs a reference and the show/hide/sync helpers.
+    const $bulkToolbar = $('#bulk-action-toolbar');
+
+    const showBulkToolbar = (count) => {
+        $('#bulk-count').text(count === 1 ? '1 item' : `${count} items`);
+        $bulkToolbar.css('bottom', '24px');
+    };
+
+    const hideBulkToolbar = () => {
+        $bulkToolbar.css('bottom', '-80px');
+    };
+
+    // Recompute and refresh the toolbar based on current selection.
+    const syncBulkToolbar = () => {
+        const count = $annotationlist.find('tr.b-active').length;
+        if (count > 0) {
+            showBulkToolbar(count);
+        } else {
+            hideBulkToolbar();
+        }
+    };
+    // ── End bulk-action toolbar ───────────────────────────────────────────────
 
     // Initialize the content type renderers for interactive video annotations.
     let initContentTypes = await Promise.all(contentTypes.map((contentType) => {
@@ -436,14 +481,28 @@ const init = async(
         }
 
         if (action == 'add' || action == 'clone') {
-            // Add the new annotation before the beforeItem or at the end.
-            if (beforeItem) {
+            const anchorid = e.originalEvent.detail.anchorid;
+            const isDnD = e.originalEvent.detail.isDnD;
+            // Add the new annotation after the anchorid, before the beforeItem, or at the end.
+            if (anchorid) {
+                const index = annotations.findIndex(x => x.id == anchorid);
+                if (index !== -1) {
+                    annotations.splice(index + 1, 0, updated);
+                } else {
+                    annotations.push(updated);
+                }
+            } else if (beforeItem) {
                 annotations.splice(annotations.findIndex(x => x.id == beforeItem), 0, updated);
             } else {
                 annotations.push(updated);
             }
             if (action == 'add') {
-                activeid = updated.id;
+                if (!isDnD) {
+                    activeid = updated.id;
+                }
+            } else {
+                // Clone: do NOT auto-preview the duplicated item.
+                activeid = null;
             }
         } else {
             activeid = null;
@@ -455,7 +514,10 @@ const init = async(
         renderAnnotationItems(annotations);
         if (action == 'add' || action == 'clone') {
             addNotification(await getString('interactionadded', 'mod_interactivevideo'), 'success');
-            saveDraft();
+            const addResult = await saveDraft();
+            if (addResult.status != 'success') {
+                addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
+            }
         } else if (action == 'edit') {
             addNotification(await getString('interactionupdated', 'mod_interactivevideo'), 'success');
         }
@@ -472,12 +534,18 @@ const init = async(
         const annotation = e.originalEvent.detail.annotation;
         activeid = null;
         $annotationlist.find(`tr[data-id="${annotation.id}"]`).addClass('deleted');
-        saveDraft();
+        syncBulkToolbar(); // Recount in case the deleted row was selected.
         setTimeout(async function() {
             annotations = annotations.filter(function(item) {
                 return item.id != annotation.id;
             });
             renderAnnotationItems(annotations);
+            // Save after the deleted row is removed from the DOM so the
+            // sequence written to the server does not include the deleted id.
+            const deleteResult = await saveDraft();
+            if (deleteResult.status != 'success') {
+                addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
+            }
             addNotification(await getString('interactiondeleted', 'mod_interactivevideo'), 'success');
         }, 1000);
         if ($($('#annotation-list-bulk-edit')).hasClass('active')) {
@@ -487,7 +555,9 @@ const init = async(
 
     const saveDraft = async() => {
         // Get the current sequence based on the tr data-id.
-        const trarray = $annotationlist.find('tr[data-id]').map(function() {
+        // Exclude rows that are mid-deletion (.deleted) so the saved sequence
+        // is never polluted with IDs that are about to be removed.
+        const trarray = $annotationlist.find('tr[data-id]').not('.deleted').map(function() {
             return $(this).data('id');
         }).get();
         sequence = trarray.join(',');
@@ -519,13 +589,332 @@ const init = async(
         addNotification(await getString('draftsaved', 'mod_flexbook'), 'success');
     });
 
-    // Select by ctrl + click.
-    $annotationlist.find('tr').on('click', function(e) {
+    // Select by ctrl + click. Use event delegation so newly added rows
+    // (rendered after init) are also covered.
+    $annotationlist.on('click', 'tr', function(e) {
         if (e.ctrlKey) {
             $(this).toggleClass('b-active');
+            syncBulkToolbar();
         }
     });
+
+    // Deselect all rows when the user clicks outside #content-region.
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#content-region').length) {
+            $annotationlist.find('tr.b-active').removeClass('b-active');
+            hideBulkToolbar();
+        }
+    });
+
+    // Bulk toolbar: dismiss button clears the selection.
+    $(document).on('click', '#bulk-dismiss-btn', function() {
+        $annotationlist.find('tr.b-active').removeClass('b-active');
+        hideBulkToolbar();
+    });
+
+    // Bulk toolbar: delete button.
+    $(document).on('click', '#bulk-delete-btn', async function() {
+        const $selected = $annotationlist.find('tr.b-active');
+        const ids = $selected.map(function() {
+ return $(this).data('id');
+}).get();
+        if (!ids.length) {
+            return;
+        }
+
+        const title = await getString('deleteinteraction', 'mod_interactivevideo');
+        const body = await getString('bulkdeleteconfirm', 'mod_flexbook', ids.length);
+        const button = await getString('delete', 'mod_interactivevideo');
+
+        const doDelete = async() => {
+            // Visually mark rows as being removed.
+            $selected.addClass('deleted');
+            hideBulkToolbar();
+            activeid = null;
+
+            // Delete all items in parallel.
+            const results = await Promise.all(ids.map(id => Ajax.call([{
+                methodname: 'mod_flexbook_delete',
+                args: {
+                    contextid: M.cfg.contextid,
+                    id: id,
+                    cmid: state.config.cmid,
+                }
+            }])[0]));
+
+            const failed = results.filter(r => r.status !== 'success').length;
+
+            // Remove successfully deleted IDs from the annotations array.
+            const deletedSet = new Set(ids.map(String));
+            annotations = annotations.filter(a => !deletedSet.has(String(a.id)));
+
+            // Wait for the fade-out animation, then re-render and persist.
+            setTimeout(async function() {
+                renderAnnotationItems(annotations);
+                const result = await saveDraft();
+                if (result.status !== 'success' || failed > 0) {
+                    addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
+                } else {
+                    addNotification(
+                        await getString('bulkdeleted', 'mod_flexbook', ids.length), 'success');
+                }
+            }, 1000);
+        };
+
+        try {
+            Notification.deleteCancelPromise(title, body, button)
+                .then(() => doDelete())
+                .catch(() => {});
+        } catch {
+            Notification.saveCancel(title, body, button, doDelete);
+        }
+    });
+
+    // Bulk toolbar: clone button.
+    $(document).on('click', '#bulk-clone-btn', async function() {
+        const $selected = $annotationlist.find('tr.b-active');
+        const ids = $selected.map(function() {
+            return $(this).data('id');
+        }).get();
+        if (!ids.length) {
+            return;
+        }
+
+        // Find the last selected item's index in the annotations array.
+        const lastSelectedId = ids[ids.length - 1];
+        const lastIndex = annotations.findIndex(a => a.id == lastSelectedId);
+
+        // Visually indicate progress.
+        $selected.addClass('moving');
+        $('#bulk-clone-btn').prop('disabled', true).addClass('loading');
+
+        try {
+            // Clone all items in parallel.
+            const results = await Promise.all(ids.map(id => Ajax.call([{
+                methodname: 'mod_flexbook_duplicate',
+                args: {
+                    contextid: M.cfg.contextid,
+                    id: id,
+                }
+            }])[0]));
+
+            const newItems = results.filter(r => r.status === 'success').map(r => {
+                const item = safeParse(r.data, {});
+                item.prop = JSON.stringify(contentTypes.find(x => x.name === item.type));
+                item.editMode = true;
+                return item;
+            });
+
+            if (newItems.length > 0) {
+                // Insert the new items after the last selected item.
+                annotations.splice(lastIndex + 1, 0, ...newItems);
+
+                renderAnnotationItems(annotations);
+                await saveDraft();
+
+                addNotification(await getString('bulkcloned', 'mod_flexbook', newItems.length), 'success');
+            }
+
+            if (newItems.length < ids.length) {
+                addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
+            }
+
+        } catch (error) {
+            addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
+        } finally {
+            $selected.removeClass('moving').removeClass('b-active');
+            $('#bulk-clone-btn').prop('disabled', false).removeClass('loading');
+            hideBulkToolbar();
+        }
+    });
+
+    // Warn before leaving the page if there are unsaved changes.
+    window.addEventListener('beforeunload', (e) => {
+        if (!$('#savedraft').is(':disabled')) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
+
+    // ── Drag and Drop Files ─────────────────────────────────────────────────
+    const $dropZone = $('#contentblock');
+    let dragCounter = 0;
+
+    $dropZone.on('dragenter', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter++;
+        $(this).addClass('dragover');
+    });
+
+    $dropZone.on('dragover', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+    });
+
+    $dropZone.on('dragleave dragend', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        dragCounter--;
+        if (dragCounter <= 0) {
+            $(this).removeClass('dragover');
+            dragCounter = 0;
+        }
+    });
+
+    $dropZone.on('drop', async function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        $(this).removeClass('dragover');
+        dragCounter = 0;
+        const files = e.originalEvent.dataTransfer.files;
+        if (files.length > 0) {
+            // Check if we dropped on a specific item.
+            const $targetRow = $(e.originalEvent.target).closest('tr[data-id]');
+            const anchorid = $targetRow.length ? $targetRow.data('id') : null;
+            await handleFileDrop(files, anchorid);
+        }
+    });
+
+    // Handle dragover on specific items for insertion.
+    $annotationlist.on('dragover dragenter', 'tr[data-id]', function() {
+        $(this).addClass('dnd-target');
+    });
+
+    $annotationlist.on('dragleave dragend drop', 'tr[data-id]', function() {
+        $(this).removeClass('dnd-target');
+    });
+
+    const handleFileDrop = async(files, anchorid = null) => {
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            const ext = file.name.split('.').pop().toLowerCase();
+            const supportingPlugins = contentTypes.filter(ct => {
+                return ct.dndextensions && ct.dndextensions.includes(ext);
+            });
+
+            if (supportingPlugins.length === 0) {
+                addNotification(await getString('unsupportedfiletype', 'mod_flexbook', file.name), 'warning');
+                continue;
+            }
+
+            let selectedPlugin = supportingPlugins[0];
+            if (supportingPlugins.length > 1) {
+                selectedPlugin = await showPluginSelectionModal(file, supportingPlugins);
+                if (!selectedPlugin) {
+                    continue;
+                }
+            }
+
+            await processFileUpload(file, selectedPlugin, anchorid);
+        }
+    };
+
+    const processFileUpload = async(file, plugin, anchorid = null) => {
+        addNotification(await getString('uploading', 'mod_flexbook', file.name), 'info');
+
+        try {
+            let response = null;
+            if (plugin.name === 'richtext') {
+                const content = await file.text();
+                response = {content: content};
+            } else {
+                const draftitemid = await uploadFileToDraftArea(file);
+                response = {draftitemid: draftitemid};
+            }
+
+            if (ctRenderer[plugin.name] && typeof ctRenderer[plugin.name].dnd === 'function') {
+                await ctRenderer[plugin.name].dnd(annotations, file, response, anchorid);
+            } else {
+                // Fallback.
+                const result = await Ajax.call([{
+                    methodname: 'mod_flexbook_create_interaction',
+                    args: {
+                        contextid: M.cfg.contextid,
+                        courseid: state.config.courseid,
+                        cmid: state.config.cmid,
+                        annotationid: state.config.flexbook,
+                        type: plugin.name,
+                        title: file.name.replace(/\.[^/.]+$/, ""),
+                        content: response.content || '',
+                        draftitemid: response.draftitemid || 0,
+                        anchorid: anchorid || 0
+                    }
+                }])[0];
+
+                const newItem = safeParse(result.data, {});
+                dispatchEvent('annotationupdated', {
+                    annotation: newItem,
+                    action: 'add',
+                    anchorid: anchorid,
+                    isDnD: true
+                });
+            }
+        } catch (error) {
+            window.console.error(error);
+            addNotification(await getString('erroruploading', 'mod_flexbook', file.name), 'danger');
+        }
+    };
+
+    const uploadFileToDraftArea = async(file) => {
+        const reader = new FileReader();
+        return new Promise((resolve, reject) => {
+            reader.onload = async() => {
+                const base64Content = reader.result.split(',')[1];
+                try {
+                    const result = await Ajax.call([{
+                        methodname: 'mod_flexbook_upload_file',
+                        args: {
+                            contextid: M.cfg.contextid,
+                            filename: file.name,
+                            filecontent: base64Content
+                        }
+                    }])[0];
+                    resolve(parseInt(result.data));
+                } catch (e) {
+                    reject(e);
+                }
+            };
+            reader.onerror = reject;
+            reader.readAsDataURL(file);
+        });
+    };
+
+    const showPluginSelectionModal = async(file, supportingPlugins) => {
+        return new Promise((resolve) => {
+            (async() => {
+                const body = $('<div></div>');
+                body.append($('<p></p>').text(await getString('selectinteractiontypefor', 'mod_flexbook', file.name)));
+                const $list = $('<div class="list-group"></div>');
+
+                supportingPlugins.forEach(plugin => {
+                    const $item = $(`<a href="#" class="list-group-item list-group-item-action d-flex align-items-center">
+                        <i class="${plugin.icon} iv-mr-2 fs-20px"></i>
+                        <span>${plugin.title}</span>
+                    </a>`);
+                    $item.on('click', (e) => {
+                        e.preventDefault();
+                        modal.hide();
+                        resolve(plugin);
+                    });
+                    $list.append($item);
+                });
+                body.append($list);
+
+                const modal = await ModalFactory.create({
+                    title: await getString('selecttype', 'mod_flexbook'),
+                    body: body,
+                    buttons: {
+                        cancel: await getString('cancel', 'core'),
+                    }
+                });
+                modal.show();
+                modal.getRoot().on(ModalEvents.hidden, () => resolve(null));
+            })();
+        });
+    };
 };
+
 
 export default {
     /**

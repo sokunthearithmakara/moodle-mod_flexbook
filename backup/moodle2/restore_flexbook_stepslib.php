@@ -308,6 +308,7 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
         // Add flexbook related files, no need to match by itemname (just internally handled context).
         $this->add_related_files('mod_flexbook', 'intro', null);
         $this->add_related_files('mod_flexbook', 'endscreentext', null);
+        $this->add_related_files('mod_flexbook', 'posterimage', null);
         $this->add_related_files('mod_flexbook', 'content', 'annotationitems');
         $this->add_related_files('mod_flexbook', 'itext1', 'annotationitems');
         $this->add_related_files('mod_flexbook', 'itext2', 'annotationitems');

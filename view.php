@@ -56,6 +56,10 @@ if ($iframe && !isloggedin()) {
 
 require_login($course, true, $cm);
 
+// Get cm_info object to access cached customdata.
+$modinfo = get_fast_modinfo($course);
+$cm = $modinfo->get_cm($cm->id);
+
 // Require capability to view interactive video.
 if (!has_capability('mod/flexbook:view', $modulecontext)) {
     // Redirect to course view.
@@ -267,7 +271,8 @@ $gradeitem = grade_item::fetch([
     'itemnumber' => 0,
 ]);
 
-$PAGE->add_body_class($moduleinstance->type . ($CFG->branch >= 500 ? ' bs-5' : ''));
+$PAGE->add_body_class($CFG->branch >= 500 ? ' bs-5' : '');
+$PAGE->add_body_class('flexbooktype-' . $moduleinstance->type);
 
 // Use Bootstrap icons instead of fontawesome icons to avoid issues fontawesome icons support in Moodle 4.1.
 $PAGE->requires->css(new moodle_url('/mod/interactivevideo/libraries/bootstrap-icons/bootstrap-icons.min.css'));
@@ -369,7 +374,7 @@ if ($rendernav) {
 $datafortemplate = [
     "darkmode" => $moduleinstance->displayoptions['darkmode'] == '1',
     "displayasstartscreen" => $moduleinstance->displayasstartscreen,
-    "hasintro" => !empty($moduleinstance->intro),
+    "hasintro" => !empty($moduleinstance->intro) && trim(html_to_text($moduleinstance->intro)) !== '',
     "intro" => format_module_intro('flexbook', $moduleinstance, $cm->id),
     "hasendscreentext" => !empty($moduleinstance->endscreentext),
     "endscreentext" => $endcontent,
@@ -382,6 +387,11 @@ $datafortemplate = [
     "hascourseindex" => !empty($courseindex) && $rendernav,
     "new" => $new,
 ];
+
+// Get poster image.
+if (!empty($cm->customdata['posterimage'])) {
+    $datafortemplate['posterimage'] = $cm->customdata['posterimage'];
+}
 
 echo $OUTPUT->render_from_template('mod_flexbook/canvas/player', $datafortemplate);
 

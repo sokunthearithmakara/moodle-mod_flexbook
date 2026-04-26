@@ -226,8 +226,9 @@ const init = async config => {
             const navbarHeight = $navbar.length ? $navbar.outerHeight() : 0;
             availableHeight -= navbarHeight;
         } else {
-            availableHeight = window.innerHeight - controllerHeight;
-            availableWidth = window.innerWidth;
+            const fsMargin = 32; // Total margin (16px on each side).
+            availableHeight = window.innerHeight - controllerHeight - fsMargin;
+            availableWidth = window.innerWidth - fsMargin;
         }
 
         let newWidth = availableWidth;
@@ -238,6 +239,7 @@ const init = async config => {
             newWidth = newHeight * ratio;
         }
 
+        const isFullscreen = !!document.fullscreenElement;
         $videowrapper.css({
             width: newWidth + 'px',
             height: newHeight + 'px',
@@ -247,8 +249,25 @@ const init = async config => {
             marginRight: 'auto',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'center'
+            justifyContent: 'center',
+            borderRadius: isFullscreen ? '1rem' : '',
+            marginTop: isFullscreen ? '16px' : '',
+            overflow: isFullscreen ? 'hidden' : '',
         });
+
+        if (isFullscreen) {
+            $controlBar.css({
+                width: newWidth + 'px',
+                marginLeft: 'auto',
+                marginRight: 'auto',
+            });
+        } else {
+            $controlBar.css({
+                width: '',
+                marginLeft: '',
+                marginRight: '',
+            });
+        }
     };
 
     $videowrapper.toggleClass('d-none d-flex');
@@ -323,7 +342,11 @@ const init = async config => {
         })
     );
 
-    resizeVideoWrapper();
+    if (window.ResizeObserver) {
+        new ResizeObserver(() => {
+            window.requestAnimationFrame(resizeVideoWrapper);
+        }).observe($wrapper[0]);
+    }
     $(window).on('resize', resizeVideoWrapper);
 
     // Run the init function on the content types.
@@ -614,7 +637,7 @@ const init = async config => {
         }
     };
 
-    const animateInNew = async (annotation, force = false) => {
+    const animateInNew = async(annotation, force = false) => {
         const id = annotation.id;
         if (id == 999) {
             $('#end-screen').removeClass('d-none').addClass('active show');
@@ -644,7 +667,7 @@ const init = async config => {
         }, 1000);
     };
 
-    const navigateToAnnotation = async (id, force = false) => {
+    const navigateToAnnotation = async(id, force = false) => {
         if (id == 999) {
             if (state.currentanno && state.currentanno.id == 999) {
                 return;
@@ -810,6 +833,14 @@ const init = async config => {
     $(document).on('click', '#play', async function(e) {
         e.preventDefault();
 
+        if (annotations.length === 0) {
+            addToast(await getString('nointeractionsfound', 'mod_flexbook'), {
+                type: 'info',
+                emoji: '📄'
+            });
+            return;
+        }
+
         // Auto fullscreen on mobile.
         if (
             /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -973,45 +1004,39 @@ const init = async config => {
 
     // Implement keyboard shortcuts.
     document.addEventListener('keydown', async function(e) {
-        // Control + arrow keys.
-        if (e.ctrlKey || e.metaKey) {
-            switch (e.key) {
-                case 'ArrowLeft':
-                    e.preventDefault();
-                    await prevAnnotation();
-                    break;
-                case 'ArrowRight':
-                    e.preventDefault();
-                    await nextAnnotation();
-                    break;
-            }
-        } else {
-            switch (e.key) {
-                case 's':
-                case 'S':
-                    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-                        return;
-                    }
-                    e.preventDefault();
-                    $('#share').trigger('click');
-                    break;
-                case 'f':
-                case 'F':
-                    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-                        return;
-                    }
-                    e.preventDefault();
-                    toggleFullscreen();
-                    break;
-                case 'c':
-                case 'C':
-                    if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
-                        return;
-                    }
-                    e.preventDefault();
-                    $('#chaptertoggle .btn').trigger('click');
-                    break;
-            }
+        switch (e.key) {
+            case 'ArrowLeft':
+                e.preventDefault();
+                await prevAnnotation();
+                break;
+            case 'ArrowRight':
+                e.preventDefault();
+                await nextAnnotation();
+                break;
+            case 's':
+            case 'S':
+                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                    return;
+                }
+                e.preventDefault();
+                $('#share').trigger('click');
+                break;
+            case 'f':
+            case 'F':
+                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                    return;
+                }
+                e.preventDefault();
+                toggleFullscreen();
+                break;
+            case 'c':
+            case 'C':
+                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                    return;
+                }
+                e.preventDefault();
+                $('#chaptertoggle .btn').trigger('click');
+                break;
         }
     });
 

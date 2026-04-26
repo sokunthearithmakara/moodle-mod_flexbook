@@ -108,9 +108,36 @@ class mod_flexbook_mod_form extends moodleform_mod {
         );
         $mform->setType('endscreentext', PARAM_RAW);
 
-        $mform->addElement('hidden', 'type', 'page');
-        $mform->setType('type', PARAM_TEXT);
-        $mform->setDefault('type', 'page');
+        // Primary content type – used to determine the activity icon.
+        $allplugins = explode(',', get_config('mod_flexbook', 'enablecontenttypes'));
+        $typeoptions = [];
+        foreach ($allplugins as $pluginname) {
+            $class = $pluginname . '\\main';
+            if (!class_exists($class)) {
+                continue;
+            }
+            $instance = new $class();
+            if (!method_exists($instance, 'get_property')) {
+                continue;
+            }
+            $prop = $instance->get_property();
+            if (empty($prop['flexbook'])) {
+                continue;
+            }
+            $typeoptions[$prop['name']] = $prop['title'];
+        }
+
+        if (count($typeoptions) >= 1) {
+            // Prepend a blank 'default' option — when selected the standard Flexbook icon is used.
+            $typeoptions = ['' => get_string('defaultflexbookicon', 'mod_flexbook')] + $typeoptions;
+            $mform->addElement('select', 'type', get_string('primarycontenttype', 'mod_flexbook'), $typeoptions);
+            $mform->setType('type', PARAM_TEXT);
+            $mform->setDefault('type', '');
+            $mform->addHelpButton('type', 'primarycontenttype', 'mod_flexbook');
+        } else {
+            $mform->addElement('hidden', 'type', '');
+            $mform->setType('type', PARAM_TEXT);
+        }
 
         // APPEARANCE AND BEHAVIOR SETTINGS.
         $mform->addElement('header', 'videodisplayoptions', get_string('appearanceandbehaviorsettings', 'mod_flexbook'));
@@ -265,6 +292,18 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 ['subdirs' => 0],
                 $text
             );
+
+            // Handle poster image.
+            $draftitemid = file_get_submitted_draft_itemid('posterimage');
+            file_prepare_draft_area(
+                $draftitemid,
+                $this->context->id,
+                'mod_flexbook',
+                'posterimage',
+                0,
+                ['subdirs' => 0]
+            );
+            $defaultvalues['posterimage'] = $draftitemid;
 
             // Handle display options.
             $displayoptions = [

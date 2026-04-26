@@ -140,6 +140,7 @@ class backup_flexbook_activity_structure_step extends backup_activity_structure_
         // Define file annotations.
         $flexbook->annotate_files('mod_flexbook', 'intro', null);
         $flexbook->annotate_files('mod_flexbook', 'endscreentext', null);
+        $flexbook->annotate_files('mod_flexbook', 'posterimage', null);
 
         $item->annotate_files('contentbank', 'public', 'contentid', context_course::instance($this->task->get_courseid())->id);
         $item->annotate_files('mod_flexbook', 'content', 'id');

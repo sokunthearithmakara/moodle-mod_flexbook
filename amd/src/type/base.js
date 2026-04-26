@@ -433,8 +433,17 @@ export default class Base {
         return $title;
     }
 
-    async previewInteraction(annotation, log) {
-        let self = this;
+    animateModal(root) {
+        setTimeout(() => {
+            root.addClass('jelly-anim');
+            setTimeout(() => {
+                root.removeClass('jelly-anim');
+            }, 500);
+        }, 10);
+    }
+
+    async createModal(annotation) {
+        const self = this;
         annotation = this.annotations.find(x => x.id == annotation.id);
 
         let ModalFactory;
@@ -445,55 +454,66 @@ export default class Base {
         }
 
         let modal = await ModalFactory.create({
-            title: annotation.formattedtitle,
+            title: '',
             large: true,
             body: '',
             removeOnClose: true,
+            isVerticallyCentered: true,
         });
 
-        let root = modal.getRoot();
-        root.find('.modal-header').attr('id', 'title')
-            .html(await this.renderMessageTitle(annotation));
-        root.attr('id', 'annotation-modal');
-        root.find('.modal-dialog')
+        return new Promise((resolve) => {
+            let root = modal.getRoot();
+            root.attr('id', 'annotation-modal');
+            root.find('.modal-dialog')
             .attr({
                 'data-id': annotation.id,
                 'data-placement': 'popup',
                 'id': 'message'
             })
             .addClass('active ' + annotation.type);
-        modal.show();
+            modal.show();
+            root.on(ModalEvents.hidden, () => {
+                modal.destroy();
+            });
 
-        // Enable draggable.
-        this.setModalDraggable('#annotation-modal .modal-dialog');
+            // Enable draggable.
+            this.setModalDraggable('#annotation-modal .modal-dialog');
 
-        root.find('#message').on('click', '#close-' + annotation.id, function() {
-            root.attr('data-region', 'modal-container');
-            root.fadeOut(300, function() {
-                modal.hide();
+            root.find('#message').on('click', '#close-' + annotation.id, function() {
+                root.attr('data-region', 'modal-container');
+                root.fadeOut(300, function() {
+                    modal.hide();
+                });
+            });
+
+            root.off(ModalEvents.hidden).on(ModalEvents.hidden, function() {
+                $('#annotation-modal').remove();
+                modal.destroy();
+            });
+
+            // If click outside the modal, add jelly animation.
+            root.off('click').on('click', function(e) {
+                if ($(e.target).closest('.modal-content').length === 0) {
+                    self.animateModal(root);
+                }
+            });
+
+            root.on(ModalEvents.shown, async() => {
+                root.attr('data-region', 'popup'); // Must set to avoid dismissing the modal when clicking outside.
+                self.animateModal(root);
+                root.find('.modal-header').attr('id', 'title')
+                    .html(await this.renderMessageTitle(annotation));
+                resolve(root);
             });
         });
+    }
 
-        root.off(ModalEvents.hidden).on(ModalEvents.hidden, function() {
-            $('#annotation-modal').remove();
-            modal.destroy();
-        });
+    async previewInteraction(annotation, log) {
+        let self = this;
 
-        // If click outside the modal, add jelly animation.
-        root.off('click').on('click', function(e) {
-            if ($(e.target).closest('.modal-content').length === 0) {
-                root.addClass('jelly-anim');
-            }
-        });
-
-        root.off(ModalEvents.shown).on(ModalEvents.shown, async function() {
-            root.attr('data-region', 'popup'); // Must set to avoid dismissing the modal when clicking outside.
-            setTimeout(() => {
-                root.addClass('jelly-anim');
-            }, 10);
-            const $message = root.find('#message');
-            await self.applyContent(annotation, $message, log);
-        });
+        let root = await this.createModal(annotation);
+        const $message = root.find(`#message[data-id="${annotation.id}"]`);
+        await self.applyContent(annotation, $message, log);
     }
 
     async postContentRender() {
@@ -586,7 +606,7 @@ export default class Base {
             $tooltip.tooltip('dispose');
             setTimeout(() => {
                 $tooltip.tooltip({
-                    container: '#message[data-id="' + annotation.id + '"]',
+                    container: $message,
                     html: true,
                     trigger: 'hover',
                     placement: 'auto'

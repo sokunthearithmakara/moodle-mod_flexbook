@@ -168,6 +168,28 @@ function flexbook_add_instance($moduleinstance, $mform = null) {
         $requiredupdate = true;
     }
 
+    // Handle poster image.
+    if (!empty($moduleinstance->posterimage)) {
+        file_save_draft_area_files(
+            $moduleinstance->posterimage,
+            $context->id,
+            'mod_flexbook',
+            'posterimage',
+            0,
+            ['subdirs' => 0]
+        );
+
+        // Resize the image.
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($context->id, 'mod_flexbook', 'posterimage', 0, 'id', false);
+        if ($files) {
+            $file = reset($files);
+            if (preg_match('|^image/|', $file->get_mimetype()) && $file->get_mimetype() !== 'image/gif') {
+                $file->resize_image(1100, null);
+            }
+        }
+    }
+
     if ($requiredupdate) {
         $DB->update_record('flexbook', $moduleinstance);
     }
@@ -238,6 +260,28 @@ function flexbook_update_instance($moduleinstance, $mform = null) {
             ['subdirs' => 0],
             $text
         );
+    }
+
+    // Handle poster image.
+    if (!empty($moduleinstance->posterimage)) {
+        file_save_draft_area_files(
+            $moduleinstance->posterimage,
+            $context->id,
+            'mod_flexbook',
+            'posterimage',
+            0,
+            ['subdirs' => 0]
+        );
+
+        // Resize the image.
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($context->id, 'mod_flexbook', 'posterimage', 0, 'id', false);
+        if ($files) {
+            $file = reset($files);
+            if (preg_match('|^image/|', $file->get_mimetype()) && $file->get_mimetype() !== 'image/gif') {
+                $file->resize_image(1100, null);
+            }
+        }
     }
 
     $moduleinstance->displayoptions = json_encode(flexbook_display_options($moduleinstance));
@@ -323,6 +367,7 @@ function flexbook_get_file_areas($course, $cm, $context) {
         'text1',
         'text2',
         'text3',
+        'posterimage',
     ];
 }
 
@@ -463,7 +508,67 @@ function flexbook_get_coursemodule_info($coursemodule) {
         0
     );
     $result->customdata['endscreentext'] = $endcontent;
+
+    // Poster image.
+    $fs = get_file_storage();
+    $files = $fs->get_area_files($context->id, 'mod_flexbook', 'posterimage', 0, 'itemid, filepath, filename', false);
+    if (count($files) > 0) {
+        $file = reset($files);
+        $result->customdata['posterimage'] = moodle_url::make_pluginfile_url(
+            $context->id,
+            'mod_flexbook',
+            'posterimage',
+            0,
+            $file->get_filepath(),
+            $file->get_filename()
+        )->out(false);
+    }
+
     return $result;
+}
+
+/**
+ * Implements the cm_info_dynamic hook to set a custom activity icon.
+ *
+ * Called at render time (not cached) so it can use $OUTPUT. Sets the icon URL
+ * based on the 'type' field stored in the Flexbook instance, allowing each
+ * Flexbook to display the monologo icon of its primary content type.
+ *
+ * @param \cm_info $cm The course module info object.
+ * @return void
+ */
+function flexbook_cm_info_dynamic(cm_info $cm) {
+    global $OUTPUT;
+
+    $type = $cm->customdata['type'] ?? null;
+    if (empty($type)) {
+        return;
+    }
+
+    // Find the content type plugin that owns this type name.
+    $allplugins = explode(',', get_config('mod_flexbook', 'enablecontenttypes'));
+    foreach ($allplugins as $pluginname) {
+        $class = $pluginname . '\\main';
+        if (!class_exists($class)) {
+            continue;
+        }
+        $instance = new $class();
+        if (!method_exists($instance, 'get_property')) {
+            continue;
+        }
+        $prop = $instance->get_property();
+        if (($prop['name'] ?? '') !== $type) {
+            continue;
+        }
+        // Resolve the monologo icon URL from the plugin's component.
+        $component = $prop['component'] ?? $pluginname;
+        global $PAGE;
+        if (isset($PAGE) && $PAGE->context) {
+            $iconurl = $OUTPUT->image_url('monologo', $component);
+            $cm->set_icon_url($iconurl, $component);
+        }
+        return;
+    }
 }
 
 if ($CFG->branch <= 403) {
@@ -851,6 +956,14 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
             $mform->addElement('hidden', 'theme', '');
         }
         $mform->setType('theme', PARAM_TEXT);
+
+        $mform->addElement(
+            'filemanager',
+            'posterimage',
+            get_string('posterimage', 'mod_flexbook'),
+            null,
+            ['maxfiles' => 1, 'accepted_types' => ['web_image']]
+        );
 
         $aspectratios = [
             '' => get_string('unset', 'mod_flexbook'),

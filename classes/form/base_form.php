@@ -196,11 +196,13 @@ class base_form extends \core_form\dynamic_form {
             $mform->hideIf('lockedgroup', 'completiontracking', 'eq', 'none');
 
             // Jump to option on pass grade.
-            $mform->addElement('select', 'jumptopass', get_string('jumptopass', 'mod_flexbook'), $annotations);
+            $mform->addElement('select', 'jumptopass', get_string('jumptopass', 'mod_flexbook'), ['' => get_string('default')]
+                + $annotations);
             $mform->setType('jumptopass', PARAM_INT);
 
             // Jump to option on fail grade.
-            $mform->addElement('select', 'jumptofail', get_string('jumptofail', 'mod_flexbook'), $annotations);
+            $mform->addElement('select', 'jumptofail', get_string('jumptofail', 'mod_flexbook'), ['' => get_string('default')]
+                + $annotations);
             $mform->setType('jumptofail', PARAM_INT);
 
             // Hide if completion tracking is null or view or manual.

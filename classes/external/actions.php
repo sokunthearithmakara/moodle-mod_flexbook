@@ -66,6 +66,7 @@ class actions extends external_api {
      */
     public static function validate_edit_context($contextid) {
         $context = \context::instance_by_id($contextid);
+        self::validate_context($context);
 
         // Check if the user has permission to manage this item.
         if (!has_capability('mod/flexbook:edit', $context)) {
@@ -81,6 +82,7 @@ class actions extends external_api {
      */
     public static function validate_view_context($contextid) {
         $context = \context::instance_by_id($contextid);
+        self::validate_context($context);
 
         // Check if the user has permission to manage this item.
         if (!has_capability('mod/flexbook:view', $context)) {
@@ -308,7 +310,7 @@ class actions extends external_api {
             'g' => new external_value(PARAM_FLOAT, 'The grade'),
             'gradeiteminstance' => new external_value(PARAM_INT, 'The grade item instance ID'),
             'c' => new external_value(PARAM_INT, 'The completion status'),
-            'xp' => new external_value(PARAM_INT, 'The experience'),
+            'xp' => new external_value(PARAM_FLOAT, 'The experience'),
             'completeditems' => new external_value(PARAM_TEXT, 'The completed items'),
             'completiondetails' => new external_value(PARAM_TEXT, 'The completion details'),
             'details' => new external_value(PARAM_TEXT, 'The details'),

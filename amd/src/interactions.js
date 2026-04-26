@@ -56,6 +56,16 @@ const init = async(
         isEditMode: true
     };
 
+    // Preload audio.
+    const pop = new Audio(M.cfg.wwwroot + '/mod/interactivevideo/sounds/pop.mp3');
+    const point = new Audio(
+        M.cfg.wwwroot + '/mod/interactivevideo/sounds/point-awarded.mp3'
+    );
+    state.audio = {
+        pop,
+        point
+    };
+
     // DOM elements.
     const $annotationlist = $('#annotation-list');
     const $listitem = $('#annotation-template').clone();
@@ -322,17 +332,58 @@ const init = async(
         ctRenderer[ctype].addAnnotation(annotations);
     });
 
+    $annotationlist.on('click', 'tr', function(e) {
+        if (e.ctrlKey) {
+            $(this).toggleClass('b-active');
+            syncBulkToolbar();
+        }
+    });
+
     // Implement more actions.
     $(document).on('click', 'tr.annotation .more-actions', async function(e) {
         e.preventDefault();
+        e.stopPropagation();
         const $wrapper = $(this).closest('.btns');
+        // Remove any existing menus.
+        $('.more-actions-menu.show').remove();
+
         const $menu = $moreactionsmenu.clone();
+
         $menu.removeClass('d-none').addClass('show');
         $wrapper.append($menu);
-        $(document).one('click', function(e) {
+
+        // Use a slight delay to avoid immediate closing if the click bubbled.
+        setTimeout(() => {
+            $(document).one('click', function() {
+                $menu.remove();
+            });
+        }, 10);
+    });
+
+    $(document).on('paste', async function(e) {
+        if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+            return;
+        }
+
+        const $selected = $annotationlist.find('tr.annotation.b-active');
+        const anchorid = $selected.length ? $selected.last().data('id') : null;
+
+        if (!anchorid) {
+            return;
+        }
+
+        const files = e.originalEvent.clipboardData.files;
+        if (files.length > 0) {
             e.preventDefault();
-            $menu.remove();
-        });
+            await handleFileDrop(files, anchorid);
+            // Dismiss selection and toolbar.
+            $annotationlist.find('tr.b-active').removeClass('b-active');
+            hideBulkToolbar();
+
+            if (navigator.clipboard.writeText) {
+                await navigator.clipboard.writeText('');
+            }
+        }
     });
 
     // Implement view annotation.
@@ -589,14 +640,7 @@ const init = async(
         addNotification(await getString('draftsaved', 'mod_flexbook'), 'success');
     });
 
-    // Select by ctrl + click. Use event delegation so newly added rows
-    // (rendered after init) are also covered.
-    $annotationlist.on('click', 'tr', function(e) {
-        if (e.ctrlKey) {
-            $(this).toggleClass('b-active');
-            syncBulkToolbar();
-        }
-    });
+
 
     // Deselect all rows when the user clicks outside #content-region.
     $(document).on('click', function(e) {

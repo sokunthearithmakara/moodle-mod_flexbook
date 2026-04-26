@@ -29,4 +29,7 @@ $plugin->release      = '1.0';
 $plugin->version      = 2026042008;
 $plugin->requires = 2021112800;
 $plugin->supported = [400, 502];
-$plugin->maturity = MATURITY_STABLE;
+$plugin->maturity = MATURITY_ALPHA;
+$plugin->dependencies = [
+    'mod_interactivevideo' => 2026042600,
+];

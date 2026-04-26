@@ -314,7 +314,7 @@
 }
 
 .path-mod-flexbook #message #title.hide-header .info {
-    color: var(--ivsecondary)
+    color: var(--ivsecondary);
 }
 
 .path-mod-flexbook #message #title.hide-header .modal-title {
@@ -575,7 +575,7 @@
 }
 
 .path-mod-interactivevideo.path-mod-flexbook:not(.embed-mode)
- #interactivevideo-container:has([data-ratio]):has(#controller:not(.d-none)) {
+#interactivevideo-container:has([data-ratio]):has(#controller:not(.d-none)) {
     padding-bottom: 55px !important;
 }
 

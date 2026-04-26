@@ -641,7 +641,6 @@ const init = async(
     });
 
 
-
     // Deselect all rows when the user clicks outside #content-region.
     $(document).on('click', function(e) {
         if (!$(e.target).closest('#content-region').length) {
@@ -708,7 +707,9 @@ const init = async(
         try {
             Notification.deleteCancelPromise(title, body, button)
                 .then(() => doDelete())
-                .catch(() => {});
+                .catch(() => {
+                    // Ignore.
+                });
         } catch {
             Notification.saveCancel(title, body, button, doDelete);
         }

@@ -709,7 +709,8 @@ const init = async config => {
                 // Skip to next visible.
                 const fullIndex = annotations.findIndex(x => x.id == id);
                 const nextVisible = annotations.slice(fullIndex + 1).find(x => visible.includes(x));
-                return navigateToAnnotation(nextVisible ? nextVisible.id : 999);
+                navigateToAnnotation(nextVisible ? nextVisible.id : 999);
+                return;
             }
         }
 

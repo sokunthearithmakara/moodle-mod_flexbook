@@ -15,21 +15,23 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information for Flexbook
+ * Uninstall logic for Flexbook
  *
  * @package    mod_flexbook
  * @copyright  2026 Sokunthearith Makara <sokunthearithmakara@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+/**
+ * Custom uninstall function for the module.
+ *
+ * @return bool True if successful.
+ */
+function xmldb_flexbook_uninstall() {
+    global $CFG;
 
-$plugin->component    = 'mod_flexbook';
-$plugin->release      = '0.1';
-$plugin->version      = 2026042601;
-$plugin->requires = 2021112800;
-$plugin->supported = [400, 502];
-$plugin->maturity = MATURITY_RC;
-$plugin->dependencies = [
-    'mod_interactivevideo' => 2026042600,
-];
+    require_once($CFG->libdir . '/gradelib.php');
+    grade_uninstalled_module('flexbook');
+
+    return true;
+}

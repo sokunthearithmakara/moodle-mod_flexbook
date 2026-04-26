@@ -599,3 +599,7 @@
 .path-mod-flexbook tr.annotation {
     cursor: pointer;
 }
+
+.path-mod-flexbook tr.annotation.dnd-target {
+    background-color: #98deff;
+}

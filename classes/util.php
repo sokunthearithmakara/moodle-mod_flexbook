@@ -715,6 +715,12 @@ class util extends \interactivevideo_util {
                 return json_encode($decoded);
             }, $completiondetails);
             $completion->completiondetails = json_encode(array_values($completiondetails));
+            // Remove from details (timespent and views).
+            $details = json_decode($completion->details, true);
+            if (is_array($details) && isset($details[$itemid])) {
+                unset($details[$itemid]);
+                $completion->details = json_encode($details);
+            }
             $DB->update_record('flexbook_completion', $completion);
             $logs = $DB->get_records('flexbook_log', ['userid' => $userid, 'annotationid' => $itemid]);
             $fs = get_file_storage();

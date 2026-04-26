@@ -74,13 +74,7 @@ const init = async config => {
     };
 
     // Initialize interaction tracking data from saved progress (resumable).
-    const interactionData = safeParse(uprogress.details, {timespent: {}, views: {}});
-    if (!interactionData.timespent) {
-        interactionData.timespent = {};
-    }
-    if (!interactionData.views) {
-        interactionData.views = {};
-    }
+    const interactionData = safeParse(uprogress.details, {});
     state.interactionData = interactionData;
     let interactionStartTime = null;
     let trackingAnnotationId = null;
@@ -93,7 +87,7 @@ const init = async config => {
      * @returns {number} Total ms spent on the annotation.
      */
     state.getTimespent = (id) => {
-        const saved = (interactionData.timespent && interactionData.timespent[id]) || 0;
+        const saved = (interactionData[id] && interactionData[id].t) || 0;
         const live = (trackingAnnotationId == id && interactionStartTime !== null)
             ? Date.now() - interactionStartTime
             : 0;
@@ -104,8 +98,10 @@ const init = async config => {
         // Flush elapsed time into the total, but keep trackingAnnotationId so we can resume.
         if (trackingAnnotationId !== null && interactionStartTime !== null) {
             const elapsed = Date.now() - interactionStartTime;
-            interactionData.timespent[trackingAnnotationId] =
-                (interactionData.timespent[trackingAnnotationId] || 0) + elapsed;
+            if (!interactionData[trackingAnnotationId]) {
+                interactionData[trackingAnnotationId] = {t: 0, v: 0};
+            }
+            interactionData[trackingAnnotationId].t = (interactionData[trackingAnnotationId].t || 0) + elapsed;
             interactionStartTime = null; // Paused – not tracking anymore but annotation id preserved.
             state.interactionData = interactionData;
         }
@@ -126,7 +122,10 @@ const init = async config => {
     $(document).on('interactionrun', function(e) {
         stopInteractionTimer(); // Flush any previously running timer.
         const id = e.detail.annotation.id;
-        interactionData.views[id] = (interactionData.views[id] || 0) + 1;
+        if (!interactionData[id]) {
+            interactionData[id] = {t: 0, v: 0};
+        }
+        interactionData[id].v = (interactionData[id].v || 0) + 1;
         trackingAnnotationId = id;
         interactionStartTime = Date.now();
         state.interactionData = interactionData;

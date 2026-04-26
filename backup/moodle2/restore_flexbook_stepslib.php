@@ -208,7 +208,24 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
                 }
                 $olddetails['views'] = $newviews;
             }
-            $data->details = json_encode($olddetails);
+
+            // Handle new format (ID => {t, v}).
+            $newdetails = [];
+            foreach ($olddetails as $key => $value) {
+                if ($key === 'timespent' || $key === 'views') {
+                    $newdetails[$key] = $value;
+                    continue;
+                }
+                if ($key == '999') {
+                    $newdetails[$key] = $value;
+                    continue;
+                }
+                $newitemid = $this->get_mappingid('annotationitems', $key);
+                if ($newitemid) {
+                    $newdetails[$newitemid] = $value;
+                }
+            }
+            $data->details = json_encode($newdetails);
         }
 
         $newitemid = $DB->insert_record('flexbook_completion', $data);

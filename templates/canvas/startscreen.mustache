@@ -26,10 +26,9 @@
 
 {{#displayasstartscreen}}
 <div id="start-screen"
-     class="w-100 position-absolute h-100 {{^posterimage}}bg-white{{/posterimage}} bottom-0 d-none"
+     class="w-100 position-absolute h-100 bg-white bottom-0"
      role="region"
-     aria-label="{{#str}}startscreen, mod_interactivevideo{{/str}}"
-     {{#posterimage}}style="background: url('{{{posterimage}}}') center center / cover no-repeat;"{{/posterimage}}>
+     aria-label="{{#str}}startscreen, mod_interactivevideo{{/str}}">
     <div class="intro-content {{#hasintro}}hasintro bg-light{{/hasintro}} {{^hasintro}}{{#posterimage}}bg-transparent{{/posterimage}}{{^posterimage}}bg-light{{/posterimage}}{{/hasintro}} w-100 p-0 align-items-start">
         <div id="title-section"
              class="bg-secondary w-100 d-flex align-items-center justify-content-between p-3 overflow-hidden position-sticky"
@@ -40,11 +39,11 @@
             </div>
 
             <button id="play"
-                    class="btn btn-flex iv-rounded-circle position-sticky"
-                    type="button"
-                    aria-label="{{#new}}{{#str}}start, mod_flexbook{{/str}}{{/new}}{{^new}}{{#str}}resume, mod_flexbook{{/str}}{{/new}}">
-                <i class="bi bi-play-circle-fill text-danger" aria-hidden="true"></i>
-                <span class="visually-hidden sr-only">{{#new}}{{#str}}start, mod_flexbook{{/str}}{{/new}}{{^new}}{{#str}}resume, mod_flexbook{{/str}}{{/new}}</span>
+                class="btn btn-danger btn-rounded"
+                type="button"
+                aria-label="{{#new}}{{#str}}start, mod_flexbook{{/str}}{{/new}}{{^new}}{{#str}}resume, mod_flexbook{{/str}}{{/new}}">
+            <i class="bi bi-play-fill text-white fs-25px" aria-hidden="true"></i>
+            <span class="text-uppercase iv-ml-2">{{#new}}{{#str}}start, mod_flexbook{{/str}}{{/new}}{{^new}}{{#str}}resume, mod_flexbook{{/str}}{{/new}}</span>
             </button>
         </div>
 

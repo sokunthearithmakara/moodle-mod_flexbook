@@ -538,7 +538,6 @@ function flexbook_get_coursemodule_info($coursemodule) {
  * @return void
  */
 function flexbook_cm_info_dynamic(cm_info $cm) {
-    global $OUTPUT;
 
     $type = $cm->customdata['type'] ?? null;
     if (empty($type)) {
@@ -561,12 +560,14 @@ function flexbook_cm_info_dynamic(cm_info $cm) {
             continue;
         }
         // Resolve the monologo icon URL from the plugin's component.
+        // Accessing $PAGE or $OUTPUT will cause an error, so avoid them.
         $component = $prop['component'] ?? $pluginname;
-        global $PAGE;
-        if (isset($PAGE) && $PAGE->context) {
-            $iconurl = $OUTPUT->image_url('monologo', $component);
-            $cm->set_icon_url($iconurl, $component);
-        }
+        $iconurl = new moodle_url('/theme/image.php', [
+            'theme' => get_config('core', 'theme'),
+            'component' => $component,
+            'image' => 'monologo',
+        ]);
+        $cm->set_icon_url($iconurl);
         return;
     }
 }

@@ -540,9 +540,18 @@
 }
 
 @keyframes kid-pop-in {
-    0% { transform: scale(0.95); opacity: 0; }
-    60% { transform: scale(1.02); opacity: 1; }
-    100% { transform: scale(1); opacity: 1; }
+    0% {
+        transform: scale(0.95);
+        opacity: 0;
+    }
+    60% {
+        transform: scale(1.02);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
 }
 
 .path-mod-flexbook.kidtheme #interactivevideo-container {
@@ -611,9 +620,18 @@
 }
 
 @keyframes mascot-pop-out {
-    0% { transform: scale(1) rotate(0deg); opacity: 1; }
-    30% { transform: scale(1.1) rotate(5deg); opacity: 1; }
-    100% { transform: scale(0) rotate(-20deg); opacity: 0; }
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    30% {
+        transform: scale(1.1) rotate(5deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(0) rotate(-20deg);
+        opacity: 0;
+    }
 }
 
 /* Mascot Styles */
@@ -628,7 +646,7 @@
     will-change: transform;
     cursor: pointer;
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), bottom 0.3s ease;
-    filter: drop-shadow(0 5px 15px rgba(0,0,0,0.1));
+    filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.1));
 }
 
 .path-mod-flexbook.kidtheme.fullscreen #fb-mascot,
@@ -685,45 +703,90 @@
 }
 
 @keyframes mascot-pop-in {
-    0% { transform: scale(0) rotate(-20deg); opacity: 0; }
-    70% { transform: scale(1.2) rotate(10deg); opacity: 1; }
-    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+    0% {
+        transform: scale(0) rotate(-20deg);
+        opacity: 0;
+    }
+    70% {
+        transform: scale(1.2) rotate(10deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
 }
 
 /* Element Animations */
 @keyframes mascot-blink {
-    0%, 90%, 100% { transform: scaleY(1); }
-    95% { transform: scaleY(0.1); }
+    0%,
+    90%,
+    100% {
+        transform: scaleY(1);
+    }
+    95% {
+        transform: scaleY(0.1);
+    }
 }
 
 @keyframes mascot-wing-flap-left {
-    0%, 100% { transform: rotate(0) scaleX(1); }
-    50% { transform: rotate(-40deg) scaleX(0.8); }
+    0%,
+    100% {
+        transform: rotate(0) scaleX(1);
+    }
+    50% {
+        transform: rotate(-40deg) scaleX(0.8);
+    }
 }
 
 @keyframes mascot-wing-flap-right {
-    0%, 100% { transform: rotate(0) scaleX(1); }
-    50% { transform: rotate(40deg) scaleX(0.8); }
+    0%,
+    100% {
+        transform: rotate(0) scaleX(1);
+    }
+    50% {
+        transform: rotate(40deg) scaleX(0.8);
+    }
 }
 
 @keyframes mascot-wing-flap-out-left {
-    0%, 100% { transform: rotate(0) scale(1); }
-    50% { transform: rotate(75deg) scale(1.1); }
+    0%,
+    100% {
+        transform: rotate(0) scale(1);
+    }
+    50% {
+        transform: rotate(75deg) scale(1.1);
+    }
 }
 
 @keyframes mascot-wing-flap-out-right {
-    0%, 100% { transform: rotate(0) scale(1); }
-    50% { transform: rotate(-75deg) scale(1.1); }
+    0%,
+    100% {
+        transform: rotate(0) scale(1);
+    }
+    50% {
+        transform: rotate(-75deg) scale(1.1);
+    }
 }
 
 @keyframes mascot-arm-move {
-    0%, 100% { transform: rotate(0); }
-    50% { transform: rotate(10deg); }
+    0%,
+    100% {
+        transform: rotate(0);
+    }
+    50% {
+        transform: rotate(10deg);
+    }
 }
 
 @keyframes mascot-hover {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-15px); }
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-15px);
+    }
 }
 
 
@@ -846,45 +909,102 @@
 
 /* Mascot Animations */
 @keyframes mascot-bounce {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-10px); }
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
 }
 
 @keyframes mascot-jump {
-    0%, 100% { transform: translateY(0) scale(1); }
-    30% { transform: translateY(5px) scale(1.1, 0.9); }
-    50% { transform: translateY(-40px) scale(0.9, 1.1); }
-    80% { transform: translateY(0) scale(1.05, 0.95); }
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+    30% {
+        transform: translateY(5px) scale(1.1, 0.9);
+    }
+    50% {
+        transform: translateY(-40px) scale(0.9, 1.1);
+    }
+    80% {
+        transform: translateY(0) scale(1.05, 0.95);
+    }
 }
 
 @keyframes mascot-heavy-jump {
-    0%, 100% { transform: translateY(0) scale(1); }
-    20% { transform: translateY(2px) scale(1.05, 0.95); }
-    50% { transform: translateY(-20px) scale(0.95, 1.05); }
-    80% { transform: translateY(0) scale(1.1, 0.9); }
+    0%,
+    100% {
+        transform: translateY(0) scale(1);
+    }
+    20% {
+        transform: translateY(2px) scale(1.05, 0.95);
+    }
+    50% {
+        transform: translateY(-20px) scale(0.95, 1.05);
+    }
+    80% {
+        transform: translateY(0) scale(1.1, 0.9);
+    }
 }
 
 @keyframes mascot-wiggle {
-    0%, 100% { transform: rotate(0); }
-    25% { transform: rotate(-10deg); }
-    75% { transform: rotate(10deg); }
+    0%,
+    100% {
+        transform: rotate(0);
+    }
+    25% {
+        transform: rotate(-10deg);
+    }
+    75% {
+        transform: rotate(10deg);
+    }
 }
 
 @keyframes mascot-sad {
-    0%, 100% { transform: translateX(0); }
-    20%, 60% { transform: translateX(-5px); }
-    40%, 80% { transform: translateX(5px); }
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    20%,
+    60% {
+        transform: translateX(-5px);
+    }
+    40%,
+    80% {
+        transform: translateX(5px);
+    }
 }
 
-.path-mod-flexbook.kidtheme #fb-mascot.anim-jump .mascot-container { animation: mascot-jump 0.6s ease; }
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle.anim-jump .mascot-container { animation: mascot-heavy-jump 0.6s ease-in; }
-.path-mod-flexbook.kidtheme #fb-mascot.anim-happy .mascot-container { animation: mascot-bounce 0.4s ease infinite; }
-.path-mod-flexbook.kidtheme #fb-mascot.anim-celebrate .mascot-container { animation: mascot-jump 0.6s ease 3, mascot-wiggle 0.3s ease infinite; }
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle.anim-celebrate .mascot-container { animation: mascot-heavy-jump 0.6s ease-in 3; }
-.path-mod-flexbook.kidtheme #fb-mascot.anim-sad .mascot-container { animation: mascot-sad 0.5s ease; }
-.path-mod-flexbook.kidtheme #fb-mascot.anim-sad { opacity: 0.8; }
-.path-mod-flexbook.kidtheme #fb-mascot.anim-cheer .mascot-container { animation: mascot-jump 0.8s ease 2; }
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle.anim-cheer .mascot-container { animation: mascot-heavy-jump 0.8s ease-in 2; }
+.path-mod-flexbook.kidtheme #fb-mascot.anim-jump .mascot-container {
+    animation: mascot-jump 0.6s ease;
+}
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle.anim-jump .mascot-container {
+    animation: mascot-heavy-jump 0.6s ease-in;
+}
+.path-mod-flexbook.kidtheme #fb-mascot.anim-happy .mascot-container {
+    animation: mascot-bounce 0.4s ease infinite;
+}
+.path-mod-flexbook.kidtheme #fb-mascot.anim-celebrate .mascot-container {
+    animation: mascot-jump 0.6s ease 3, mascot-wiggle 0.3s ease infinite;
+}
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle.anim-celebrate .mascot-container {
+    animation: mascot-heavy-jump 0.6s ease-in 3;
+}
+.path-mod-flexbook.kidtheme #fb-mascot.anim-sad .mascot-container {
+    animation: mascot-sad 0.5s ease;
+}
+.path-mod-flexbook.kidtheme #fb-mascot.anim-sad {
+    opacity: 0.8;
+}
+.path-mod-flexbook.kidtheme #fb-mascot.anim-cheer .mascot-container {
+    animation: mascot-jump 0.8s ease 2;
+}
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle.anim-cheer .mascot-container {
+    animation: mascot-heavy-jump 0.8s ease-in 2;
+}
 
 /* Character Specifics (Placeholder for SVG/CSS logic) */
 .path-mod-flexbook.kidtheme #fb-mascot .mascot-container {
@@ -965,7 +1085,7 @@
 }
 
 .path-mod-flexbook.kidtheme .tooltip-inner {
-    background-color: #ffffff;
+    background-color: #fff;
     color: #4b4b4b;
     border: 3px solid #e5e5e5;
     border-radius: 0.75rem;
@@ -978,7 +1098,7 @@
 /* Dark mode tooltips */
 .path-mod-flexbook.kidtheme.darkmode .tooltip-inner {
     background-color: #131f24;
-    color: #ffffff;
+    color: #fff;
     border-color: #3c4d54;
     box-shadow: 0 5px 0 #3c4d54;
 }
@@ -1003,7 +1123,7 @@
 
 .path-mod-flexbook.kidtheme .bs-tooltip-top .arrow::after,
 .path-mod-flexbook.kidtheme .bs-tooltip-auto[x-placement^="top"] .arrow::after {
-    border-top-color: #ffffff;
+    border-top-color: #fff;
     border-width: 10px 10px 0;
     bottom: -7px;
     margin-left: -10px;
@@ -1031,7 +1151,7 @@
 
 .path-mod-flexbook.kidtheme .bs-tooltip-bottom .arrow::after,
 .path-mod-flexbook.kidtheme .bs-tooltip-auto[x-placement^="bottom"] .arrow::after {
-    border-bottom-color: #ffffff;
+    border-bottom-color: #fff;
     border-width: 0 10px 10px;
     top: -7px;
     margin-left: -10px;

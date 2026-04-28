@@ -102,7 +102,6 @@ $string['mascot_correct_1'] = 'Correct!';
 $string['mascot_correct_2'] = 'Exactly!';
 $string['mascot_correct_3'] = 'Spot on!';
 $string['mascot_correct_4'] = 'You got it!';
-$string['duo'] = 'Duo';
 $string['mascot_dismiss'] = 'Dismiss character';
 $string['mascot_end_1'] = '🏁 You finished!';
 $string['mascot_end_2'] = '🥳 Hurray!';

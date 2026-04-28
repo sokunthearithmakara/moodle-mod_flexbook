@@ -33,5 +33,10 @@ export default {
     },
     navigateToAnnotation: null,
     nextAnnotation: null,
-    prevAnnotation: null
+    prevAnnotation: null,
+    isMascotActive: false,
+    say: null,
+    sayRandom: null,
+    hideSay: null,
+    animate: null
 };

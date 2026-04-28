@@ -28,8 +28,16 @@
     id="modal-title-{{id}}"
     role="heading"
     aria-level="5">
+    {{#logourl}}
+    <img src="{{logourl}}" class="iv-mr-2 d-none d-md-inline" style="height: 35px; width: auto;" alt="" loading="lazy" onerror="this.remove(); document.getElementById('modal-icon-{{id}}').classList.remove('d-none'); document.getElementById('modal-icon-{{id}}').classList.add('d-md-inline');">
+    <i class="{{icon}} iv-mr-2 d-none fs-25px"
+       id="modal-icon-{{id}}"
+       aria-hidden="true"></i>
+    {{/logourl}}
+    {{^logourl}}
     <i class="{{icon}} iv-mr-2 d-none d-md-inline fs-25px"
        aria-hidden="true"></i>
+    {{/logourl}}
     <span class="text-truncate">{{{title}}}</span>
 </h5>
 {{/title}}

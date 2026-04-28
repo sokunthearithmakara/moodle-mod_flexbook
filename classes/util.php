@@ -844,4 +844,14 @@ class util extends \interactivevideo_util {
         $text = self::encode_text($text);
         return $text;
     }
+
+    /**
+     * Render a hidden div with the Moodle version branch.
+     *
+     * @return string The HTML for the hidden div.
+     */
+    public static function render_moodle_version() {
+        global $CFG;
+        return '<div id="mod_flexbook_moodle_version" class="d-none" data-version="' . $CFG->branch . '"></div>';
+    }
 }

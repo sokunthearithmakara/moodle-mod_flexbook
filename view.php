@@ -233,8 +233,8 @@ if ($moduleinstance->displayoptions['distractionfreemode'] == 1) {
     $moduleinstance->displayoptions['darkmode'] = 0;
 }
 
-if (!empty($moduleinstance->displayoptions['duolingotheme'])) {
-    $PAGE->add_body_class('duolingotheme');
+if (!empty($moduleinstance->displayoptions['kidtheme'])) {
+    $PAGE->add_body_class('kidtheme');
 }
 
 
@@ -386,6 +386,7 @@ $datafortemplate = [
     "courseindex" => $courseindex,
     "hascourseindex" => !empty($courseindex) && $rendernav,
     "new" => $new,
+    "firstname" => $USER->firstname,
 ];
 
 // Get poster image.
@@ -394,8 +395,8 @@ if (!empty($cm->customdata['posterimage'])) {
 }
 
 echo $OUTPUT->render_from_template('mod_flexbook/canvas/player', $datafortemplate);
+echo \mod_flexbook\util::render_moodle_version();
 
-$PAGE->requires->js_init_code('window.M.version = ' . $CFG->branch . ';', true);
 
 $PAGE->requires->js_call_amd('mod_flexbook/view', 'init', [[
     'cmid' => $cm->id, // Course module id from coursemodule table.
@@ -411,6 +412,8 @@ $PAGE->requires->js_call_amd('mod_flexbook/view', 'init', [[
     'isCompleted' => $datafortemplate['completed'] ?? false, // Completed status.
     'iseditor' => has_capability('mod/flexbook:edit', $modulecontext) ? true : false, // Is editor.
     'isGuest' => isguestuser(),
+    'firstname' => $USER->firstname,
+    'new' => $new,
 ]]);
 
 echo '<textarea id="sequence" style="display: none;">' . $moduleinstance->sequence . '</textarea>';

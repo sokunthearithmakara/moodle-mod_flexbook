@@ -34,6 +34,7 @@ import {safeParse} from './utils';
 const isBS5 = $('body').hasClass('bs-5');
 const bsAffix = isBS5 ? '-bs' : '';
 const $body = $('body');
+
 let $wrapper = $('#wrapper');
 let $videowrapper = $('#video-wrapper');
 let $startscreen = $('#start-screen');
@@ -72,6 +73,20 @@ const init = async config => {
         isEditMode: false,
         isPreviewMode: false
     };
+
+    const isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
+    const isSmallScreen = window.innerWidth < 768;
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isMobileApp = typeof window.MoodleApp !== 'undefined' || document.body.classList.contains('path-mod-flexbook-mobile');
+
+    const shouldShowMascot = document.body.classList.contains('kidtheme') && doptions.character && doptions.character !== 'none'
+        && !isEmbed && !isSmallScreen && !isMobile && !isMobileApp;
+
+    if (shouldShowMascot) {
+        const MascotModule = await import('mod_flexbook/character');
+        const Mascot = MascotModule.default || MascotModule;
+        Mascot.init(doptions.character, config.firstname, config.new);
+    }
 
     // Initialize interaction tracking data from saved progress (resumable).
     const interactionData = safeParse(uprogress.details, {});
@@ -164,6 +179,7 @@ const init = async config => {
                 if (data.overallcomplete) {
                     state.config.isCompleted = true;
                 }
+                dispatchEvent('flexbook:reached_end');
                 return data;
             }).catch(e => window.console.error(e));
         } else {
@@ -1137,6 +1153,7 @@ const init = async config => {
             {passive: true}
         );
     })();
+
 
     // Automatically resume if 'aid' is in the URL.
     const url = new URL(window.location);

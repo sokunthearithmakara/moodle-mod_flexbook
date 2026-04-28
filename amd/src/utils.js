@@ -20,6 +20,7 @@
  * @copyright  2026 Sokunthearith Makara <sokunthearithmakara@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
+import $ from 'jquery';
 
 /**
  * Safely parse a JSON string, returning a fallback value if parsing fails.
@@ -39,3 +40,17 @@ export const safeParse = (str, fallback = null) => {
         return fallback;
     }
 };
+
+/**
+ * Get the Moodle version branch.
+ *
+ * @returns {number} The Moodle version branch.
+ */
+export const getMoodleVersion = () => {
+    if (typeof window.M.version === 'undefined' || window.M.version === null) {
+        let version = $('#mod_flexbook_moodle_version').attr('data-version') || 0;
+        window.M.version = parseInt(version);
+    }
+    return window.M.version;
+};
+

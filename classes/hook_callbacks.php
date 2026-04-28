@@ -36,6 +36,6 @@ class hook_callbacks {
             return;
         }
 
-        $PAGE->requires->js_init_code('window.M.version = ' . $CFG->branch . ';', true);
+        echo \mod_flexbook\util::render_moodle_version();
     }
 }

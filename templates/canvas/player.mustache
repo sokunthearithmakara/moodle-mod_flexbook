@@ -32,27 +32,27 @@ Example context (json):
                  role="region"
                  aria-label="{{#str}}videoplayer, mod_interactivevideo{{/str}}">
 
+                {{! Start of toolbar }}
+                <div id="toolbar"
+                     class="bg-transparent pt-5 position-fixed"
+                     role="toolbar"
+                     aria-label="{{#str}}videotoolbar, mod_interactivevideo{{/str}}">
+                </div>
+                {{! End of toolbar }}
+
                 <div id="video-wrapper" {{#displayoptions.aspectratio}} data-ratio="{{displayoptions.aspectratio}}" {{/displayoptions.aspectratio}}
                      class="d-none align-items-center justify-content-center {{^darkmode}}border{{/darkmode}} fb">
 
-                    {{! Start of toolbar }}
-                    <div id="toolbar"
-                         class="bg-transparent pt-5 position-fixed"
-                         role="toolbar"
-                         aria-label="{{#str}}videotoolbar, mod_interactivevideo{{/str}}">
-                    </div>
-                    {{! End of toolbar }}
-
                     {{> mod_interactivevideo/backgroundloading}}
-
-                    {{^displayoptions.disablechapternavigation}}
-                        {{> mod_flexbook/canvas/chapterpanel}}
-                    {{/displayoptions.disablechapternavigation}}
 
                     {{> mod_flexbook/canvas/startscreen}}
                     {{> mod_flexbook/canvas/endscreen}}
                     {{> mod_flexbook/canvas/annotationcanvas}}
                 </div>
+
+                {{^displayoptions.disablechapternavigation}}
+                    {{> mod_flexbook/canvas/chapterpanel}}
+                {{/displayoptions.disablechapternavigation}}
 
                 {{> mod_flexbook/canvas/controls}}
             </div>

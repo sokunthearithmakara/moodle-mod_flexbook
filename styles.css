@@ -19,6 +19,11 @@
     max-width: unset;
 }
 
+.path-mod-flexbook.default-mode #controller.fb {
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
 .path-mod-flexbook #controller.fb .annotation-item {
     height: 8px;
     width: 8px;
@@ -244,6 +249,10 @@
     }
 }
 
+.path-mod-flexbook:has(#interactivevideo-container.chapter-open) .navbar.fixed-top {
+    z-index: 0 !important;
+}
+
 .path-mod-interactivevideo #chapter-container-left.fb {
     height: 100%;
 }
@@ -334,8 +343,8 @@
     background: #000;
 }
 
-/* Duolingo Theme Styles */
-.path-mod-flexbook.duolingotheme .btn {
+/* Kid Theme Styles */
+.path-mod-flexbook.kidtheme .btn {
     border-radius: 12px !important;
     border-bottom: 4px solid rgba(0, 0, 0, 0.2) !important;
     transition: transform 0.1s, border-bottom-width 0.1s !important;
@@ -347,58 +356,62 @@
     min-width: 36px;
 }
 
-.path-mod-flexbook.duolingotheme .btn-group {
+.path-mod-flexbook.kidtheme .btn.btn-lg {
+    height: 48px;
+}
+
+.path-mod-flexbook.kidtheme .btn-group {
     display: inline-flex;
     gap: 8px;
 }
 
-.path-mod-flexbook.duolingotheme .btn-group > .btn {
+.path-mod-flexbook.kidtheme .btn-group > .btn {
     border-radius: 12px !important;
     flex: none !important;
 }
 
-.path-mod-flexbook.duolingotheme .btn:not(#play):active {
+.path-mod-flexbook.kidtheme .btn:not(#play):active {
     transform: translateY(2px) !important;
     border-bottom-width: 2px !important;
 }
 
-.path-mod-flexbook.duolingotheme .btn-success {
+.path-mod-flexbook.kidtheme .btn-success {
     background-color: #58cc02 !important;
     border-bottom-color: #46a302 !important;
     color: #fff !important;
 }
 
-.path-mod-flexbook.duolingotheme .btn-primary {
+.path-mod-flexbook.kidtheme .btn-primary {
     background-color: #1cb0f6 !important;
     border-bottom-color: #1899d6 !important;
     color: #fff !important;
 }
 
-.path-mod-flexbook.duolingotheme .btn-dark,
-.path-mod-flexbook.duolingotheme #controller.fb .btn-dark {
+.path-mod-flexbook.kidtheme .btn-dark:not(#chapterbutton),
+.path-mod-flexbook.kidtheme #controller.fb .btn-dark:not(#chapterbutton) {
     background-color: #f7f7f7 !important;
     border-bottom-color: #e5e5e5 !important;
     color: #4b4b4b !important;
 }
 
-.path-mod-flexbook.duolingotheme .btn-dark:hover {
+.path-mod-flexbook.kidtheme .btn-dark:hover:not(#chapterbutton) {
     background-color: #e5e5e5 !important;
     border-bottom-color: #d1d1d1 !important;
 }
 
 /* Dark Mode Overrides */
-.path-mod-flexbook.duolingotheme.darkmode .btn-dark,
-.path-mod-flexbook.duolingotheme.darkmode #controller.fb .btn-dark {
+.path-mod-flexbook.kidtheme.darkmode .btn-dark:not(#chapterbutton),
+.path-mod-flexbook.kidtheme.darkmode #controller.fb .btn-dark:not(#chapterbutton) {
     background-color: #35454c !important;
     border-bottom-color: #202f36 !important;
     color: #fff !important;
 }
 
-.path-mod-flexbook.duolingotheme.darkmode .btn-dark:hover {
+.path-mod-flexbook.kidtheme.darkmode .btn-dark:hover:not(#chapterbutton) {
     background-color: #4a5c66 !important;
 }
 
-.path-mod-flexbook.duolingotheme .toast.fb {
+.path-mod-flexbook.kidtheme .toast.fb {
     border: 2px solid #e5e5e5 !important;
     border-bottom: 4px solid #e5e5e5 !important;
     border-radius: 16px !important;
@@ -407,56 +420,56 @@
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
-.path-mod-flexbook.duolingotheme.darkmode .toast.fb:not(.toast-success):not(.toast-danger):not(.toast-warning):not(.toast-info) {
+.path-mod-flexbook.kidtheme.darkmode .toast.fb:not(.toast-success):not(.toast-danger):not(.toast-warning):not(.toast-info) {
     background-color: #1b292f !important;
     border-color: #35454c !important;
     border-bottom-color: #35454c !important;
     color: #fff !important;
 }
 
-.path-mod-flexbook.duolingotheme .toast.fb.toast-success {
+.path-mod-flexbook.kidtheme .toast.fb.toast-success {
     background-color: #58cc02 !important;
     border-color: #46a302 !important;
     border-bottom-color: #46a302 !important;
     color: #fff !important;
 }
 
-.path-mod-flexbook.duolingotheme .toast.fb.toast-danger {
+.path-mod-flexbook.kidtheme .toast.fb.toast-danger {
     background-color: #ff4b4b !important;
     border-color: #d33131 !important;
     border-bottom-color: #d33131 !important;
     color: #fff !important;
 }
 
-.path-mod-flexbook.duolingotheme .toast.fb.toast-warning {
+.path-mod-flexbook.kidtheme .toast.fb.toast-warning {
     background-color: #ffb020 !important;
     border-color: #e69a00 !important;
     border-bottom-color: #e69a00 !important;
     color: #fff !important;
 }
 
-.path-mod-flexbook.duolingotheme .toast.fb.toast-info {
+.path-mod-flexbook.kidtheme .toast.fb.toast-info {
     background-color: #1cb0f6 !important;
     border-color: #1899d6 !important;
     border-bottom-color: #1899d6 !important;
     color: #fff !important;
 }
 
-.path-mod-flexbook.duolingotheme .toast.fb.toast-success .toast-emoji,
-.path-mod-flexbook.duolingotheme .toast.fb.toast-danger .toast-emoji,
-.path-mod-flexbook.duolingotheme .toast.fb.toast-warning .toast-emoji,
-.path-mod-flexbook.duolingotheme .toast.fb.toast-info .toast-emoji {
+.path-mod-flexbook.kidtheme .toast.fb.toast-success .toast-emoji,
+.path-mod-flexbook.kidtheme .toast.fb.toast-danger .toast-emoji,
+.path-mod-flexbook.kidtheme .toast.fb.toast-warning .toast-emoji,
+.path-mod-flexbook.kidtheme .toast.fb.toast-info .toast-emoji {
     background-color: rgba(255, 255, 255, 0.25) !important;
     border-color: rgba(255, 255, 255, 0.4) !important;
 }
 
-.path-mod-flexbook.duolingotheme .toast.fb .toast-emoji {
+.path-mod-flexbook.kidtheme .toast.fb .toast-emoji {
     background: #f7f7f7 !important;
     border: 2px solid #e5e5e5;
 }
 
 /* Animations */
-@keyframes duolingoSlideIn {
+@keyframes kidSlideIn {
     from {
         transform: translateY(-100%);
         opacity: 0;
@@ -467,7 +480,7 @@
     }
 }
 
-@keyframes duolingoSlideOut {
+@keyframes kidSlideOut {
     from {
         transform: translateY(0);
         opacity: 1;
@@ -478,41 +491,561 @@
     }
 }
 
-.path-mod-flexbook.duolingotheme .toast.fb {
+.path-mod-flexbook.kidtheme .toast.fb {
     display: none;
 }
 
-.path-mod-flexbook.duolingotheme .toast.fb.showing,
-.path-mod-flexbook.duolingotheme .toast.fb.show {
+.path-mod-flexbook.kidtheme .toast.fb.showing,
+.path-mod-flexbook.kidtheme .toast.fb.show {
     display: block !important;
-    animation: duolingoSlideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
+    animation: kidSlideIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards !important;
 }
 
-.path-mod-flexbook.duolingotheme .toast.fb.hiding {
+.path-mod-flexbook.kidtheme .toast.fb.hiding {
     display: block !important;
-    animation: duolingoSlideOut 0.3s ease-in forwards !important;
+    animation: kidSlideOut 0.3s ease-in forwards !important;
 }
 
-.path-mod-flexbook.duolingotheme #controller.fb {
+.path-mod-flexbook.kidtheme .toast-wrapper {
+    z-index: 4000 !important;
+}
+
+/* When not in distraction-free mode, the navbar is visible.
+   We need to push the toast down so it doesn't get hidden under the navbar.
+   We only do this when NOT in fullscreen, as the navbar is hidden in fullscreen. */
+.path-mod-flexbook.kidtheme.default-mode #wrapper:not(.fullscreen) .toast-wrapper {
+    top: 70px !important;
+}
+
+.path-mod-flexbook.kidtheme #controller.fb {
     border-top: 0 !important;
     background-color: transparent !important;
 }
 
-.path-mod-flexbook.duolingotheme.darkmode #controller.fb {
+.path-mod-flexbook.kidtheme.darkmode #controller.fb {
     background-color: transparent !important;
     border-top: 0 !important;
 }
 
-.path-mod-flexbook.duolingotheme .annotation-item {
+.path-mod-flexbook.kidtheme .annotation-item {
     background: #e5e5e5 !important;
 }
 
-.path-mod-flexbook.duolingotheme .annotation-item.active {
+.path-mod-flexbook.kidtheme .annotation-item.active {
     background: #1cb0f6 !important;
 }
 
-.path-mod-flexbook.duolingotheme .annotation-item.completed {
+.path-mod-flexbook.kidtheme .annotation-item.completed {
     background: #58cc02 !important;
+}
+
+@keyframes kid-pop-in {
+    0% { transform: scale(0.95); opacity: 0; }
+    60% { transform: scale(1.02); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.path-mod-flexbook.kidtheme #interactivevideo-container {
+    overflow: visible;
+    /* We use clip-path to allow vertical overflow (tooltips) while clipping horizontal overflow (mascot) */
+    clip-path: inset(-500px 0 -500px -500px);
+    padding: 10px;
+}
+
+.path-mod-flexbook.kidtheme #wrapper {
+    background-image: radial-gradient(#e5e5e5 2px, transparent 2px);
+    background-size: 24px 24px;
+}
+
+.path-mod-flexbook.kidtheme.darkmode #wrapper {
+    background-image: radial-gradient(#4e5456 2px, transparent 2px);
+}
+
+.path-mod-flexbook.kidtheme #video-wrapper {
+    border: 4px solid #e5e5e5;
+    border-radius: 2rem !important;
+    box-shadow: 0 8px 0 #e5e5e5;
+    overflow: hidden;
+    background: #fff;
+    transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    animation: kid-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.path-mod-flexbook.kidtheme.darkmode #video-wrapper {
+    border-color: #3c4d54;
+    box-shadow: 0 8px 0 #3c4d54;
+    background: #000;
+}
+
+.path-mod-flexbook.kidtheme #video-wrapper:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 0 #e5e5e5;
+}
+
+.path-mod-flexbook.kidtheme.darkmode #video-wrapper:hover {
+    box-shadow: 0 12px 0 #3c4d54;
+}
+
+.path-mod-flexbook.kidtheme #wrapper.fullscreen #video-wrapper {
+    border: none;
+    box-shadow: none;
+    border-radius: 1.5rem !important;
+}
+
+/* Primary buttons overrides */
+.path-mod-flexbook.kidtheme #chapterbutton,
+.path-mod-flexbook.kidtheme .navbar.fixed-top a[title*="course"],
+.path-mod-flexbook.kidtheme .navbar.fixed-top a[data-original-title*="course"],
+.path-mod-flexbook.kidtheme .navbar.fixed-top a[data-bs-original-title*="course"] {
+    background-color: #1cb0f6 !important;
+    border-bottom-color: #1899d6 !important;
+    color: #fff !important;
+}
+
+.path-mod-flexbook.kidtheme #chapterbutton:hover,
+.path-mod-flexbook.kidtheme .navbar.fixed-top a[title*="course"]:hover,
+.path-mod-flexbook.kidtheme .navbar.fixed-top a[data-original-title*="course"]:hover,
+.path-mod-flexbook.kidtheme .navbar.fixed-top a[data-bs-original-title*="course"]:hover {
+    background-color: #1899d6 !important;
+    border-bottom-color: #1482b4 !important;
+}
+
+@keyframes mascot-pop-out {
+    0% { transform: scale(1) rotate(0deg); opacity: 1; }
+    30% { transform: scale(1.1) rotate(5deg); opacity: 1; }
+    100% { transform: scale(0) rotate(-20deg); opacity: 0; }
+}
+
+/* Mascot Styles */
+.path-mod-flexbook.kidtheme #fb-mascot {
+    position: absolute;
+    bottom: 30px;
+    right: 30px;
+    width: 120px;
+    height: 150px;
+    z-index: 1031;
+    pointer-events: auto;
+    will-change: transform;
+    cursor: pointer;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), bottom 0.3s ease;
+    filter: drop-shadow(0 5px 15px rgba(0,0,0,0.1));
+}
+
+.path-mod-flexbook.kidtheme.fullscreen #fb-mascot,
+.path-mod-flexbook.kidtheme .fullscreen #fb-mascot,
+.path-mod-flexbook.kidtheme #wrapper:fullscreen #fb-mascot,
+.path-mod-flexbook.kidtheme #interactivevideo-container:fullscreen #fb-mascot {
+    bottom: 120px; /* Stay clear of control bar in all fullscreen modes */
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot:hover .mascot-dismiss {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot .mascot-dismiss {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 24px;
+    height: 24px;
+    background: #ff4b4b;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 16px;
+    line-height: 24px;
+    text-align: center;
+    cursor: pointer;
+    opacity: 0;
+    transform: scale(0);
+    transition: all 0.2s ease;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot .mascot-dismiss:hover {
+    background: #ff2b2b;
+    transform: scale(1.2);
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot:hover {
+    transform: scale(1.1);
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.pop-in {
+    animation: mascot-pop-in 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.pop-out {
+    animation: mascot-pop-out 0.4s cubic-bezier(0.36, 0, 0.66, -0.56) forwards;
+}
+
+@keyframes mascot-pop-in {
+    0% { transform: scale(0) rotate(-20deg); opacity: 0; }
+    70% { transform: scale(1.2) rotate(10deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+/* Element Animations */
+@keyframes mascot-blink {
+    0%, 90%, 100% { transform: scaleY(1); }
+    95% { transform: scaleY(0.1); }
+}
+
+@keyframes mascot-wing-flap-left {
+    0%, 100% { transform: rotate(0) scaleX(1); }
+    50% { transform: rotate(-40deg) scaleX(0.8); }
+}
+
+@keyframes mascot-wing-flap-right {
+    0%, 100% { transform: rotate(0) scaleX(1); }
+    50% { transform: rotate(40deg) scaleX(0.8); }
+}
+
+@keyframes mascot-wing-flap-out-left {
+    0%, 100% { transform: rotate(0) scale(1); }
+    50% { transform: rotate(75deg) scale(1.1); }
+}
+
+@keyframes mascot-wing-flap-out-right {
+    0%, 100% { transform: rotate(0) scale(1); }
+    50% { transform: rotate(-75deg) scale(1.1); }
+}
+
+@keyframes mascot-arm-move {
+    0%, 100% { transform: rotate(0); }
+    50% { transform: rotate(10deg); }
+}
+
+@keyframes mascot-hover {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-15px); }
+}
+
+
+/* Applying element animations */
+.path-mod-flexbook.kidtheme #fb-mascot svg * {
+    transform-box: fill-box;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot .mascot-ground {
+    position: absolute;
+    bottom: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 80%;
+    height: 20px;
+    background: rgba(169, 167, 167, 0.08);
+    border-radius: 50%;
+    z-index: 0;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot .mascot-eyes {
+    transform-origin: center;
+    animation: mascot-blink 4s infinite;
+}
+
+/* Character Specific Animations */
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo .mascot-container {
+    animation: mascot-hover 3s ease-in-out infinite;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle .mascot-container {
+    animation: mascot-hover 3s ease-in-out infinite;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo .mascot-wing-left,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot .mascot-wing-left {
+    transform-origin: top right;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo .mascot-wing-right,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot .mascot-wing-right {
+    transform-origin: top left;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot .mascot-crest {
+    transform-origin: bottom center;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot .mascot-wing-left {
+    transform-origin: 75% 0%;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot .mascot-wing-right {
+    transform-origin: 25% 0%;
+}
+
+/* Flap only during jump/happy animations */
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-jump .mascot-wing-left,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-happy .mascot-wing-left,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-celebrate .mascot-wing-left {
+    animation: mascot-wing-flap-out-left 0.3s ease-in-out infinite;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-jump .mascot-wing-left,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-happy .mascot-wing-left,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-celebrate .mascot-wing-left {
+    animation: mascot-wing-flap-out-left 0.3s ease-in-out infinite;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-jump .mascot-wing-right,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-happy .mascot-wing-right,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-celebrate .mascot-wing-right {
+    animation: mascot-wing-flap-out-right 0.3s ease-in-out infinite;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-jump .mascot-wing-right,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-happy .mascot-wing-right,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-celebrate .mascot-wing-right {
+    animation: mascot-wing-flap-out-right 0.3s ease-in-out infinite;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-happy .mascot-crest,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-celebrate .mascot-crest {
+    animation: mascot-wiggle 0.5s ease-in-out infinite;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-monkey.anim-happy .mascot-tail,
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-monkey.anim-celebrate .mascot-tail {
+    animation: mascot-wiggle 0.4s ease-in-out infinite;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-panda .mascot-arm-left {
+    transform-origin: center top;
+    animation: mascot-arm-move 2s ease-in-out infinite;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-panda .mascot-arm-right {
+    transform-origin: center top;
+    animation: mascot-arm-move 2s ease-in-out infinite reverse;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-monkey .mascot-arm-left {
+    transform-origin: top right;
+    animation: mascot-arm-move 1.5s ease-in-out infinite;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-monkey .mascot-arm-right {
+    transform-origin: top left;
+    animation: mascot-arm-move 1.5s ease-in-out infinite reverse;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-monkey .mascot-tail {
+    transform-origin: 0% 100%;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle .mascot-arm {
+    transform-origin: center top;
+    animation: mascot-arm-move 1.5s ease-in-out infinite;
+}
+
+/* Mascot Animations */
+@keyframes mascot-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes mascot-jump {
+    0%, 100% { transform: translateY(0) scale(1); }
+    30% { transform: translateY(5px) scale(1.1, 0.9); }
+    50% { transform: translateY(-40px) scale(0.9, 1.1); }
+    80% { transform: translateY(0) scale(1.05, 0.95); }
+}
+
+@keyframes mascot-heavy-jump {
+    0%, 100% { transform: translateY(0) scale(1); }
+    20% { transform: translateY(2px) scale(1.05, 0.95); }
+    50% { transform: translateY(-20px) scale(0.95, 1.05); }
+    80% { transform: translateY(0) scale(1.1, 0.9); }
+}
+
+@keyframes mascot-wiggle {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-10deg); }
+    75% { transform: rotate(10deg); }
+}
+
+@keyframes mascot-sad {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot.anim-jump .mascot-container { animation: mascot-jump 0.6s ease; }
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle.anim-jump .mascot-container { animation: mascot-heavy-jump 0.6s ease-in; }
+.path-mod-flexbook.kidtheme #fb-mascot.anim-happy .mascot-container { animation: mascot-bounce 0.4s ease infinite; }
+.path-mod-flexbook.kidtheme #fb-mascot.anim-celebrate .mascot-container { animation: mascot-jump 0.6s ease 3, mascot-wiggle 0.3s ease infinite; }
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle.anim-celebrate .mascot-container { animation: mascot-heavy-jump 0.6s ease-in 3; }
+.path-mod-flexbook.kidtheme #fb-mascot.anim-sad .mascot-container { animation: mascot-sad 0.5s ease; }
+.path-mod-flexbook.kidtheme #fb-mascot.anim-sad { opacity: 0.8; }
+.path-mod-flexbook.kidtheme #fb-mascot.anim-cheer .mascot-container { animation: mascot-jump 0.8s ease 2; }
+.path-mod-flexbook.kidtheme #fb-mascot.mascot-walle.anim-cheer .mascot-container { animation: mascot-heavy-jump 0.8s ease-in 2; }
+
+/* Character Specifics (Placeholder for SVG/CSS logic) */
+.path-mod-flexbook.kidtheme #fb-mascot .mascot-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Speech Bubble */
+.path-mod-flexbook.kidtheme #fb-mascot-bubble {
+    position: absolute;
+    bottom: 110%;
+    right: 0;
+    background: white;
+    border: 3px solid #e5e5e5;
+    border-radius: 0.75rem;
+    padding: 10px 20px;
+    min-width: 150px;
+    font-weight: bold;
+    color: #4b4b4b;
+    box-shadow: 0 5px 0 #e5e5e5;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.3s ease;
+    pointer-events: none;
+    z-index: 1032;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot-bubble::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 30px;
+    border: 10px solid transparent;
+    border-top-color: white;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot-bubble::before {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 27px;
+    border: 13px solid transparent;
+    border-top-color: #e5e5e5;
+    margin-top: 3px;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot-bubble.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.path-mod-flexbook.darkmode #fb-mascot-bubble {
+    background: #131f24;
+    border-color: #3c4d54;
+    color: #fff;
+    box-shadow: 0 5px 0 #3c4d54;
+}
+
+.path-mod-flexbook.darkmode #fb-mascot-bubble::after {
+    border-top-color: #131f24;
+}
+
+.path-mod-flexbook.darkmode #fb-mascot-bubble::before {
+    border-top-color: #3c4d54;
+}
+
+/* Custom Duolingo Tooltips (Matches Mascot Bubble) */
+.path-mod-flexbook.kidtheme .tooltip {
+    opacity: 1 !important;
+    z-index: 1070;
+}
+
+.path-mod-flexbook.kidtheme .tooltip-inner {
+    background-color: #ffffff;
+    color: #4b4b4b;
+    border: 3px solid #e5e5e5;
+    border-radius: 0.75rem;
+    padding: 10px 20px;
+    font-weight: 700;
+    box-shadow: 0 5px 0 #e5e5e5;
+    max-width: 300px;
+}
+
+/* Dark mode tooltips */
+.path-mod-flexbook.kidtheme.darkmode .tooltip-inner {
+    background-color: #131f24;
+    color: #ffffff;
+    border-color: #3c4d54;
+    box-shadow: 0 5px 0 #3c4d54;
+}
+
+/* Tooltip Arrows (Double border effect) */
+.path-mod-flexbook.kidtheme .tooltip .arrow::before,
+.path-mod-flexbook.kidtheme .tooltip .arrow::after {
+    content: "";
+    position: absolute;
+    border-color: transparent;
+    border-style: solid;
+}
+
+/* Top Placement */
+.path-mod-flexbook.kidtheme .bs-tooltip-top .arrow::before,
+.path-mod-flexbook.kidtheme .bs-tooltip-auto[x-placement^="top"] .arrow::before {
+    border-top-color: #e5e5e5;
+    border-width: 13px 13px 0;
+    bottom: -13px;
+    margin-left: -13px;
+}
+
+.path-mod-flexbook.kidtheme .bs-tooltip-top .arrow::after,
+.path-mod-flexbook.kidtheme .bs-tooltip-auto[x-placement^="top"] .arrow::after {
+    border-top-color: #ffffff;
+    border-width: 10px 10px 0;
+    bottom: -7px;
+    margin-left: -10px;
+}
+
+/* Dark Mode Top */
+.path-mod-flexbook.kidtheme.darkmode .bs-tooltip-top .arrow::before,
+.path-mod-flexbook.kidtheme.darkmode .bs-tooltip-auto[x-placement^="top"] .arrow::before {
+    border-top-color: #3c4d54;
+}
+
+.path-mod-flexbook.kidtheme.darkmode .bs-tooltip-top .arrow::after,
+.path-mod-flexbook.kidtheme.darkmode .bs-tooltip-auto[x-placement^="top"] .arrow::after {
+    border-top-color: #131f24;
+}
+
+/* Bottom Placement */
+.path-mod-flexbook.kidtheme .bs-tooltip-bottom .arrow::before,
+.path-mod-flexbook .bs-tooltip-auto[x-placement^="bottom"] .arrow::before {
+    border-bottom-color: #e5e5e5;
+    border-width: 0 13px 13px;
+    top: -13px;
+    margin-left: -13px;
+}
+
+.path-mod-flexbook.kidtheme .bs-tooltip-bottom .arrow::after,
+.path-mod-flexbook.kidtheme .bs-tooltip-auto[x-placement^="bottom"] .arrow::after {
+    border-bottom-color: #ffffff;
+    border-width: 0 10px 10px;
+    top: -7px;
+    margin-left: -10px;
+}
+
+/* Dark Mode Bottom */
+.path-mod-flexbook.kidtheme.darkmode .bs-tooltip-bottom .arrow::before,
+.path-mod-flexbook.kidtheme.darkmode .bs-tooltip-auto[x-placement^="bottom"] .arrow::before {
+    border-bottom-color: #3c4d54;
+}
+
+.path-mod-flexbook.kidtheme.darkmode .bs-tooltip-bottom .arrow::after,
+.path-mod-flexbook.kidtheme.darkmode .bs-tooltip-auto[x-placement^="bottom"] .arrow::after {
+    border-bottom-color: #131f24;
 }
 
 #page-mod-flexbook-report th.rotate {

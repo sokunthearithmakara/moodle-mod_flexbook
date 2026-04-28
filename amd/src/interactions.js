@@ -29,7 +29,7 @@ import {dispatchEvent} from 'core/event_dispatcher';
 import ModalEvents from 'core/modal_events';
 import 'mod_interactivevideo/libraries/jquery-ui';
 import Ajax from 'core/ajax';
-import {safeParse} from './utils';
+import {safeParse, getMoodleVersion} from './utils';
 import state from './state';
 
 const addNotification = (msg, type = "info") => {
@@ -245,7 +245,7 @@ const init = async(
     renderAnnotationItems(annotations);
 
     let ModalFactory;
-    if (window.M.version >= 403) {
+    if (getMoodleVersion() >= 403) {
         ModalFactory = await import('core/modal');
     } else {
         ModalFactory = await import('core/modal_factory');
@@ -262,7 +262,6 @@ const init = async(
         contentTypeModal = await ModalFactory.create({
             title: '',
             body: '',
-            backdrop: 'static',
             removeOnHide: false,
         });
         let root = contentTypeModal.getRoot();
@@ -270,6 +269,14 @@ const init = async(
         root.attr('id', 'contentmodal');
         root.find('.modal-dialog .modal-content').html($body);
         contentTypeModal.show();
+
+        root.on(ModalEvents.outsideClick, function(e) {
+            e.preventDefault();
+            root.addClass('jelly-anim');
+            setTimeout(() => {
+                root.removeClass('jelly-anim');
+            }, 500);
+        });
 
         root.on(ModalEvents.hidden, function() {
             $('#addcontentdropdown .dropdown-item').removeClass('active');
@@ -279,12 +286,18 @@ const init = async(
             // Apply jelly animation after DOM is ready
             setTimeout(() => {
                 root.addClass('jelly-anim');
+                setTimeout(() => {
+                    root.removeClass('jelly-anim');
+                }, 500);
             }, 10);
 
             // Make the modal draggable.
             root.find('.modal-dialog').draggable({
                 handle: ".modal-header"
             });
+
+            // Focus on search box.
+            root.find('#contentsearch').focus();
         });
 
         root.on('click', '.modal-header [type="button"]', function() {
@@ -294,6 +307,26 @@ const init = async(
         root.on('click', '.dropdown-item', function() {
             root.removeClass('jelly-anim');
             contentTypeModal.hide();
+        });
+
+        // Implement content type filter.
+        root.on('keyup', '#contentsearch', function() {
+            let search = $(this).val().toLowerCase();
+
+            root.find('#addcontentdropdown .dropdown-item').removeClass('d-none').addClass('d-flex');
+
+            if (search == '') {
+                return;
+            }
+
+            root.find('#addcontentdropdown .dropdown-item').each(function() {
+                let text = $(this).find('.contenttype-title').text().toLowerCase();
+                if (text.includes(search)) {
+                    $(this).addClass('d-flex').removeClass('d-none');
+                } else {
+                    $(this).addClass('d-none').removeClass('d-flex');
+                }
+            });
         });
     };
 
@@ -954,6 +987,24 @@ const init = async(
                     }
                 });
                 modal.show();
+                let root = modal.getRoot();
+                root.on(ModalEvents.outsideClick, function(e) {
+                    e.preventDefault();
+                    root.addClass('jelly-anim');
+                    setTimeout(() => {
+                        root.removeClass('jelly-anim');
+                    }, 500);
+                });
+
+                root.on(ModalEvents.shown, function() {
+                    setTimeout(() => {
+                        root.addClass('jelly-anim');
+                        setTimeout(() => {
+                            root.removeClass('jelly-anim');
+                        }, 500);
+                    }, 10);
+                });
+
                 modal.getRoot().on(ModalEvents.hidden, () => resolve(null));
             })();
         });

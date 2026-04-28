@@ -36,6 +36,7 @@ import 'mod_interactivevideo/libraries/select2';
 import ModalEvents from 'core/modal_events';
 import Ajax from 'core/ajax';
 import state from 'mod_flexbook/state';
+import {getMoodleVersion} from 'mod_flexbook/utils';
 
 const init = async(config) => {
     const {groupid, itemids, cmid, courseid, access} = config;
@@ -46,7 +47,7 @@ const init = async(config) => {
 
     state.config.cmid = cmid;
 
-    if (window.M.version < 403) {
+    if (getMoodleVersion() < 403) {
         ModalFactory = await import('core/modal_factory');
     } else {
         ModalFactory = await import('core/modal');
@@ -1125,7 +1126,6 @@ const init = async(config) => {
             </div>`);
 
         root.find('#message').on('click', '#close-' + theAnnotation.id, function() {
-            root.attr('data-region', 'modal-container');
             root.fadeOut(300, function() {
                 modal.hide();
             });
@@ -1136,18 +1136,21 @@ const init = async(config) => {
             $('#annotation-modal').remove();
         });
 
-        // If click outside the modal, add jelly animation.
-        root.off('click').on('click', function(e) {
-            if ($(e.target).closest('.modal-content').length === 0) {
-                root.addClass('jelly-anim');
-            }
+        root.on(ModalEvents.outsideClick, function(e) {
+            e.preventDefault();
+            root.addClass('jelly-anim');
+            setTimeout(() => {
+                root.removeClass('jelly-anim');
+            }, 500);
         });
 
         // When modal is shown, resolve the promise.
         root.off(ModalEvents.shown).on(ModalEvents.shown, function() {
-            root.attr('data-region', 'popup'); // Must set to avoid dismissing the modal when clicking outside.
             setTimeout(() => {
                 root.addClass('jelly-anim');
+                setTimeout(() => {
+                    root.removeClass('jelly-anim');
+                }, 500);
             }, 10);
 
             $('#annotation-modal .modal-body').fadeIn(300);
@@ -1167,10 +1170,6 @@ const init = async(config) => {
             }
             $(this).find('.close-modal').focus();
             root.find('.modal-body').removeClass('loader');
-        });
-
-        root.on('animationend', function() {
-            root.removeClass('jelly-anim');
         });
 
         modal.show();

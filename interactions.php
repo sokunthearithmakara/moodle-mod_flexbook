@@ -81,7 +81,6 @@ $PAGE->set_context($modulecontext);
 $PAGE->set_pagelayout('embedded');
 $PAGE->add_body_class('path-mod-interactivevideo page-interactions distraction-free '
     . $moduleinstance->type . ($CFG->branch >= 500 ? ' bs-5' : ''));
-$PAGE->requires->js_init_code('window.M.version = ' . $CFG->branch . ';', true);
 
 // Sort the content types by title.
 usort($contentoptions, function ($a, $b) {
@@ -173,6 +172,7 @@ $datafortemplate = [
 ];
 
 echo $OUTPUT->render_from_template('mod_flexbook/editor/editor', $datafortemplate);
+echo \mod_flexbook\util::render_moodle_version();
 
 $appearance = $moduleinstance->displayoptions['beforecompletion'];
 $behavior = $moduleinstance->displayoptions['beforecompletionbehavior'];

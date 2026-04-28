@@ -262,8 +262,8 @@ $reporttabledata = [
 ];
 
 echo $OUTPUT->render_from_template('mod_interactivevideo/reporttable', $reporttabledata);
+echo \mod_flexbook\util::render_moodle_version();
 
-$PAGE->requires->js_init_code('window.M.version = ' . $CFG->branch . ';', true);
 
 $PAGE->requires->js_call_amd('mod_flexbook/report', "init", [[
     'cmid' => $cm->id,

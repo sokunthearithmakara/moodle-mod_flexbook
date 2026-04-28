@@ -103,7 +103,8 @@ function flexbook_display_options($moduleinstance) {
         'showdescriptiononheader' => in_array('showdescriptiononheader', $defaultappearance) ? 1 : 0,
         'courseindex' => in_array('courseindex', $defaultappearance) ? 1 : 0,
         'aspectratio' => get_config('mod_flexbook', 'defaultaspectratio') ?? '',
-        'duolingotheme' => in_array('duolingotheme', $defaultappearance) ? 1 : 0,
+        'kidtheme' => in_array('kidtheme', $defaultappearance) ? 1 : 0,
+        'character' => 'none',
     ];
 
     foreach ($fields as $field => $default) {
@@ -584,7 +585,7 @@ if ($CFG->branch <= 403) {
         if (strpos($PAGE->bodyclasses, 'path-course-view') === false) {
             return;
         }
-        $PAGE->requires->js_init_code('window.M.version = ' . $CFG->branch . ';', true);
+        echo \mod_flexbook\util::render_moodle_version();
     }
 }
 
@@ -999,10 +1000,10 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
         );
         $mform->hideIf('darkmode', 'distractionfreemode', 'eq', 0);
 
-        // Duolingo theme.
+        // Kid theme.
         $group[] = $mform->createElement(
             'advcheckbox',
-            'duolingotheme',
+            'kidtheme',
             '',
             get_string('kidtheme', 'mod_flexbook'),
             ['group' => 1],
@@ -1019,7 +1020,21 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
         );
         $mform->hideIf('courseindex', 'distractionfreemode', 'eq', 0);
 
-        $mform->addGroup($group, 'beforecompletion', '', '', false);
+        $mform->addGroup($group, 'appearancegroup', '', '', false);
+
+        $characters = [
+            'none' => get_string('none'),
+            'duo' => get_string('duo', 'mod_flexbook'),
+            'walle' => get_string('walle', 'mod_flexbook'),
+            'panda' => get_string('panda', 'mod_flexbook'),
+            'parrot' => get_string('parrot', 'mod_flexbook'),
+            'monkey' => get_string('monkey', 'mod_flexbook'),
+            'random' => get_string('random', 'mod_flexbook'),
+        ];
+        $mform->addElement('select', 'character', get_string('character', 'mod_flexbook'), $characters);
+        $mform->setType('character', PARAM_ALPHA);
+        $mform->setDefault('character', 'none');
+        $mform->hideIf('character', 'kidtheme', 'notchecked');
 
         // 1.4.5 options.
         // Controls before completion.
@@ -1185,7 +1200,7 @@ function flexbook_default_appearance() {
         'xpcounter',
         'interactioncounter',
         'interactionnavigation',
-        'duolingotheme',
+        'kidtheme',
     ];
 
     return [
@@ -1195,7 +1210,7 @@ function flexbook_default_appearance() {
         'share' => in_array('share', $defaultappearance) ? 1 : 0,
         'fullscreen' => in_array('fullscreen', $defaultappearance) ? 1 : 0,
         'aspectratio' => get_config('mod_flexbook', 'defaultaspectratio') ?? '',
-        'duolingotheme' => in_array('duolingotheme', $defaultappearance) ? 1 : 0,
+        'kidtheme' => in_array('kidtheme', $defaultappearance) ? 1 : 0,
         'xpcounter' => in_array('xpcounter', $defaultappearance) ? 1 : 0,
         'interactioncounter' => in_array('interactioncounter', $defaultappearance) ? 1 : 0,
         'interactionnavigation' => in_array('interactionnavigation', $defaultappearance) ? 1 : 0,

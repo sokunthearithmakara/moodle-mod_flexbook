@@ -32,7 +32,7 @@ import ModalEvents from 'core/modal_events';
 import Ajax from 'core/ajax';
 import Templates from 'core/templates';
 import state from '../state';
-import {safeParse} from '../utils';
+import {safeParse, getMoodleVersion} from '../utils';
 
 export default class Base {
     /**
@@ -447,7 +447,7 @@ export default class Base {
         annotation = this.annotations.find(x => x.id == annotation.id);
 
         let ModalFactory;
-        if (window.M.version < 403) {
+        if (getMoodleVersion() < 403) {
             ModalFactory = await import('core/modal_factory');
         } else {
             ModalFactory = await import('core/modal');
@@ -491,15 +491,12 @@ export default class Base {
                 modal.destroy();
             });
 
-            // If click outside the modal, add jelly animation.
-            root.off('click').on('click', function(e) {
-                if ($(e.target).closest('.modal-content').length === 0) {
-                    self.animateModal(root);
-                }
+            root.on(ModalEvents.outsideClick, function(e) {
+                e.preventDefault();
+                self.animateModal(root);
             });
 
             root.on(ModalEvents.shown, async() => {
-                root.attr('data-region', 'popup'); // Must set to avoid dismissing the modal when clicking outside.
                 self.animateModal(root);
                 root.find('.modal-header').attr('id', 'title')
                     .html(await this.renderMessageTitle(annotation));
@@ -567,8 +564,14 @@ export default class Base {
 
         let prop = safeParse(annotation.prop, {});
         annotation.activitycomplete = this.options.isCompleted ? 1 : 0;
+        let logourl = null;
+        if ($('body').hasClass('kidtheme') && prop.component) {
+            logourl = M.util.image_url('monologo', prop.component);
+        }
+
         let messageTitle = await Templates.render('mod_flexbook/canvas/messagetitle', {
             icon: prop.icon || 'bi bi-info-circle',
+            logourl: logourl,
             title: annotation.formattedtitle || '',
             completionbutton: completionbutton,
             id: annotation.id,
@@ -594,26 +597,31 @@ export default class Base {
 
         if ((annotation.completiontracking == 'view' || annotation.completiontracking == 'manual')
             && annotation.requiremintime > 0) {
-            let todo = await getString('todo', 'mod_interactivevideo') + ': ';
-            todo += await getString("spendatleast", "mod_interactivevideo", annotation.requiremintime);
+            let todo = await getString("spendatleast", "mod_interactivevideo", annotation.requiremintime);
             const infoIcon = `<i class="bi bi-info-circle-fill iv-mr-2 info" title="${todo}"></i>`;
 
-            let $completiontoggle = $message.find('#completiontoggle');
-            $message.find('#title .info').remove();
-            $completiontoggle.before(infoIcon);
-            // Show and hide tooltip
-            const $tooltip = $(`#message[data-id='${annotation.id}'] #title .info`);
-            $tooltip.tooltip('dispose');
-            setTimeout(() => {
-                $tooltip.tooltip({
-                    container: $message,
-                    html: true,
-                    trigger: 'hover',
-                    placement: 'auto'
-                });
-                $tooltip.tooltip('show');
-                setTimeout(() => $tooltip.tooltip('hide'), 2000);
-            }, 2000);
+
+            if (state.isMascotActive && state.say) {
+                state.say(todo, 0);
+                state.animate('jump');
+            } else {
+                let $completiontoggle = $message.find('#completiontoggle');
+                $message.find('#title .info').remove();
+                $completiontoggle.before(infoIcon);
+                // Show and hide tooltip
+                const $tooltip = $(`#message[data-id='${annotation.id}'] #title .info`);
+                $tooltip.tooltip('dispose');
+                setTimeout(() => {
+                    $tooltip.tooltip({
+                        container: $message,
+                        html: true,
+                        trigger: 'hover',
+                        placement: 'auto'
+                    });
+                    $tooltip.tooltip('show');
+                    setTimeout(() => $tooltip.tooltip('hide'), 2000);
+                }, 2000);
+            }
         }
     }
 
@@ -1045,14 +1053,28 @@ export default class Base {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;')
             .replace(/&/g, '&amp;');
-        $annotationbar.append(`<span class="annotation-item ${classes}"
-                    data-id="${annotation.id}" tabindex="0" data${self.isBS5 ? '-bs' : ''}-toggle="tooltip"
-                     data${self.isBS5 ? '-bs' : ''}-container="#wrapper"
-                      data${self.isBS5 ? '-bs' : ''}-trigger="hover" data${self.isBS5 ? '-bs' : ''}-placement="top"
-                       data${self.isBS5 ? '-bs' : ''}-html="true"
-                      title='<div class="d-flex align-items-center">
-                        <i class="${annotation.locked ? 'bi bi-lock' : this.prop.icon} iv-mr-2"></i>
-                        <span>${title}</span></div>'></span>`);
+        let logourl = null;
+        if ($('body').hasClass('kidtheme') && this.prop.component) {
+            logourl = M.util.image_url('monologo', this.prop.component);
+        }
+
+        let iconHtml = `<i class="${annotation.locked ? 'bi bi-lock' : this.prop.icon} iv-mr-2"></i>`;
+        if (logourl && !annotation.locked) {
+            iconHtml = `<img src="${logourl}" class="iv-mr-2" height="24" loading="lazy" ` +
+                       `onerror="this.remove(); this.nextElementSibling.classList.remove('d-none');">` +
+                       `<i class="${this.prop.icon} iv-mr-2 d-none"></i>`;
+        }
+
+        const $item = $(`<span class="annotation-item ${classes}" data-id="${annotation.id}" tabindex="0"></span>`);
+        const bs = self.isBS5 ? '-bs' : '';
+        $item.attr(`data${bs}-toggle`, 'tooltip');
+        $item.attr(`data${bs}-container`, '#wrapper');
+        $item.attr(`data${bs}-trigger`, 'hover');
+        $item.attr(`data${bs}-placement`, 'top');
+        $item.attr(`data${bs}-html`, 'true');
+        $item.attr('title', `<div class="d-flex align-items-center">${iconHtml}<span>${title}</span></div>`);
+
+        $annotationbar.append($item);
         return locked;
     }
 

@@ -164,8 +164,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
         $this->standard_coursemodule_elements();
 
         $this->add_action_buttons();
-
-        $PAGE->requires->js_init_code('window.M.version = ' . $CFG->branch . ';', true);
+        $mform->addElement('html', \mod_flexbook\util::render_moodle_version());
     }
 
     /**
@@ -317,7 +316,8 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 'beforecompletionbehavior',
                 'aftercompletionbehavior',
                 'aspectratio',
-                'duolingotheme',
+                'kidtheme',
+                'character',
             ];
             if (empty($defaultvalues['displayoptions'])) {
                 $defaultvalues['displayoptions'] = json_encode(array_fill_keys($displayoptions, 0));

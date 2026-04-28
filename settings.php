@@ -134,7 +134,7 @@ $asettings->add(new admin_setting_configmulticheckbox(
         'xpcounter' => 1,
         'interactioncounter' => 1,
         'interactionnavigation' => 1,
-        'duolingotheme' => 0,
+        'kidtheme' => 0,
     ],
     [
         'distractionfreemode' => get_string('distractionfreemode', 'mod_flexbook'),
@@ -149,7 +149,7 @@ $asettings->add(new admin_setting_configmulticheckbox(
         'xpcounter' => get_string('xpcounter', 'mod_flexbook'),
         'interactioncounter' => get_string('interactioncounter', 'mod_flexbook'),
         'interactionnavigation' => get_string('interactionnavigation', 'mod_flexbook'),
-        'duolingotheme' => get_string('duolingotheme', 'mod_flexbook'),
+        'kidtheme' => get_string('kidtheme', 'mod_flexbook'),
     ],
 ));
 

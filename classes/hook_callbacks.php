@@ -36,6 +36,8 @@ class hook_callbacks {
             return;
         }
 
-        echo \mod_flexbook\util::render_moodle_version();
+        require_once($CFG->dirroot . '/mod/flexbook/lib.php');
+
+        $hook->add_html(\mod_flexbook\util::render_moodle_version());
     }
 }

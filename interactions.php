@@ -169,10 +169,21 @@ $datafortemplate = [
     "bs" => $CFG->branch >= 500 ? '-bs' : '',
     "hascourseindex" => $hascourseindex,
     "courseindex" => $courseindex,
+    "displayoptions" => $moduleinstance->displayoptions,
 ];
 
+// Get items.
+$items = mod_flexbook\util::get_items($cm->id, $modulecontext->id);
+
+$datafortemplate['containers'] = [
+    ['id' => 'doptions', 'content' => json_encode($moduleinstance->displayoptions)],
+    ['id' => 'contenttypes', 'content' => json_encode($contentoptions)],
+    ['id' => 'items', 'content' => json_encode($items)],
+    ['id' => 'sequence', 'content' => $moduleinstance->sequence],
+];
+$datafortemplate['moodleversion'] = $CFG->branch;
+
 echo $OUTPUT->render_from_template('mod_flexbook/editor/editor', $datafortemplate);
-echo \mod_flexbook\util::render_moodle_version();
 
 $appearance = $moduleinstance->displayoptions['beforecompletion'];
 $behavior = $moduleinstance->displayoptions['beforecompletionbehavior'];
@@ -205,11 +216,4 @@ $PAGE->requires->js_call_amd(
     ]
 );
 
-// Get items.
-$items = mod_flexbook\util::get_items($cm->id, $modulecontext->id);
-
-echo '<textarea id="doptions" style="display: none;">' . json_encode($moduleinstance->displayoptions) . '</textarea>';
-echo '<textarea id="contenttypes" style="display: none;">' . json_encode($contentoptions) . '</textarea>';
-echo '<textarea id="items" style="display: none;">' . json_encode($items) . '</textarea>';
-echo '<textarea id="sequence" style="display: none;">' . $moduleinstance->sequence . '</textarea>';
 echo $OUTPUT->footer();

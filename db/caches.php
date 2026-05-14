@@ -40,4 +40,10 @@ $definitions = [
         'simpledata' => true,
         'staticacceleration' => true,
     ],
+    'fb_progress' => [ // Cache for the progress of guest users and preview mode.
+        'mode' => cache_store::MODE_SESSION,
+        'simplekeys' => true,
+        'simpledata' => true,
+        'staticacceleration' => true,
+    ],
 ];

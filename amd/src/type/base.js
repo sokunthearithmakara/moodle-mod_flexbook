@@ -33,6 +33,7 @@ import Ajax from 'core/ajax';
 import Templates from 'core/templates';
 import state from '../state';
 import {safeParse, getMoodleVersion} from '../utils';
+import {notifyFilterContentUpdated as notifyFilter} from 'core_filters/events';
 
 export default class Base {
     /**
@@ -163,6 +164,26 @@ export default class Base {
         dispatchEvent(name, detail);
     }
 
+    /**
+     * Notify filter of updated content.
+     * @param {HTMLElement} element - The element to notify.
+     */
+    notifyFilterContentUpdated(element) {
+        notifyFilter(element);
+    }
+
+    /**
+     * Enable the HTML5 color picker in form elements
+     * @returns {void}
+     */
+    enableColorPicker() {
+        $(document).on('input', 'input[type="color"]', function() {
+            const color = $(this).val();
+            $(this).closest('.color-picker').css('background-color', color);
+            $(this).closest('.fitem').find('input[type="text"]').val(color);
+        });
+    }
+
     async addNotification(msg, type = 'danger', emoji = null) {
         const data = {type};
         if (emoji) {
@@ -200,8 +221,8 @@ export default class Base {
 
         listItem.find('.title').html(item.formattedtitle);
         if (item.hascompletion == 1) {
-            listItem.find('.btn.xp span').text(item.xp);
-            listItem.attr('data-xp', item.xp);
+            listItem.find('.btn.xp span').text(Number(item.xp));
+            listItem.attr('data-xp', Number(item.xp));
         } else {
             listItem.find('.btn.xp').remove();
         }
@@ -210,7 +231,7 @@ export default class Base {
         listItem.find('.type-icon').attr('title', this.prop.title);
 
         listItem.find('[data-field]').attr('data-id', item.id);
-        listItem.find('[data-field="xp"]').val(item.xp);
+        listItem.find('[data-field="xp"]').val(Number(item.xp));
         listItem.find('[data-field="title"]').val(item.title);
         if (!this.prop.allowmultiple) {
             listItem.find('.btn.copy').remove();
@@ -444,7 +465,10 @@ export default class Base {
 
     async createModal(annotation) {
         const self = this;
-        annotation = this.annotations.find(x => x.id == annotation.id);
+        const found = this.annotations.find(x => x.id == annotation.id);
+        if (found) {
+            annotation = found;
+        }
 
         let ModalFactory;
         if (getMoodleVersion() < 403) {
@@ -466,12 +490,13 @@ export default class Base {
             root.attr('id', 'annotation-modal');
             root.find('.modal-dialog')
             .attr({
-                'data-id': annotation.id,
+                'data-id': annotation?.id,
                 'data-placement': 'popup',
                 'id': 'message'
             })
-            .addClass('active ' + annotation.type);
+            .addClass('active ' + annotation?.type);
             modal.show();
+            root.data('modal', modal);
             root.on(ModalEvents.hidden, () => {
                 modal.destroy();
             });
@@ -479,7 +504,7 @@ export default class Base {
             // Enable draggable.
             this.setModalDraggable('#annotation-modal .modal-dialog');
 
-            root.find('#message').on('click', '#close-' + annotation.id, function() {
+            root.find('#message').on('click', '#close-' + annotation?.id, function() {
                 root.attr('data-region', 'modal-container');
                 root.fadeOut(300, function() {
                     modal.hide();
@@ -498,8 +523,10 @@ export default class Base {
 
             root.on(ModalEvents.shown, async() => {
                 self.animateModal(root);
-                root.find('.modal-header').attr('id', 'title')
-                    .html(await this.renderMessageTitle(annotation));
+                if (annotation) {
+                    root.find('.modal-header').attr('id', 'title')
+                        .html(await this.renderMessageTitle(annotation));
+                }
                 resolve(root);
             });
         });
@@ -542,8 +569,10 @@ export default class Base {
             id: annotation.id,
             manual: annotation.completiontracking == 'manual',
             iscompleted: annotation.completed,
-            isPlayerMode: true,
-            refreshonly: annotation.hascompletion != 1
+            isPlayerMode: !self.isEditMode() && !self.isPreviewMode(),
+            refreshonly: (annotation.hascompletion != 1) || self.isEditMode(),
+            iseditor: state.config.iseditor,
+            editurl: M.cfg.wwwroot + '/mod/flexbook/interactions.php?id=' + this.cm + '&aid=' + annotation.id
         });
 
         // Append refresh button after the completion button.
@@ -566,7 +595,7 @@ export default class Base {
         annotation.activitycomplete = this.options.isCompleted ? 1 : 0;
         let logourl = null;
         if ($('body').hasClass('kidtheme') && prop.component) {
-            logourl = M.util.image_url('monologo', prop.component);
+            logourl = M.util.image_url('cicon', prop.component);
         }
 
         let messageTitle = await Templates.render('mod_flexbook/canvas/messagetitle', {
@@ -578,6 +607,7 @@ export default class Base {
             showdelete,
             candelete: annotation.completed == true && ((annotation.activitycomplete == 1 && settings.deleteaftercomplete == 1) ||
                 (annotation.activitycomplete == 0 && settings.deletebeforecomplete == 1)),
+            bottomheader: settings.bottomheader == 1,
         });
 
         const $message = await self.handleInlineDisplay(annotation, messageTitle, $annotationcontent);
@@ -643,7 +673,8 @@ export default class Base {
             $annotationcontent.append(`<div id="message" style="z-index:105;top:0;" data-placement="inline"
          data-id="${annotation.id}" class="${annotation.type} modal" tabindex="0">
          ${messageTitle !== '' ?
-            `<div id="title" class="modal-header iv-rounded-0 ${hideheader == 1 ? "hide-header" : "shadow-sm"}">
+            `<div id="title" class="modal-header iv-rounded-0 ${hideheader == 1 ? "hide-header" : "shadow-sm"} ` +
+            `${advanced.bottomheader == 1 ? "bottom-header" : ""}">
          ${messageTitle}</div>` : ''}
          <div class="modal-body" id="content"></div></div>`);
             $(`#message[data-id='${annotation.id}']`).fadeIn(300, function() {
@@ -655,11 +686,21 @@ export default class Base {
     async render(annotation, format = 'html') {
         const annotationArgs = {
             ...annotation,
-            contextid: annotation.contextid
+            contextid: annotation.contextid || M.cfg.contextid
         };
+
+        // Sanitize annotationArgs to remove any undefined values.
+        // Undefined values cause Moodle's Fragment web service to fail with "Missing required key: value".
+        Object.keys(annotationArgs).forEach(key => {
+            if (annotationArgs[key] === undefined) {
+                delete annotationArgs[key];
+            }
+        });
+
         let fragment;
         try {
-            fragment = await Fragment.loadFragment('mod_flexbook', 'getcontent', annotation.contextid, annotationArgs);
+            fragment = await Fragment.loadFragment('mod_flexbook', 'getcontent', annotation.contextid || M.cfg.contextid,
+                annotationArgs);
         } catch (error) {
             throw new Error(JSON.stringify(error));
         }
@@ -668,6 +709,22 @@ export default class Base {
         } else {
             return safeParse(fragment, {});
         }
+    }
+
+    /**
+     * Format text content using Moodle filters and pluginfile URL rewriting.
+     * @param {string} text The text to format.
+     * @param {number} contextid The context id.
+     * @param {number} format The text format.
+     * @param {number} itemid The item id for pluginfile URLs.
+     * @returns {Promise<string>}
+     */
+    async formatContent(text, contextid = null, format = 1, itemid = 0) {
+        return Fragment.loadFragment('mod_flexbook', 'format_text', contextid || M.cfg.contextid, {
+            text: text,
+            format: format,
+            itemid: itemid
+        });
     }
 
     /**
@@ -808,7 +865,7 @@ export default class Base {
         $toggleButton.find(`span`).text('');
         if (thisItem.earned > 0) {
             if (action == 'mark-undone') {
-                this.addNotification(await getString('xplost', 'mod_interactivevideo', earned), 'info', '⭐');
+                this.addNotification(await getString('xplost', 'mod_interactivevideo', earned), 'info', '☹️');
             } else if (action == 'mark-done') {
                 this.addNotification(await getString('xpearned', 'mod_interactivevideo', earned), 'success', '⭐');
             }
@@ -975,7 +1032,7 @@ export default class Base {
             if ($(this).hasClass('mark-done') && annotation.requiremintime > 0) {
                 // Use state.getTimespent() to include any live unflused elapsed time.
                 const timespentMs = state.getTimespent ? await state.getTimespent(annotation.id) : 0;
-                const duration = timespentMs / 1000 / 60; // Convert ms → minutes.
+                const duration = timespentMs / 1000 / 60; // Convert ms â†’ minutes.
                 if (duration < annotation.requiremintime) {
                     self.addNotification(
                         await getString('youmustspendatleastminutesbeforemarkingcomplete', 'mod_interactivevideo',
@@ -1055,7 +1112,7 @@ export default class Base {
             .replace(/&/g, '&amp;');
         let logourl = null;
         if ($('body').hasClass('kidtheme') && this.prop.component) {
-            logourl = M.util.image_url('monologo', this.prop.component);
+            logourl = M.util.image_url('cicon', this.prop.component);
         }
 
         let iconHtml = `<i class="${annotation.locked ? 'bi bi-lock' : this.prop.icon} iv-mr-2"></i>`;
@@ -1114,6 +1171,54 @@ export default class Base {
             || (advanced.visibleaftercompleted == "1" && annotation.completed);
     }
 
+    /**
+     * Renders an annotation item for the chapter/sidebar list.
+     * @param {Object} annotation - The annotation object to render.
+     * @returns {string} The HTML string for the chapter item.
+     */
+    renderChapterItem(annotation) {
+        let classes = annotation.type + ' annotation ';
+        if (annotation.completed) {
+            classes += ' completed ';
+        }
+        if (!this.isClickable(annotation)) {
+            classes += ' no-pointer-events ';
+        }
+        if (annotation.hascompletion == 0) {
+            classes += ' no-completion ';
+        }
+        if (annotation.locked) {
+            classes += ' lock ';
+        }
+        if (!this.isVisible(annotation)) {
+            classes += ' d-none ';
+        }
+        let logourl = null;
+        let prop = safeParse(annotation.prop, {});
+        if ($('body').hasClass('kidtheme') && prop.component) {
+            logourl = M.util.image_url('cicon', prop.component);
+        }
+
+        let iconHtml = `<i class="fs-unset ${annotation.locked ? 'fa fa-lock' : (prop.icon || this.prop.icon)} iv-mr-2"></i>`;
+        if (logourl && !annotation.locked) {
+            iconHtml = `<img src="${logourl}" class="iv-mr-2" height="24" loading="lazy" ` +
+                       `onerror="this.remove(); this.nextElementSibling.classList.remove('d-none');">` +
+                       `<i class="fs-unset ${prop.icon || this.prop.icon} iv-mr-2 d-none"></i>`;
+        }
+
+        let html = `<li class="anno d-flex align-items-center justify-content-between small
+                     p-2 ${annotation.completed ? "completed" : ""} ${classes}" data-id="${annotation.id}">
+                     <span class="text-nowrap">
+                     <i class="fs-unset bi ${annotation.completed ? "bi-check-circle-fill text-success" : 'bi-circle'}
+                      iv-mr-2 ${annotation.hascompletion == 0 ? "invisible" : ""}"></i>
+                     ${iconHtml}
+                     </span>
+                     <span class="flex-grow-1 text-truncate">${annotation.formattedtitle}</span>
+                     <span class="text-nowrap ${annotation.hascompletion == 0 ? "invisible" : ""}">
+                     ${annotation.xp > 0 ? annotation.xp + '<i class="bi bi-star iv-ml-1 fs-unset"></i>' : ''}</span></li>`;
+        return html;
+    }
+
     renderReportView(annotation, details, data) {
         let res = `<span class="completion-detail ${details.hasDetails ? 'cursor-pointer' : ''}"` +
             ` data-id="${data.itemid}" data-userid="${data.row.id}" data-type="${data.ctype}">`;
@@ -1151,14 +1256,19 @@ export default class Base {
     /**
      * View when the report viewer clicks on the title of the interaction item on the report page
      * @param {Object} annotation the annotation
+     * @param {Array} tabledatajson the table data json
+     * @param {Object} DataTable the data table
+     * @param {jQuery} root the root element
      * @returns {void}
      */
-    async displayReportView(annotation) {
+    async displayReportView(annotation, tabledatajson, DataTable, root) {
         const data = await this.render(annotation, 'html');
-        let $message = $(`#message[data-id='${annotation.id}']`);
+        let $message = root.find(`#message[data-id='${annotation.id}']`);
         $message.find(`.modal-body`).html(data);
         $message.find(`.modal-body`).attr('id', 'content');
         this.postContentRender(annotation, $message);
+
+        return data;
     }
 
     /**
@@ -1206,18 +1316,21 @@ export default class Base {
                     'text1': data.text1 || '',
                     'text2': data.text2 || '',
                     'text3': data.text3 || '',
+                    'text4': data.text4 || '',
+                    'text5': data.text5 || '',
+                    'text6': data.text6 || '',
                     'char1': data.char1 || '',
                     'char2': data.char2 || '',
                     'char3': data.char3 || '',
+                    'char4': data.char4 || '',
+                    'char5': data.char5 || '',
+                    'char6': data.char6 || '',
                     'intg1': data.intg1 || 0,
                     'intg2': data.intg2 || 0,
                     'intg3': data.intg3 || 0,
-                    'flt1': data.flt1 || 0,
-                    'flt2': data.flt2 || 0,
-                    'flt3': data.flt3 || 0,
-                    'bool1': data.bool1 || 0,
-                    'bool2': data.bool2 || 0,
-                    'bool3': data.bool3 || 0,
+                    'intg4': data.intg4 || 0,
+                    'intg5': data.intg5 || 0,
+                    'intg6': data.intg6 || 0,
                 }),
                 userid: userid,
                 replaceexisting: replaceexisting,

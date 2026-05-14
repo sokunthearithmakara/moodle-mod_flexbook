@@ -19,20 +19,67 @@ Example context (json):
 }
 }}
 <div id="flexbook-container"
-     class="container-fluid {{#displayoptions.distractionfreemode}}p-0 position-absolute{{/displayoptions.distractionfreemode}}{{^displayoptions.distractionfreemode}}p-0 position-relative{{/displayoptions.distractionfreemode}}"
+     class="container-fluid p-0 m-0 position-relative"
      data-complete="{{completed}}"
      role="main">
-    <div id="wrapper">
-        <div class="iv-row m-0 position-relative bg-light py-3">
-            <div class="p-3 position-relative bg-white" id="content-region">
-                <div class="w-100 iv-rounded-lg position-relative"
-                     id="contentblock">
-                    {{> mod_flexbook/editor/videoactions}}
-                    {{> mod_flexbook/editor/annotationwrapper}}
-                    {{> mod_flexbook/editor/annotationlistitem }}
+    <div id="wrapper" class="editor-layout d-flex">
+        <!-- Main Preview Stage -->
+        <div id="editor-stage" class="flex-grow-1 d-flex flex-column {{#displayoptions.darkmode}}bg-dark{{/displayoptions.darkmode}} position-relative overflow-hidden">
+            <div id="editor-stage-main" class="flex-grow-1 d-flex align-items-center justify-content-center overflow-hidden position-relative">
+                <div id="video-wrapper" {{#displayoptions.aspectratio}} data-ratio="{{displayoptions.aspectratio}}" {{/displayoptions.aspectratio}}
+                     class="d-flex align-items-center justify-content-center position-relative fb">
+                    {{> mod_interactivevideo/backgroundloading}}
+                    <div id="annotation-canvas" class="w-100 h-100 position-absolute" role="region"></div>
+                </div>
+            </div>
+
+            <!-- Simplified Editor Control Bar -->
+            <div id="editor-controlbar" class="py-2 px-3 d-flex align-items-center justify-content-between text-white">
+                <div class="control-left">
+                    <button id="editor-edit-btn" class="btn btn-dark btn-rounded iv-font-weight-bold text-uppercase d-none py-1 px-3 small"
+                            title="{{#str}}edit, mod_interactivevideo{{/str}}" data-id="">
+                        <i class="bi bi-pencil-fill iv-mr-2"></i>
+                        {{#str}}edit, mod_interactivevideo{{/str}}
+                    </button>
+                </div>
+                <div class="control-center top-bar d-flex align-items-center justify-content-center flex-grow-1 px-3">
+                </div>
+                <div class="control-right d-flex align-items-center">
+                    <div class="btn-group btn-rounded" id="anno-nav">
+                        <button id="prevanno" class="btn btn-dark btn-sm btn-rounded iv-font-weight-bold" title="{{#str}}previousanno, mod_flexbook{{/str}}">
+                            <i class="bi bi-chevron-left"></i>
+                        </button>
+                        <button id="currentanno" class="btn btn-dark btn-sm iv-font-weight-bold no-pointer px-2">
+                            <span id="thisanno">0</span>/<span id="totalannos">0</span>
+                        </button>
+                        <button id="nextanno" class="btn btn-dark btn-sm btn-rounded iv-font-weight-bold" title="{{#str}}nextanno, mod_flexbook{{/str}}">
+                            <i class="bi bi-chevron-right"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Right Sidebar -->
+        <div id="editor-sidebar" class="bg-white d-flex flex-column iv-border-left position-relative">
+            <!-- Sidebar Toggle Button -->
+            <button id="sidebar-toggle" class="btn btn-light border shadow-sm position-absolute" title="Toggle Sidebar">
+                <i class="bi bi-chevron-right"></i>
+            </button>
+
+            <div class="sidebar-content d-flex flex-column h-100">
+                <div class="p-0">
+                    {{> mod_flexbook/editor/videoactions}}
+                </div>
+                <div class="flex-grow-1 overflow-auto">
+                    {{> mod_flexbook/editor/annotationwrapper}}
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Hidden row template for JS cloning -->
+    <div class="d-none">
+        {{> mod_flexbook/editor/annotationlistitem }}
     </div>
 </div>
 {{! content type modal }}
@@ -45,3 +92,5 @@ Example context (json):
 {{#hascourseindex}}
 {{> mod_interactivevideo/courseindex}}
 {{/hascourseindex}}
+
+{{> mod_flexbook/data_containers }}

@@ -22,21 +22,56 @@
  */
 
 export default {
+    /** @type {Object} The configuration settings for the Flexbook. */
     config: {},
+    /** @type {Object} Interaction class instances indexed by content type name. */
+    ctRenderer: {},
+
+    /** @type {Array} The list of all annotations/interactions in the Flexbook. */
     annotations: [],
+
+    /** @type {Array} The ordered sequence of annotation IDs. */
     sequence: [],
+
+    /** @type {String} The current navigation direction ('next' or 'prev'). */
     direction: 'next',
+
+    /** @type {Object|null} The currently active annotation object. */
     currentanno: null,
+
+    /** @type {Object} Audio elements for interface sounds. */
     audio: {
         pop: null,
         point: null
     },
+
+    /** @type {Function|null} Navigates to a specific interaction by ID or special identifier. */
+    navigateToInteraction: null,
+
+    /** @type {Function|null} Navigates to a specific annotation by ID. */
     navigateToAnnotation: null,
+
+    /** @type {Function|null} Logic to navigate to the next available annotation. */
     nextAnnotation: null,
+
+    /** @type {Function|null} Logic to navigate to the previous available annotation. */
     prevAnnotation: null,
+
+    /** @type {Boolean} Indicates if the character mascot is currently active on screen. */
     isMascotActive: false,
+
+    /** @type {Function|null} Triggers the mascot to display a specific message. */
     say: null,
+
+    /** @type {Function|null} Triggers the mascot to display a random encouraging message. */
     sayRandom: null,
+
+    /** @type {Function|null} Hides the mascot's speech bubble. */
     hideSay: null,
-    animate: null
+
+    /** @type {Function|null} Triggers a specific animation for the mascot. */
+    animate: null,
+
+    /** @type {Boolean} Indicates if navigation is allowed (e.g., after the start screen is dismissed). */
+    ready: false
 };

@@ -1,0 +1,160 @@
+{{!
+This file is part of Moodle - http://moodle.org/
+Moodle is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+Moodle is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+You should have received a copy of the GNU General Public License
+along with Moodle. If not, see
+<http : //www.gnu.org/licenses />.
+}}
+
+{{!
+@template mod_flexbook/reporttable
+Report table.
+
+Example context (json):
+{
+}
+}}
+
+<div id="wrapper" class="position-relative"></div>
+<div id="toolbar" class="bg-transparent pt-5 position-fixed"></div>
+
+<div id="reporttable" class="p-3 position-relative" style="margin-top: 70px; min-height: 400px;">
+    {{{groupselector}}}
+
+    {{> mod_interactivevideo/backgroundloading}}
+
+    <table id="completiontable" class="table table-sm table-bordered table-striped w-100 m-0 border invisible">
+        <thead class="sticky-top bg-white">
+            <tr>
+                <th id="id" scope="col" class="exportable inv">
+                    {{#str}}id, mod_interactivevideo{{/str}}
+                </th>
+
+                <th id="participant" scope="col" class="bg-white sticky-left-0">
+                    {{#str}}participant, mod_interactivevideo{{/str}}
+                </th>
+
+                <th id="firstname" scope="col" class="exportable colvis inv profilefield">
+                    {{#str}}firstname{{/str}}
+                </th>
+
+                <th id="lastname" scope="col" class="exportable colvis inv profilefield">
+                    {{#str}}lastname{{/str}}
+                </th>
+
+                {{#identity}}
+                    <th id="{{name}}" scope="col" class="exportable colvis inv profilefield">
+                        {{label}}
+                    </th>
+                {{/identity}}
+
+                <th id="timecreated" scope="col" class="text-truncate">
+                    {{#str}}timestarted, mod_interactivevideo{{/str}}
+                    <div class="position-absolute iv-font-weight-normal controls d-none" style="bottom: 0">
+                        <div class="d-flex align-items-center">
+                            <input type="checkbox" checked data-start="true">
+                            <small class="mx-2">
+                                {{#str}}started, mod_interactivevideo{{/str}}
+                            </small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <input type="checkbox" checked data-start="false">
+                            <small class="iv-ml-2">
+                                {{#str}}notstarted, mod_interactivevideo{{/str}}
+                            </small>
+                        </div>
+                    </div>
+                </th>
+
+                <th id="timecompleted" scope="col" class="text-truncate">
+                    {{#str}}timecompleted, mod_interactivevideo{{/str}}
+                    <div class="position-absolute iv-font-weight-normal controls d-none" style="bottom: 0">
+                        <div class="d-flex align-items-center">
+                            <input type="checkbox" checked data-completed="true">
+                            <small class="mx-2">
+                                {{#str}}completed, mod_interactivevideo{{/str}}
+                            </small>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <input type="checkbox" checked data-completed="false">
+                            <small class="iv-ml-2">
+                                {{#str}}incomplete, mod_interactivevideo{{/str}}
+                            </small>
+                        </div>
+                    </div>
+                </th>
+
+                <th id="completionpercentage" scope="col">
+                    {{#str}}completionpercentage, mod_interactivevideo{{/str}}
+                    {{#completionfilter}}
+                        <div class="position-absolute iv-font-weight-normal controls d-none" style="bottom: 0">
+                            <div class="d-flex align-items-center">
+                                <input type="checkbox"
+                                       id="less-{{completionpercentage}}-filter"
+                                       checked
+                                       class="less"
+                                       data-percentage="{{completionpercentage}}">
+                                <small for="less-{{completionpercentage}}-filter" class="iv-ml-2">
+                                    &lt; {{completionpercentage}}%
+                                </small>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <input type="checkbox"
+                                       id="more-{{completionpercentage}}-filter"
+                                       checked
+                                       class="more"
+                                       data-percentage="{{completionpercentage}}">
+                                <small for="more-{{completionpercentage}}-filter" class="iv-ml-2">
+                                    &ge; {{completionpercentage}}%
+                                </small>
+                            </div>
+                        </div>
+                    {{/completionfilter}}
+                </th>
+
+                <th id="xp" scope="col">
+                    {{#str}}xp, mod_interactivevideo{{/str}} / {{totalxp}}
+                </th>
+
+                {{#items}}
+                    <th class="rotate"
+                        id="item-{{id}}"
+                        data-item="{{id}}"
+                        data-type="{{type}}"
+                        data{{bs}}-toggle="tooltip"
+                        data{{bs}}-trigger="hover"
+                        data{{bs}}-placement="top"
+                        title="{{title}}">
+                        <div>
+                            <input type="checkbox"
+                                   class="form-check-input rotate-0 controls d-none"
+                                   id="item-{{id}}"
+                                   data-item="{{id}}"
+                                   data-type="{{type}}">
+                            <i title="{{typetitle}}" class="fa-fw fa mx-1 {{icon}}"></i>
+                            <a class="text-link cursor-pointer">{{title}}</a>
+                        </div>
+                    </th>
+                {{/items}}
+            </tr>
+        </thead>
+
+        <tbody>
+        </tbody>
+    </table>
+</div>
+
+{{> mod_interactivevideo/blocksettingshack }}
+
+{{#hascourseindex}}
+    {{> mod_interactivevideo/courseindex}}
+{{/hascourseindex}}
+
+{{> mod_flexbook/data_containers }}

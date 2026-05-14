@@ -533,7 +533,7 @@ function flexbook_get_coursemodule_info($coursemodule) {
  *
  * Called at render time (not cached) so it can use $OUTPUT. Sets the icon URL
  * based on the 'type' field stored in the Flexbook instance, allowing each
- * Flexbook to display the monologo icon of its primary content type.
+ * Flexbook to display the icon of its primary content type.
  *
  * @param \cm_info $cm The course module info object.
  * @return void
@@ -560,13 +560,13 @@ function flexbook_cm_info_dynamic(cm_info $cm) {
         if (($prop['name'] ?? '') !== $type) {
             continue;
         }
-        // Resolve the monologo icon URL from the plugin's component.
+        // Resolve the icon URL from the plugin's component.
         // Accessing $PAGE or $OUTPUT will cause an error, so avoid them.
         $component = $prop['component'] ?? $pluginname;
         $iconurl = new moodle_url('/theme/image.php', [
             'theme' => get_config('core', 'theme'),
             'component' => $component,
-            'image' => 'monologo',
+            'image' => 'cicon',
         ]);
         $cm->set_icon_url($iconurl);
         return;
@@ -747,18 +747,22 @@ function flexbook_reset_userdata($data) {
             ['module' => $DB->get_field('modules', 'id', ['name' => 'flexbook']), 'course' => $courseid]
         );
 
-        $contextids = $DB->get_fieldset_select(
-            'context',
-            'id',
-            'instanceid IN (' . implode(',', $coursemoduleids) . ') AND contextlevel = :contextlevel',
-            ['contextlevel' => CONTEXT_MODULE]
-        );
+        if ($coursemoduleids) {
+            [$insql, $inparams] = $DB->get_in_or_equal($coursemoduleids, SQL_PARAMS_NAMED);
+            $inparams['contextlevel'] = CONTEXT_MODULE;
+            $contextids = $DB->get_fieldset_select(
+                'context',
+                'id',
+                "instanceid $insql AND contextlevel = :contextlevel",
+                $inparams
+            );
 
-        foreach ($contextids as $contextid) {
-            $fs->delete_area_files($contextid, 'mod_flexbook', 'text1');
-            $fs->delete_area_files($contextid, 'mod_flexbook', 'text2');
-            $fs->delete_area_files($contextid, 'mod_flexbook', 'text3');
-            $fs->delete_area_files($contextid, 'mod_flexbook', 'attachments');
+            foreach ($contextids as $contextid) {
+                $fs->delete_area_files($contextid, 'mod_flexbook', 'text1');
+                $fs->delete_area_files($contextid, 'mod_flexbook', 'text2');
+                $fs->delete_area_files($contextid, 'mod_flexbook', 'text3');
+                $fs->delete_area_files($contextid, 'mod_flexbook', 'attachments');
+            }
         }
 
         // Get all related modules and reset their grades.
@@ -1230,4 +1234,22 @@ function flexbook_default_behavior() {
         'preventskipping' => in_array('preventskipping', $defaultbehavior) ? 1 : 0,
         'allowdeleteprogress' => in_array('allowdeleteprogress', $defaultbehavior) ? 1 : 0,
     ];
+}
+
+/**
+ * Format text fragment.
+ *
+ * @param array $args
+ * @return string
+ */
+function flexbook_output_fragment_format_text($args) {
+    $text = $args['text'] ?? '';
+    $contextid = $args['contextid'] ?? context_system::instance()->id;
+    $format = $args['format'] ?? FORMAT_HTML;
+
+    $context = context::instance_by_id($contextid);
+
+    $text = format_text($text, $format, ['context' => $context]);
+
+    return str_replace('brokenfile.php#', 'draftfile.php', $text);
 }

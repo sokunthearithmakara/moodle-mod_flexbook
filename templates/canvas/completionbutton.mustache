@@ -61,6 +61,23 @@
 {{/refreshonly}}
 
 {{#isPlayerMode}}
+    {{#iseditor}}
+        <a
+            id="edit-interaction"
+            class="btn btn-flex mx-2 border-0 p-0"
+            href="{{editurl}}"
+            data{{bs}}-toggle="tooltip"
+            data{{bs}}-container="#wrapper"
+            data{{bs}}-trigger="hover"
+            title="{{#str}}edit, core{{/str}}"
+            aria-label="{{#str}}edit, core{{/str}}"
+        >
+            <i class="bi bi-pencil-square fs-25px" aria-hidden="true"></i>
+            <span class="sr-only">
+                {{#str}}edit, core{{/str}}
+            </span>
+        </a>
+    {{/iseditor}}
     <button
         id="refresh"
         class="btn btn-flex iv-ml-1 border-0 p-0"

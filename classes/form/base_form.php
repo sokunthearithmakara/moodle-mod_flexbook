@@ -60,11 +60,11 @@ class base_form extends \core_form\dynamic_form {
      */
     public function set_data_default() {
         $data = new \stdClass();
-        $data->id = $this->optional_param('id', 0, PARAM_INT);
+        $data->id = $this->optional_param('id', 0, PARAM_RAW);
         $data->contextid = $this->optional_param('contextid', null, PARAM_INT);
         $data->courseid = $this->optional_param('courseid', null, PARAM_INT);
         $data->cmid = $this->optional_param('cmid', null, PARAM_INT);
-        $data->annotationid = $this->optional_param('annotationid', null, PARAM_INT);
+        $data->annotationid = $this->optional_param('annotationid', null, PARAM_RAW);
         $data->contentform = $this->optional_param('content', '', PARAM_RAW);
         $data->iframeurl = $this->optional_param('iframeurl', '', PARAM_TEXT);
         $data->type = $this->optional_param('type', 'richtext', PARAM_TEXT);
@@ -108,10 +108,15 @@ class base_form extends \core_form\dynamic_form {
     public function get_annotations($fitlers = null) {
         $annotations = $this->optional_param('annotations', null, PARAM_RAW);
         if (!$annotations) {
-            $jumpto = $this->optional_param('jumpto', null, PARAM_INT);
-            $jumptopass = $this->optional_param('jumptopass', null, PARAM_INT);
-            $jumptofail = $this->optional_param('jumptofail', null, PARAM_INT);
-            $backto = $this->optional_param('backto', null, PARAM_INT);
+            $jumpto = $this->optional_param('jumpto', null, PARAM_RAW);
+            $jumptopass = $this->optional_param('jumptopass', null, PARAM_RAW);
+            $jumptofail = $this->optional_param('jumptofail', null, PARAM_RAW);
+            $backto = $this->optional_param('backto', null, PARAM_RAW);
+
+            $jumpto = str_replace('@@ANNOID#', '', (string)$jumpto);
+            $jumptopass = str_replace('@@ANNOID#', '', (string)$jumptopass);
+            $jumptofail = str_replace('@@ANNOID#', '', (string)$jumptofail);
+            $backto = str_replace('@@ANNOID#', '', (string)$backto);
             $return = [];
             if ($jumpto) {
                 $return[$jumpto] = get_string('jumpto', 'mod_flexbook');
@@ -130,7 +135,7 @@ class base_form extends \core_form\dynamic_form {
         $annotations = json_decode($annotations, true);
         // Remove the current annotation.
         $annotations = array_filter($annotations, function ($annotation) {
-            return $annotation['id'] != $this->optional_param('id', null, PARAM_INT);
+            return (string)$annotation['id'] !== (string)$this->optional_param('id', null, PARAM_RAW);
         });
         if ($fitlers) {
             foreach ($fitlers as $key => $value) {
@@ -140,8 +145,13 @@ class base_form extends \core_form\dynamic_form {
             }
         }
         $return = [];
+        $return['previousinteraction'] = get_string('previousinteraction', 'mod_flexbook');
+        $return['nextinteraction'] = get_string('nextinteraction', 'mod_flexbook');
+        $return['endscreen'] = get_string('endscreen', 'mod_flexbook');
+        $return['firstpage'] = get_string('firstpage', 'mod_flexbook');
+
         foreach ($annotations as $annotation) {
-            $return[$annotation['id']] = $annotation['formattedtitle'];
+            $return[(string)$annotation['id']] = $annotation['formattedtitle'];
         }
         return $return;
     }
@@ -153,10 +163,14 @@ class base_form extends \core_form\dynamic_form {
      */
     public function jump_section_fields($hascompletion = false) {
         $mform = &$this->_form;
-        $annotations = $this->get_annotations() ?? [];
+        $allannotations = $this->get_annotations() ?? [];
+        $annotations = $allannotations;
+        // These are handled by default '' values for jumpto and backto.
+        unset($annotations['previousinteraction']);
+        unset($annotations['nextinteraction']);
+
         $mform->addElement('hidden', 'annotations');
-        $nextannotations = ['' => get_string('next', 'mod_flexbook')]
-            + $annotations + [999 => get_string('endscreen', 'mod_flexbook')];
+        $nextannotations = ['' => get_string('next', 'mod_flexbook')] + $annotations;
         $prevannotations = [
             '' => get_string('previous', 'mod_flexbook'),
             'previouslyviewed' => get_string('previouslyviewed', 'mod_flexbook'),
@@ -164,7 +178,9 @@ class base_form extends \core_form\dynamic_form {
         $mform->addElement('header', 'jumpsection', get_string('navigation', 'mod_flexbook'));
         $mform->setExpanded('jumpsection', false);
         $mform->addElement('select', 'backto', get_string('backto', 'mod_flexbook'), $prevannotations);
+        $mform->setType('backto', PARAM_RAW);
         $mform->addElement('select', 'jumpto', get_string('jumpto', 'mod_flexbook'), $nextannotations);
+        $mform->setType('jumpto', PARAM_RAW);
 
         if ($hascompletion) {
             // Prevent skip: requires completion before jumping to the next annotation.
@@ -197,13 +213,13 @@ class base_form extends \core_form\dynamic_form {
 
             // Jump to option on pass grade.
             $mform->addElement('select', 'jumptopass', get_string('jumptopass', 'mod_flexbook'), ['' => get_string('default')]
-                + $annotations);
-            $mform->setType('jumptopass', PARAM_INT);
+                + $allannotations);
+            $mform->setType('jumptopass', PARAM_RAW);
 
             // Jump to option on fail grade.
             $mform->addElement('select', 'jumptofail', get_string('jumptofail', 'mod_flexbook'), ['' => get_string('default')]
-                + $annotations);
-            $mform->setType('jumptofail', PARAM_INT);
+                + $allannotations);
+            $mform->setType('jumptofail', PARAM_RAW);
 
             // Hide if completion tracking is null or view or manual.
             $mform->hideIf('jumptofail', 'completiontracking', 'in', ['none', 'view', 'manual']);
@@ -303,13 +319,21 @@ class base_form extends \core_form\dynamic_form {
             'removeafteractivitycompletion' => 0,
             'preventskip' => 0,
             'locked' => 0,
+            'jumpto' => '',
             'jumptopass' => '',
             'jumptofail' => '',
             'backto' => '',
-            'jumpto' => '',
+            'bottomheader' => 0,
+            'instructions' => '',
+            'hideinstructionsoncomplete' => 0,
         ];
         foreach ($properties as $key => $default) {
-            $adv->{$key} = isset($data->{$key}) ? $data->{$key} : $default;
+            $value = isset($data->{$key}) ? $data->{$key} : $default;
+            // Add prefix for navigation fields.
+            if (in_array($key, ['jumpto', 'jumptopass', 'jumptofail', 'backto']) && is_numeric($value) && $value > 0) {
+                $value = '@@ANNOID#' . $value;
+            }
+            $adv->{$key} = $value;
         }
 
         return json_encode($adv);
@@ -332,7 +356,7 @@ class base_form extends \core_form\dynamic_form {
         $mform->setType('type', PARAM_TEXT);
 
         $mform->addElement('hidden', 'id', null);
-        $mform->setType('id', PARAM_INT);
+        $mform->setType('id', PARAM_RAW);
 
         $mform->addElement('hidden', 'courseid', null);
         $mform->setType('courseid', PARAM_INT);
@@ -341,7 +365,7 @@ class base_form extends \core_form\dynamic_form {
         $mform->setType('cmid', PARAM_INT);
 
         $mform->addElement('hidden', 'annotationid', null);
-        $mform->setType('annotationid', PARAM_INT);
+        $mform->setType('annotationid', PARAM_RAW);
 
         $mform->addElement('hidden', 'hascompletion', null);
         $mform->setType('hascompletion', PARAM_INT);
@@ -434,6 +458,23 @@ class base_form extends \core_form\dynamic_form {
         // Collapse the advanced fields by default.
         $mform->setExpanded('advanced', false);
 
+        $mform->addElement(
+            'textarea',
+            'instructions',
+            get_string('instructions', 'mod_flexbook'),
+            ['rows' => 3, 'class' => 'w-100']
+        );
+        $mform->addHelpButton('instructions', 'instructions', 'mod_flexbook');
+        $mform->setType('instructions', PARAM_TEXT);
+
+        $mform->addElement(
+            'advcheckbox',
+            'hideinstructionsoncomplete',
+            get_string('hideinstructionsoncomplete', 'mod_flexbook'),
+            get_string('hideinstructionsoncomplete_desc', 'mod_flexbook')
+        );
+        $mform->setType('hideinstructionsoncomplete', PARAM_INT);
+
         if ($options['title']) {
             // Hide interaction title.
             $elementarray = [];
@@ -446,11 +487,20 @@ class base_form extends \core_form\dynamic_form {
                 [0, 1]
             );
             $elementarray[] = $mform->createElement(
+                'advcheckbox',
+                'bottomheader',
+                '',
+                get_string('headerbottom', 'mod_flexbook'),
+                ["group" => 1],
+                [0, 1]
+            );
+            $elementarray[] = $mform->createElement(
                 'static',
                 'hideheaderdesc',
                 '',
                 '<span class="text-muted small w-100 d-block">'
-                    . get_string('hidetitle_desc', 'mod_flexbook') . '</span>'
+                    . get_string('hidetitle_desc', 'mod_flexbook') . ' '
+                    . get_string('headerbottom_desc', 'mod_flexbook') . '</span>'
             );
 
             $mform->addGroup($elementarray, '', get_string('interactiontitle', 'mod_flexbook'));
@@ -624,6 +674,69 @@ class base_form extends \core_form\dynamic_form {
     }
 
     /**
+     * Add interaction fields (Go to URL, Go to Interaction, Play Audio)
+     *
+     * @param array $options Options to control which interaction types are available.
+     * @return void
+     */
+    public function interaction_fields($options = []) {
+        $options += [
+            'gotourl' => true,
+            'gotointeraction' => true,
+            'playaudio' => true,
+        ];
+
+        $mform = &$this->_form;
+        $mform->addElement('header', 'interactionheader', get_string('interaction', 'local_fbcanvas'));
+
+        $typeoptions = ['none' => get_string('none', 'local_fbcanvas')];
+        if ($options['gotourl']) {
+            $typeoptions['gotourl'] = get_string('gotourl', 'local_fbcanvas');
+        }
+        if ($options['gotointeraction']) {
+            $typeoptions['gotointeraction'] = get_string('gotointeraction', 'local_fbcanvas');
+        }
+        if ($options['playaudio']) {
+            $typeoptions['playaudio'] = get_string('playaudio', 'local_fbcanvas');
+        }
+
+        $mform->addElement('select', 'interactiontype', get_string('interactiontype', 'local_fbcanvas'), $typeoptions);
+        $mform->setDefault('interactiontype', 'none');
+
+        if ($options['gotourl']) {
+            $mform->addElement('text', 'gotourl', get_string('gotourl', 'local_fbcanvas'), ['size' => 100]);
+            $mform->setType('gotourl', PARAM_URL);
+            $mform->addRule(
+                'gotourl',
+                get_string('invalidurlformat', 'local_fbcanvas'),
+                'regex',
+                "/\b(?:(?:https?|ftp):\/\/|www\.)[-a-z0-9+&@#\/%?=~_|!:,.;]*\.[a-z]{2,}[-a-z0-9+&@#\/%=~_|]*/i",
+                'client'
+            );
+            $mform->hideIf('gotourl', 'interactiontype', 'neq', 'gotourl');
+        }
+
+        if ($options['gotointeraction']) {
+            $annotationoptions = [0 => get_string('none', 'local_fbcanvas')] + ($this->get_annotations() ?? []);
+            $mform->addElement('select', 'gotointeraction', get_string('gotointeraction', 'local_fbcanvas'), $annotationoptions);
+            $mform->setType('gotointeraction', PARAM_RAW);
+            $mform->hideIf('gotointeraction', 'interactiontype', 'neq', 'gotointeraction');
+        }
+
+        if ($options['playaudio']) {
+            global $COURSE;
+            $filemanageroptions = [
+                'maxbytes'       => $COURSE->maxbytes,
+                'subdirs'        => 0,
+                'maxfiles'       => 1,
+                'accepted_types' => ['html_audio'],
+            ];
+            $mform->addElement('filemanager', 'audio', get_string('audiofile', 'local_fbcanvas'), null, $filemanageroptions);
+            $mform->hideIf('audio', 'interactiontype', 'neq', 'playaudio');
+        }
+    }
+
+    /**
      * Standard close form element
      *
      * @return void
@@ -638,12 +751,33 @@ class base_form extends \core_form\dynamic_form {
     /**
      * Validation
      *
-     * @param mixed $data
-     * @param mixed $files
-     * @return void
+     * @param array $data
+     * @param array $files
+     * @return array
      */
     public function validation($data, $files) {
-        $errors = [];
+        $errors = parent::validation($data, $files);
+
+        if (isset($data['interactiontype'])) {
+            $type = $data['interactiontype'];
+            if ($type === 'gotourl') {
+                if (empty($data['gotourl'])) {
+                    $errors['gotourl'] = get_string('required');
+                }
+            } else if ($type === 'playaudio') {
+                if (empty($data['audio'])) {
+                    $errors['audio'] = get_string('required');
+                } else {
+                    $usercontext = \context_user::instance($GLOBALS['USER']->id);
+                    $fs = get_file_storage();
+                    $draftfiles = $fs->get_area_files($usercontext->id, 'user', 'draft', $data['audio'], 'id', false);
+                    if (count($draftfiles) == 0) {
+                        $errors['audio'] = get_string('required');
+                    }
+                }
+            }
+        }
+
         return $errors;
     }
 
@@ -684,7 +818,7 @@ class base_form extends \core_form\dynamic_form {
      */
     protected function get_page_url_for_dynamic_submission(): \moodle_url {
         return new \moodle_url('/mod/flexbook/view.php', [
-            'id' => $this->optional_param('id', null, PARAM_INT),
+            'id' => $this->optional_param('id', null, PARAM_RAW),
         ]);
     }
 }

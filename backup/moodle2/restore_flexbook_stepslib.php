@@ -171,7 +171,7 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
             $data->completiondetails = json_encode($newcompletiondetails);
         }
 
-        if (!empty($data->lastviewed) && $data->lastviewed != '999') {
+        if (!empty($data->lastviewed) && $data->lastviewed != 'endscreen' && $data->lastviewed != '0') {
             $mappedlastviewed = $this->get_mappingid('annotationitems', $data->lastviewed);
             if ($mappedlastviewed) {
                 $data->lastviewed = $mappedlastviewed;
@@ -183,7 +183,7 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
             if (isset($olddetails['timespent']) && is_array($olddetails['timespent'])) {
                 $newtimespent = [];
                 foreach ($olddetails['timespent'] as $olditemid => $time) {
-                    if ($olditemid == '999') {
+                    if ($olditemid == 'endscreen' || $olditemid == '0') {
                         $newtimespent[$olditemid] = $time;
                         continue;
                     }
@@ -197,7 +197,7 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
             if (isset($olddetails['views']) && is_array($olddetails['views'])) {
                 $newviews = [];
                 foreach ($olddetails['views'] as $olditemid => $view) {
-                    if ($olditemid == '999') {
+                    if ($olditemid == 'endscreen' || $olditemid == '0') {
                         $newviews[$olditemid] = $view;
                         continue;
                     }
@@ -216,7 +216,7 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
                     $newdetails[$key] = $value;
                     continue;
                 }
-                if ($key == '999') {
+                if ($key == 'endscreen' || $key == '0') {
                     $newdetails[$key] = $value;
                     continue;
                 }
@@ -320,6 +320,21 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
                 $flexbook->sequence = implode(',', $newids);
                 $DB->update_record('flexbook', $flexbook);
             }
+        }
+
+        // Decode placeholders in annotation items.
+        $items = $DB->get_records('flexbook_items', ['annotationid' => $flexbookid]);
+        foreach ($items as $item) {
+            $item->content = $this->decode_text($item->content);
+            $item->advanced = $this->decode_text($item->advanced);
+            $item->text1 = $this->decode_text($item->text1);
+            $item->text2 = $this->decode_text($item->text2);
+            $item->text3 = $this->decode_text($item->text3);
+            $item->char1 = $this->decode_text($item->char1);
+            $item->char2 = $this->decode_text($item->char2);
+            $item->char3 = $this->decode_text($item->char3);
+
+            $DB->update_record('flexbook_items', $item);
         }
 
         // Add flexbook related files, no need to match by itemname (just internally handled context).

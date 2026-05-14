@@ -159,7 +159,9 @@ class util extends \interactivevideo_util {
      */
     public static function get_items($cmid, $contextid, $hascompletion = false) {
         global $DB, $PAGE;
-        $PAGE->set_context(\context::instance_by_id($contextid));
+        if ($contextid) {
+            $PAGE->set_context(\context::instance_by_id($contextid));
+        }
         $cache = \cache::make('mod_flexbook', 'fb_items');
         $items = $cache->get($cmid);
         if (!$items) {
@@ -173,9 +175,12 @@ class util extends \interactivevideo_util {
                 return $item['hascompletion'] == 1;
             });
         }
-        $items = array_map(function ($item) {
+        $items = array_map(function ($item) use ($contextid) {
             $item = (array) $item;
             $item['formattedtitle'] = format_string($item['title']);
+            if (empty($item['contextid'])) {
+                $item['contextid'] = $contextid;
+            }
             return $item;
         }, $items);
         return $items;
@@ -190,9 +195,17 @@ class util extends \interactivevideo_util {
      */
     public static function get_item($id, $contextid) {
         global $DB, $PAGE;
-        $PAGE->set_context(\context::instance_by_id($contextid));
+        if ($contextid) {
+            $PAGE->set_context(\context::instance_by_id($contextid));
+        }
         $record = $DB->get_record('flexbook_items', ['id' => $id]);
+        if (!$record) {
+            return null;
+        }
         $record->formattedtitle = format_string($record->title);
+        if (empty($record->contextid)) {
+            $record->contextid = $contextid;
+        }
         return $record;
     }
 
@@ -262,7 +275,7 @@ class util extends \interactivevideo_util {
         }
 
         // Handle sequence insertion.
-        $flexbook = $DB->get_record('flexbook', ['id' => $item->flexbookid]);
+        $flexbook = $DB->get_record('flexbook', ['id' => $item->annotationid]);
         if ($flexbook) {
             $sequence = explode(',', $flexbook->sequence);
             $sequence = array_filter($sequence); // Remove empty values.
@@ -293,15 +306,93 @@ class util extends \interactivevideo_util {
      * @param string $field The field name.
      * @param string $value The field value.
      * @param int $contextid The context ID.
+     * @param int $draftitemid The draft item ID.
+     * @param int $olddraftitemid The old draft item ID.
      * @return \stdClass The updated item record.
      */
-    public static function quick_edit($id, $field, $value, $contextid) {
-        global $DB;
+    public static function quick_edit($id, $field, $value, $contextid, $draftitemid = 0, $olddraftitemid = 0) {
+        global $DB, $CFG;
+        if ($field == 'content') {
+            require_once($CFG->libdir . '/filelib.php');
+            $context = \context::instance_by_id($contextid);
+            // Delete the old files before saving the new files.
+            $fs = get_file_storage();
+            $fs->delete_area_files($context->id, 'mod_flexbook', 'content', $id);
+
+            // Use the provided draftitemid or fallback to request param.
+            if (!$draftitemid) {
+                $draftitemid = file_get_submitted_draft_itemid('content');
+            }
+
+            $postvalue = file_save_draft_area_files(
+                $draftitemid,
+                $contextid,
+                'mod_flexbook',
+                'content',
+                $id,
+                [
+                    'maxfiles' => -1,
+                    'maxbytes' => 0,
+                    'trusttext' => true,
+                    'noclean' => true,
+                    'context' => $context,
+                ],
+                $value
+            );
+
+            // Remove orphaned files.
+            self::file_remove_editor_orphaned_files($draftitemid, $value);
+            if ($olddraftitemid) {
+                self::file_remove_editor_orphaned_files($olddraftitemid, $value);
+            }
+            $value = $postvalue;
+        }
         $DB->set_field('flexbook_items', $field, $value, ['id' => $id]);
         $item = self::get_item($id, $contextid);
         $cache = \cache::make('mod_flexbook', 'fb_items');
         $cache->delete($item->cmid);
         return $item;
+    }
+
+    /**
+     * Remove orphaned files.
+     *
+     * @param int $draftid
+     * @param string $text
+     * @return void
+     */
+    public static function file_remove_editor_orphaned_files($draftid, $text) {
+        global $CFG, $USER;
+        if (!$draftid) {
+            return;
+        }
+        // Find those draft files included in the text, and generate their hashes.
+        $context = \context_user::instance($USER->id);
+        $baseurl = $CFG->wwwroot . '/draftfile.php/' . $context->id . '/user/draft/' . $draftid . '/';
+        $pattern = "/" . preg_quote($baseurl, '/') . "(.+?)[\?\"'<>\s:\\\\]/";
+        preg_match_all($pattern, $text, $matches);
+        $usedfilehashes = [];
+        foreach ($matches[1] as $matchedfilename) {
+            $matchedfilename = urldecode($matchedfilename);
+            $usedfilehashes[] = \file_storage::get_pathname_hash(
+                $context->id,
+                'user',
+                'draft',
+                $draftid,
+                '/',
+                $matchedfilename
+            );
+        }
+
+        // Now, compare the hashes of all draft files, and remove those which don't match used files.
+        $fs = get_file_storage();
+        $files = $fs->get_area_files($context->id, 'user', 'draft', $draftid, 'id', false);
+        foreach ($files as $file) {
+            $tmphash = $file->get_pathnamehash();
+            if (!in_array($tmphash, $usedfilehashes)) {
+                $file->delete();
+            }
+        }
     }
 
     /**
@@ -316,15 +407,10 @@ class util extends \interactivevideo_util {
     public static function get_progress($cmid, $userid, $courseid = null, $preview = false) {
         global $DB;
         if ($userid == 1 || $preview || isguestuser()) {
-            global $SESSION;
-            $progress = isset($SESSION->ivprogress) ? $SESSION->ivprogress : null;
-            if (!isset($progress)) {
-                $SESSION->ivprogress = [];
-            }
-            if (isset($progress[$cmid])) {
-                return $progress[$cmid];
-            } else {
-                $SESSION->ivprogress[$cmid] = [
+            $cache = \cache::make('mod_flexbook', 'fb_progress');
+            $progress = $cache->get($cmid);
+            if (!$progress) {
+                $progress = [
                     'cmid' => $cmid,
                     'completeditems' => '',
                     'xp' => 0,
@@ -333,8 +419,9 @@ class util extends \interactivevideo_util {
                     'userid' => $userid,
                     'completiondetails' => '',
                 ];
+                $cache->set($cmid, $progress);
             }
-            return $SESSION->ivprogress[$cmid];
+            return $progress;
         }
 
         $record = $DB->get_record('flexbook_completion', ['cmid' => $cmid, 'userid' => $userid]);
@@ -389,10 +476,11 @@ class util extends \interactivevideo_util {
         $updatestate = true,
         $courseid = 0
     ) {
-        global $DB, $CFG, $SESSION;
+        global $DB, $CFG;
         // If guess user, save progress in the session; otherwise in the database.
         if ($userid == 1 || isguestuser()) {
-            // First get the progress from the session.
+            $cache = \cache::make('mod_flexbook', 'fb_progress');
+            // First get the progress from the cache.
             $progress = [
                 'cmid' => $cmid,
                 'completeditems' => $completeditems,
@@ -402,7 +490,7 @@ class util extends \interactivevideo_util {
                 'userid' => $userid,
                 'completionid' => 0,
             ];
-            $currentprogress = $SESSION->ivprogress[$cmid] ?? null;
+            $currentprogress = $cache->get($cmid);
             if ($currentprogress) {
                 $completion = json_decode($completiondetails);
                 $cdetails = $currentprogress['completiondetails'];
@@ -417,8 +505,8 @@ class util extends \interactivevideo_util {
                 }
                 $progress['completiondetails'] = json_encode($cdetails);
             }
-            $SESSION->ivprogress[$cmid] = $progress;
-            return $SESSION->ivprogress[$cmid];
+            $cache->set($cmid, $progress);
+            return $progress;
         }
         $record = $DB->get_record('flexbook_completion', ['cmid' => $cmid, 'userid' => $userid]);
         $record->completeditems = $completeditems;
@@ -528,50 +616,100 @@ class util extends \interactivevideo_util {
             $courseid = $cm->course;
         }
         $coursecontext = \context_course::instance($courseid);
-        // Get fields for userpicture.
-        $fields = \core_user\fields::get_picture_fields();
+
+        // Prepare user fields using the modern Moodle API.
+        // This handles both core fields and custom profile fields efficiently with joins.
         $identityfields = get_config('mod_flexbook', 'reportfields');
-        if (!empty($identityfields)) {
-            $fields = array_merge($fields, explode(',', $identityfields));
+        $extrafields = !empty($identityfields) ? explode(',', $identityfields) : [];
+        $extrafields = array_map('strtolower', $extrafields);
+
+        // Fetch custom field metadata once to avoid N+1 queries.
+        $customfieldmetadata = [];
+        if (!empty($extrafields)) {
+            $customfieldshortnames = [];
+            foreach ($extrafields as $field) {
+                if (strpos($field, 'profile_field_') === 0) {
+                    $customfieldshortnames[] = str_replace('profile_field_', '', $field);
+                }
+            }
+            if (!empty($customfieldshortnames)) {
+                [$insql, $inparams] = $DB->get_in_or_equal($customfieldshortnames, SQL_PARAMS_NAMED);
+                $customfieldmetadata = $DB->get_records_select(
+                    'user_info_field',
+                    "shortname $insql",
+                    $inparams,
+                    '',
+                    'shortname, datatype as type, id'
+                );
+                $customfieldmetadata = array_change_key_case($customfieldmetadata, CASE_LOWER);
+            }
         }
-        $customfields = array_filter($fields, function ($field) {
-            return strpos($field, 'profile_field_') !== false;
-        });
-        $corefields = array_filter($fields, function ($field) {
-            return strpos($field, 'profile_field_') === false;
-        });
-        $dbfields = 'u.' . implode(', u.', $corefields);
+
+        // Pre-instantiate field objects and prepare mapping to avoid overhead inside the student loop.
+        $fieldobjects = [];
+        $customfieldmap = [];
+        foreach ($extrafields as $field) {
+            if (strpos($field, 'profile_field_') === 0) {
+                $shortname = str_replace('profile_field_', '', $field);
+                $metadata = $customfieldmetadata[$shortname] ?? null;
+                if ($metadata) {
+                    if (!isset($fieldobjects[$metadata->id])) {
+                        require_once($CFG->dirroot . '/user/profile/field/' . $metadata->type . '/field.class.php');
+                        $classname = 'profile_field_' . $metadata->type;
+                        $fieldobjects[$metadata->id] = new $classname($metadata->id);
+                    }
+                    $customfieldmap[$field] = [
+                        'shortname' => $shortname,
+                        'type' => $metadata->type,
+                        'id' => $metadata->id,
+                        'lowercased' => strtolower($field),
+                    ];
+                }
+            }
+        }
+
+        // We use for_userpic() as a base and add identity fields.
+        $userfields = \core_user\fields::for_userpic()->with_identity($context)->including(...$extrafields);
+        $fieldsql = $userfields->get_sql('u', true, '', '', false);
+
         // Graded roles.
         $roles = get_config('core', 'gradebookroles');
         if (empty($roles)) {
             return [];
         }
-        [$inparams, $inparamsvalues] = $DB->get_in_or_equal(explode(',', $roles));
+        [$inparams, $inparamsvalues] = $DB->get_in_or_equal(explode(',', $roles), SQL_PARAMS_NAMED);
+
         if ($group == 0) {
             // Get all enrolled users (student only).
-            $sql = "SELECT " . $dbfields . ", ac.timecompleted, ac.timecreated,
-             ac.completionpercentage, ac.completeditems, ac.xp, ac.completiondetails, ac.id as completionid
+            $sql = "SELECT {$fieldsql->selects}, ac.timecompleted, ac.timecreated,
+                           ac.completionpercentage, ac.completeditems, ac.xp, ac.completiondetails, ac.id as completionid
                     FROM {user} u
-                    LEFT JOIN {flexbook_completion} ac ON ac.userid = u.id AND ac.cmid = ?
-                    WHERE u.id IN (SELECT userid FROM {role_assignments} WHERE contextid = ? AND roleid $inparams)
+                    {$fieldsql->joins}
+                    LEFT JOIN {flexbook_completion} ac ON ac.userid = u.id AND ac.cmid = :cmid
+                    WHERE u.id IN (SELECT userid FROM {role_assignments} WHERE contextid = :coursecontextid AND roleid $inparams)
                     ORDER BY u.lastname, u.firstname";
-            $params = array_merge([$cmid, $coursecontext->id], $inparamsvalues);
-            $records = $DB->get_records_sql($sql, $params);
+            $params = array_merge($fieldsql->params, ['cmid' => $cmid, 'coursecontextid' => $coursecontext->id], $inparamsvalues);
         } else {
             // Get users in group (student only).
-            $sql = "SELECT " . $dbfields . ", ac.timecompleted, ac.timecreated,
-             ac.completionpercentage, ac.completeditems, ac.xp, ac.completiondetails, ac.id as completionid
+            $sql = "SELECT {$fieldsql->selects}, ac.timecompleted, ac.timecreated,
+                           ac.completionpercentage, ac.completeditems, ac.xp, ac.completiondetails, ac.id as completionid
                     FROM {user} u
-                    LEFT JOIN {flexbook_completion} ac ON ac.userid = u.id AND ac.cmid = ?
-                    WHERE u.id IN (SELECT userid FROM {groups_members} WHERE groupid = ?)
-                    AND u.id IN (SELECT userid FROM {role_assignments} WHERE contextid = ? AND roleid $inparams)
+                    {$fieldsql->joins}
+                    LEFT JOIN {flexbook_completion} ac ON ac.userid = u.id AND ac.cmid = :cmid
+                    WHERE u.id IN (SELECT userid FROM {groups_members} WHERE groupid = :groupid)
+                    AND u.id IN (SELECT userid FROM {role_assignments} WHERE contextid = :coursecontextid AND roleid $inparams)
                     ORDER BY u.lastname, u.firstname";
-            $params = array_merge([$cmid, $group, $coursecontext->id], $inparamsvalues);
-            $records = $DB->get_records_sql($sql, $params);
+            $params = array_merge(
+                $fieldsql->params,
+                ['cmid' => $cmid, 'groupid' => $group, 'coursecontextid' => $coursecontext->id],
+                $inparamsvalues
+            );
         }
 
-        // Render the photo of the user.
-        foreach ($records as $record) {
+        $records = [];
+        $rs = $DB->get_recordset_sql($sql, $params);
+        foreach ($rs as $record) {
+            // Render the photo of the user.
             $userpic = new \user_picture($record);
             $userpic->link = false;
             $userpic->includefullname = true;
@@ -582,26 +720,30 @@ class util extends \interactivevideo_util {
             $record->picture = $OUTPUT->render($userpic);
             $record->fullname = fullname($record);
 
-            // Handle custom fields.
-            if (!empty($customfields)) {
-                foreach ($customfields as $field) {
+            // Handle custom fields efficiently using the pre-calculated map.
+            $record->customfields = [];
+            foreach ($customfieldmap as $info) {
+                $field = $info['lowercased'];
+                if (isset($record->{$field})) {
+                    $fieldobj = $fieldobjects[$info['id']];
+                    $fieldobj->data = $record->{$field};
+                    $formatted = $fieldobj->display_data();
+
+                    $record->customfields[] = [
+                        'shortname' => $info['shortname'],
+                        'type' => $info['type'],
+                        'value' => $record->{$field}, // Raw value.
+                        'formatted' => $formatted,
+                    ];
+                } else {
                     $record->{$field} = '';
                 }
-                $profile = user_get_user_details($record, null, ['customfields']);
-                $customfieldarray = (array)$profile['customfields'];
-                foreach ($customfieldarray as $key => $value) {
-                    $field = (object)$value;
-                    if (in_array('profile_field_' . $field->shortname, $customfields)) {
-                        $record->{'profile_field_' . $field->shortname} = $field->displayvalue;
-                        unset($customfieldarray[$key]['displayvalue']);
-                        unset($customfieldarray[$key]['name']);
-                    } else {
-                        unset($customfieldarray[$key]);
-                    }
-                }
-                $record->customfields = $customfieldarray;
             }
+
+            $records[$record->id] = $record;
         }
+        $rs->close();
+
         return $records;
     }
 
@@ -770,8 +912,8 @@ class util extends \interactivevideo_util {
         } else {
             $record->id = $DB->insert_record('flexbook_log', $record);
         }
-        $record->formattedtimecreated = userdate($record->timecreated, get_string('strftimedatetime'));
-        $record->formattedtimemodified = userdate($record->timemodified, get_string('strftimedatetime'));
+        $record->formattedtimecreated = userdate($record->timecreated, get_string('strftimedatetime', 'langconfig'));
+        $record->formattedtimemodified = userdate($record->timemodified, get_string('strftimedatetime', 'langconfig'));
 
         return $record;
     }
@@ -810,8 +952,8 @@ class util extends \interactivevideo_util {
         }
         $records = $DB->get_records_sql($sql, $params);
         foreach ($records as $record) {
-            $record->formattedtimecreated = userdate($record->timecreated, get_string('strftimedatetime'));
-            $record->formattedtimemodified = userdate($record->timemodified, get_string('strftimedatetime'));
+            $record->formattedtimecreated = userdate($record->timecreated, get_string('strftimedatetime', 'langconfig'));
+            $record->formattedtimemodified = userdate($record->timemodified, get_string('strftimedatetime', 'langconfig'));
             $record->text1 = self::process_text($record->text1, $contextid, 'text1', $record->id);
             $record->text2 = self::process_text($record->text2, $contextid, 'text2', $record->id);
             $record->text3 = self::process_text($record->text3, $contextid, 'text3', $record->id);

@@ -365,7 +365,6 @@ class Mascot {
                 return;
             }
 
-            window.console.log(data);
             const earned = (data.target && data.target.earned) ? data.target.earned : 0;
 
             if (earned > 0) {
@@ -394,7 +393,6 @@ class Mascot {
 
         // Correct answer
         this.onCorrect = async(e) => {
-            window.console.log('asdas');
             const data = e.detail || (e.originalEvent && e.originalEvent.detail);
             this.animate('happy');
             if (data && data.message) {
@@ -419,7 +417,6 @@ class Mascot {
 
         // Interaction complete
         this.onComplete = async(e) => {
-            window.console.log('iv:complete');
             const data = e.detail || (e.originalEvent && e.originalEvent.detail);
             this.animate('cheer');
             if (data && data.message) {
@@ -477,7 +474,7 @@ class Mascot {
         if (type === 'happy' || type === 'celebrate' || type === 'cheer') {
             this.playSound('happy');
         } else if (type === 'jump') {
-            this.playSound('pop');
+            this.playSound('speak');
         } else if (type === 'sad') {
             this.playSound('sad');
         }
@@ -485,11 +482,14 @@ class Mascot {
 
     /**
      * Play a sound effect using Web Audio API
-     * @param {string} name
+     * @param {string} effect The effect name (happy, sad, speak)
      */
-    static playSound(name) {
+    static playSound(effect) {
         if (!this.audioCtx) {
             this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            this.masterGain = this.audioCtx.createGain();
+            this.masterGain.gain.value = 0.5;
+            this.masterGain.connect(this.audioCtx.destination);
         }
 
         if (this.audioCtx.state === 'suspended') {
@@ -498,44 +498,246 @@ class Mascot {
 
         const now = this.audioCtx.currentTime;
 
-        if (name === 'pop') {
+        switch (this.character) {
+            case 'duo':
+                this._playOwl(now, effect);
+                break;
+            case 'monkey':
+                this._playMonkey(now, effect);
+                break;
+            case 'parrot':
+                this._playParrot(now, effect);
+                break;
+            case 'walle':
+                this._playRobot(now, effect);
+                break;
+            case 'panda':
+                this._playPanda(now, effect);
+                break;
+        }
+    }
+
+    /**
+     * Owl (Duo) sound synthesis
+     * @param {number} t Start time
+     * @param {string} effect
+     */
+    static _playOwl(t, effect) {
+        const baseFreq = effect === 'happy' ? 380 : (effect === 'sad' ? 240 : 320);
+        const hoo = (startTime, freq, dur) => {
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+            const lfo = this.audioCtx.createOscillator();
+            const lfoGain = this.audioCtx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, startTime);
+            osc.frequency.exponentialRampToValueAtTime(freq * 0.9, startTime + dur);
+            lfo.frequency.value = 5;
+            lfoGain.gain.value = 10;
+            lfo.connect(lfoGain);
+            lfoGain.connect(osc.frequency);
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(0.3, startTime + 0.05);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            lfo.start(startTime);
+            osc.start(startTime);
+            osc.stop(startTime + dur);
+        };
+        if (effect === 'happy') {
+            hoo(t, baseFreq, 0.3);
+            hoo(t + 0.35, baseFreq * 1.1, 0.4);
+        } else if (effect === 'sad') {
+            hoo(t, baseFreq, 0.6);
+        } else {
+            hoo(t, baseFreq, 0.25);
+            hoo(t + 0.3, baseFreq, 0.25);
+        }
+    }
+
+    /**
+     * Monkey sound synthesis
+     * @param {number} t Start time
+     * @param {string} effect
+     */
+    static _playMonkey(t, effect) {
+        const count = effect === 'happy' ? 4 : (effect === 'speak' ? 6 : 2);
+        const freq = effect === 'sad' ? 600 : 1200;
+        for (let i = 0; i < count; i++) {
+            const start = t + (i * 0.15);
+            const dur = 0.1;
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, start);
+            osc.frequency.exponentialRampToValueAtTime(freq * 2.5, start + dur);
+            gain.gain.setValueAtTime(0, start);
+            gain.gain.linearRampToValueAtTime(0.15, start + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            osc.start(start);
+            osc.stop(start + dur);
+        }
+    }
+
+    /**
+     * Parrot sound synthesis
+     * @param {number} t Start time
+     * @param {string} effect
+     */
+    static _playParrot(t, effect) {
+        const chirp = (startTime, startFreq, endFreq, dur, volume = 0.2) => {
             const osc = this.audioCtx.createOscillator();
             const gain = this.audioCtx.createGain();
             osc.type = 'sine';
-            osc.frequency.setValueAtTime(400, now);
-            osc.frequency.exponentialRampToValueAtTime(1200, now + 0.05);
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.1);
+            osc.frequency.setValueAtTime(startFreq, startTime);
+            osc.frequency.exponentialRampToValueAtTime(endFreq, startTime + dur);
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.linearRampToValueAtTime(volume, startTime + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + dur);
             osc.connect(gain);
-            gain.connect(this.audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.1);
-        } else if (name === 'happy') {
-            const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
-            notes.forEach((freq, i) => {
+            gain.connect(this.masterGain);
+            osc.start(startTime);
+            osc.stop(startTime + dur + 0.05);
+        };
+        if (effect === 'happy') {
+            chirp(t, 4000, 6500, 0.08);
+            chirp(t + 0.1, 4500, 7000, 0.08);
+        } else if (effect === 'sad') {
+            chirp(t, 3500, 2000, 0.4, 0.15);
+        } else {
+            chirp(t, 5000, 6000, 0.05);
+            chirp(t + 0.08, 5500, 4500, 0.05);
+            chirp(t + 0.16, 6000, 7000, 0.07);
+        }
+    }
+
+    /**
+     * Robot (Walle) sound synthesis
+     * @param {number} t Start time
+     * @param {string} effect
+     */
+    static _playRobot(t, effect) {
+        if (effect === 'speak') {
+            for (let i = 0; i < 8; i++) {
+                const start = t + (i * 0.08);
+                const f = 800 + Math.random() * 1200;
                 const osc = this.audioCtx.createOscillator();
                 const gain = this.audioCtx.createGain();
-                osc.type = 'triangle';
-                osc.frequency.setValueAtTime(freq, now + i * 0.08);
-                gain.gain.setValueAtTime(0.2, now + i * 0.08);
-                gain.gain.exponentialRampToValueAtTime(0.01, now + i * 0.08 + 0.2);
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(f, start);
+                gain.gain.setValueAtTime(0.15, start);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + 0.06);
                 osc.connect(gain);
-                gain.connect(this.audioCtx.destination);
-                osc.start(now + i * 0.08);
-                osc.stop(now + i * 0.08 + 0.2);
-            });
-        } else if (name === 'sad') {
+                gain.connect(this.masterGain);
+                osc.start(start);
+                osc.stop(start + 0.07);
+            }
+        } else {
+            const duration = effect === 'sad' ? 0.8 : 0.25;
+            const startF = effect === 'sad' ? 800 : 400;
+            const endF = effect === 'sad' ? 50 : 1200;
             const osc = this.audioCtx.createOscillator();
             const gain = this.audioCtx.createGain();
-            osc.type = 'sine';
-            osc.frequency.setValueAtTime(200, now);
-            osc.frequency.linearRampToValueAtTime(100, now + 0.3);
-            gain.gain.setValueAtTime(0.3, now);
-            gain.gain.linearRampToValueAtTime(0, now + 0.3);
+            osc.type = effect === 'sad' ? 'square' : 'triangle';
+            osc.frequency.setValueAtTime(startF, t);
+            osc.frequency.exponentialRampToValueAtTime(endF, t + duration);
+            gain.gain.setValueAtTime(0.2, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + duration);
             osc.connect(gain);
-            gain.connect(this.audioCtx.destination);
-            osc.start(now);
-            osc.stop(now + 0.3);
+            gain.connect(this.masterGain);
+            osc.start(t);
+            osc.stop(t + duration);
+        }
+    }
+
+    /**
+     * Panda sound synthesis
+     * @param {number} t Start time
+     * @param {string} effect
+     */
+    static _playPanda(t, effect) {
+        if (effect === 'happy') {
+            // Panda Happy: Drum Roll
+            const numHits = 12;
+            const interval = 0.05;
+
+            for (let i = 0; i < numHits; i++) {
+                const start = t + (i * interval);
+                const isLast = i === numHits - 1;
+                const dur = isLast ? 0.2 : 0.04;
+                const volume = isLast ? 0.4 : 0.2;
+
+                const bufferSize = this.audioCtx.sampleRate * dur;
+                const buffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let j = 0; j < bufferSize; j++) {
+                    data[j] = Math.random() * 2 - 1;
+                }
+
+                const noiseSource = this.audioCtx.createBufferSource();
+                noiseSource.buffer = buffer;
+
+                const filter = this.audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = isLast ? 800 : 1200;
+                filter.Q.value = 1.0;
+
+                const gain = this.audioCtx.createGain();
+                gain.gain.setValueAtTime(0, start);
+                gain.gain.linearRampToValueAtTime(volume, start + 0.005);
+                gain.gain.exponentialRampToValueAtTime(0.001, start + dur);
+
+                noiseSource.connect(filter);
+                filter.connect(gain);
+                gain.connect(this.masterGain);
+                noiseSource.start(start);
+                noiseSource.stop(start + dur);
+            }
+        } else if (effect === 'sad') {
+            // Low whimper/groan: Deep frequency drop
+            const dur = 0.8;
+            const osc = this.audioCtx.createOscillator();
+            const filter = this.audioCtx.createBiquadFilter();
+            const gain = this.audioCtx.createGain();
+
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(110, t);
+            osc.frequency.exponentialRampToValueAtTime(55, t + dur);
+
+            filter.type = 'lowpass';
+            filter.frequency.value = 250;
+
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.2, t + 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.masterGain);
+            osc.start(t);
+            osc.stop(t + dur);
+        } else {
+            // Panda Talk: Pop
+            const dur = 0.12;
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+
+            osc.type = 'sine';
+            // Fast frequency sweep for a clean "pop" or "plop"
+            osc.frequency.setValueAtTime(700, t);
+            osc.frequency.exponentialRampToValueAtTime(40, t + dur);
+
+            gain.gain.setValueAtTime(0, t);
+            gain.gain.linearRampToValueAtTime(0.3, t + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+            osc.connect(gain);
+            gain.connect(this.masterGain);
+            osc.start(t);
+            osc.stop(t + dur);
         }
     }
 
@@ -543,13 +745,26 @@ class Mascot {
      * Display a speech bubble
      * @param {string} text
      * @param {number} duration Duration in ms. If 0, stays until cleared.
+     * @param {string|null} id Optional interaction ID for tracking.
      */
-    static say(text, duration = 3000) {
+    static say(text, duration = 3000, id = null) {
         if (!this.$el) {
             return;
         }
-        this.playSound('pop');
-        this.$bubble.text(text).addClass('show');
+        this.playSound('speak');
+        this.$bubble.html(`<span>${text}</span>`).addClass('show');
+
+        if (duration === 0) {
+            const $close = $('<button class="bubble-close"><i class="fa fa-close"></i></button>');
+            $close.on('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                Mascot.hideSay();
+                $(document).trigger('fb:instructiondismissed', {text: text, id: id});
+            });
+            this.$bubble.append($close);
+        }
+
         if (this.bubbleTimeout) {
             clearTimeout(this.bubbleTimeout);
         }

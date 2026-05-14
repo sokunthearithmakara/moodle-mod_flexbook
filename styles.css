@@ -95,8 +95,167 @@
 #page-mod-flexbook-interactions #wrapper #content-region {
     width: 100%;
     height: 100%;
-    max-width: 900px;
-    margin: 0 auto;
+}
+
+/* Redesigned Editor Layout */
+/* Redesigned Editor Layout */
+/* Redesigned Editor Layout */
+.page-interactions #flexbook-container {
+    height: calc(100vh - 80px);
+    background: #0f1115;
+    max-width: 100%;
+    overflow: hidden;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Ensure Moodle region fills height */
+#page-mod-flexbook-interactions #region-main {
+    padding: 0 !important;
+    display: flex;
+    flex-direction: column;
+}
+
+#page-mod-flexbook-interactions #region-main > .card {
+    border: none;
+    margin: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+#page-mod-flexbook-interactions #region-main > .card > .card-body {
+    padding: 0;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.page-interactions .editor-layout {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+}
+
+.page-interactions #editor-stage {
+    padding: 0;
+    background-color: #0f1115;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.page-interactions #editor-stage-main {
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+    padding-top: 1rem;
+}
+
+/* Control Bar Reverted */
+.page-interactions #editor-controlbar {
+    width: 100% !important;
+    height: 55px;
+    min-height: 55px;
+    z-index: 10;
+    margin-top: 0 !important;
+    border-radius: 0 !important;
+    backdrop-filter: none !important;
+    border: none !important;
+    box-shadow: none !important;
+}
+
+.page-interactions #editor-stage #completiontoggle,
+.page-interactions #editor-stage #refresh {
+    display: none !important;
+}
+
+.page-interactions #editor-sidebar {
+    width: 380px;
+    min-width: 380px;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-sizing: border-box;
+}
+
+.page-interactions #editor-sidebar.collapsed {
+    width: 0;
+    min-width: 0;
+    border-left: none !important;
+}
+
+.page-interactions #sidebar-toggle {
+    left: -40px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 40px;
+    height: 40px;
+    border-radius: 50% 0 0 50%;
+    z-index: 301;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.page-interactions #editor-sidebar.collapsed #sidebar-toggle {
+    border-radius: 50%;
+    left: -50px;
+}
+
+.page-interactions #editor-sidebar.collapsed #sidebar-toggle i {
+    transform: rotate(180deg);
+}
+
+.page-interactions #editor-sidebar .listItem.active-preview {
+    background-color: rgba(50, 140, 219, 0.1);
+    border-left: 4px solid #328cdb;
+}
+
+/* Indicators in editor */
+.page-interactions #editor-controlbar .annotation-item {
+    height: 8px;
+    width: 8px;
+    background: rgba(255, 255, 255, 0.4);
+    margin: 4px;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all ease-in-out 300ms;
+}
+
+.page-interactions #editor-controlbar .annotation-item.active {
+    background: #fff;
+    transform: scale(1.2);
+    width: 10px;
+    height: 10px;
+}
+
+@media (max-width: 991.98px) {
+    .page-interactions .editor-layout {
+        flex-direction: column;
+    }
+    .page-interactions #editor-sidebar {
+        width: 100%;
+        height: 200px;
+        border-left: none;
+        border-top: 1px solid #dee2e6;
+    }
+    .page-interactions #sidebar-toggle {
+        display: none;
+    }
+
+    .page-interactions #editor-sidebar.collapsed {
+        width: 100%;
+    }
 }
 
 #page-mod-flexbook-interactions #wrapper {
@@ -331,6 +490,7 @@
 }
 
 .path-mod-flexbook #message #title.hide-header #refresh,
+.path-mod-flexbook #message #title.hide-header #edit-interaction,
 .path-mod-flexbook #message #title.hide-header #delete-completiondata {
     background: rgba(0, 0, 0, .5);
     color: #fff;
@@ -339,6 +499,7 @@
 }
 
 .path-mod-flexbook #message #title.hide-header #refresh:hover,
+.path-mod-flexbook #message #title.hide-header #edit-interaction:hover,
 .path-mod-flexbook #message #title.hide-header #delete-completiondata:hover {
     background: #000;
 }
@@ -352,8 +513,11 @@
     border-left: 0 !important;
     border-right: 0 !important;
     border-top: 0 !important;
-    height: 36px;
     min-width: 36px;
+}
+
+.path-mod-flexbook.kidtheme .btn:not(.annotation-content) {
+    height: 36px;
 }
 
 .path-mod-flexbook.kidtheme .btn.btn-lg {
@@ -555,9 +719,8 @@
 }
 
 .path-mod-flexbook.kidtheme #interactivevideo-container {
-    overflow: visible;
-    /* We use clip-path to allow vertical overflow (tooltips) while clipping horizontal overflow (mascot) */
-    clip-path: inset(-500px 0 -500px -500px);
+    overflow-x: hidden;
+    clip-path: inset(-500px -100px -500px -500px);
     padding: 10px;
 }
 
@@ -570,8 +733,8 @@
     background-image: radial-gradient(#4e5456 2px, transparent 2px);
 }
 
-.path-mod-flexbook.kidtheme #video-wrapper {
-    border: 4px solid #e5e5e5;
+.path-mod-flexbook.kidtheme #video-wrapper.fb {
+    outline: 4px solid #e5e5e5;
     border-radius: 2rem !important;
     box-shadow: 0 8px 0 #e5e5e5;
     overflow: hidden;
@@ -580,22 +743,22 @@
     animation: kid-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
-.path-mod-flexbook.kidtheme.darkmode #video-wrapper {
-    border-color: #3c4d54;
+.path-mod-flexbook.kidtheme.darkmode #video-wrapper.fb {
+    outline-color: #3c4d54;
     box-shadow: 0 8px 0 #3c4d54;
     background: #000;
 }
 
-.path-mod-flexbook.kidtheme #video-wrapper:hover {
+.path-mod-flexbook.kidtheme #video-wrapper.fb:hover {
     transform: translateY(-4px);
     box-shadow: 0 12px 0 #e5e5e5;
 }
 
-.path-mod-flexbook.kidtheme.darkmode #video-wrapper:hover {
+.path-mod-flexbook.kidtheme.darkmode #video-wrapper.fb:hover {
     box-shadow: 0 12px 0 #3c4d54;
 }
 
-.path-mod-flexbook.kidtheme #wrapper.fullscreen #video-wrapper {
+.path-mod-flexbook.kidtheme #wrapper.fullscreen #video-wrapper.fb {
     border: none;
     box-shadow: none;
     border-radius: 1.5rem !important;
@@ -647,6 +810,7 @@
     cursor: pointer;
     transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), bottom 0.3s ease;
     filter: drop-shadow(0 5px 15px rgba(0, 0, 0, 0.1));
+    transform-origin: bottom right;
 }
 
 .path-mod-flexbook.kidtheme.fullscreen #fb-mascot,
@@ -1026,17 +1190,20 @@
     right: 0;
     background: white;
     border: 3px solid #e5e5e5;
-    border-radius: 0.75rem;
-    padding: 10px 20px;
-    min-width: 150px;
+    border-radius: 1rem;
+    padding: 20px 30px;
+    min-width: 160px;
+    max-width: 350px;
+    width: max-content;
     font-weight: bold;
     color: #4b4b4b;
-    box-shadow: 0 5px 0 #e5e5e5;
+    box-shadow: 0 6px 0 #e5e5e5;
     opacity: 0;
     transform: translateY(10px);
     transition: all 0.3s ease;
     pointer-events: none;
     z-index: 1032;
+    transform-origin: bottom right;
 }
 
 .path-mod-flexbook.kidtheme #fb-mascot-bubble::after {
@@ -1059,6 +1226,7 @@
 }
 
 .path-mod-flexbook.kidtheme #fb-mascot-bubble.show {
+    pointer-events: auto;
     opacity: 1;
     transform: translateY(0);
 }
@@ -1255,4 +1423,217 @@
 
 .path-mod-flexbook tr.annotation.dnd-target {
     background-color: #98deff;
+}
+
+.path-mod-flexbook #video-wrapper.fb #message #title {
+    z-index: 1001;
+}
+/* Bottom header placement */
+#message .header-bottom {
+    order: 2;
+    border-top: 1px solid rgba(0, 0, 0, 0.125);
+    border-bottom: 0 !important;
+}
+
+/* Instructional pop-up */
+.instruction-popup {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1060;
+    max-width: 350px;
+    padding: 15px;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    animation: slideInUp 0.4s ease-out;
+}
+
+.instruction-popup .close-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 50%;
+    background: #f8f9fa;
+    color: #6c757d;
+    transition: all 0.2s;
+}
+
+.instruction-popup .close-btn:hover {
+    background: #e9ecef;
+    color: #343a40;
+}
+
+.instruction-popup .instruction-content {
+    margin-top: 5px;
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #333;
+}
+
+/* Mascot close button */
+#mascot-bubble {
+    position: relative;
+}
+
+#mascot-bubble .bubble-close {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 20px;
+    height: 20px;
+    background: #ff4d4f;
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 10px;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    z-index: 10;
+}
+
+@keyframes slideInUp {
+    from {
+        transform: translateY(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+
+.bottom-header.modal-header {
+    order: 2 !important;
+}
+
+#fb-mascot-bubble {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 150px;
+    position: relative;
+}
+
+.path-mod-flexbook.kidtheme #fb-mascot-bubble {
+    padding: 15px 30px 15px 20px;
+}
+
+#fb-mascot-bubble .bubble-close {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 24px;
+    height: 24px;
+    background: #ff4b4b;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    cursor: pointer;
+    box-shadow: 0 2px 0 #d33;
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+
+#fb-mascot-bubble .bubble-close:hover {
+    background: #ff2b2b;
+    transform: scale(1.1);
+}
+
+#instruction-popup {
+    position: absolute;
+    bottom: 20px;
+    right: 20px;
+    z-index: 1060;
+    background: #fff;
+    border: 3px solid #e5e5e5;
+    border-radius: 0.75rem;
+    box-shadow: 0 5px 0 #e5e5e5;
+    padding: 20px;
+    max-width: 320px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    animation: slideInUp 0.3s ease-out;
+    transition: bottom 0.3s ease;
+}
+
+.path-mod-flexbook.kidtheme.fullscreen #instruction-popup,
+.path-mod-flexbook.kidtheme .fullscreen #instruction-popup,
+.path-mod-flexbook.kidtheme #wrapper:fullscreen #instruction-popup,
+.path-mod-flexbook.kidtheme #interactivevideo-container:fullscreen #instruction-popup {
+    bottom: 120px;
+}
+
+.darkmode #instruction-popup {
+    background: #131f24;
+    border-color: #3c4d54;
+    color: #fff;
+    box-shadow: 0 6px 0 #3c4d54;
+}
+
+#instruction-popup .popup-content {
+    flex-grow: 1;
+    font-size: 16px;
+    font-weight: 700;
+    color: #4b4b4b;
+    line-height: 1.4;
+}
+
+.darkmode #instruction-popup .popup-content {
+    color: #fff;
+}
+
+#instruction-popup .popup-close {
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    width: 26px;
+    height: 26px;
+    background: #ff4b4b;
+    color: white;
+    border: none;
+    border-radius: 50%;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    box-shadow: 0 2px 0 #d33;
+    transition: all 0.2s ease;
+}
+
+#instruction-popup .popup-close:hover {
+    background: #ff2b2b;
+    transform: scale(1.1);
+}
+
+.bg-dark #clicktopreview {
+    color: #fff;
+}
+
+#clicktopreview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+#clicktopreview i {
+    font-size: 3rem;
 }

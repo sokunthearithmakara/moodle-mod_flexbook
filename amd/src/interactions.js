@@ -1,3 +1,5 @@
+/* eslint-disable max-depth */
+/* eslint-disable complexity */
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -56,6 +58,8 @@ const init = async(
         isEditMode: true
     };
 
+    require(['theme_boost/bootstrap/modal']);
+
     // Preload audio.
     const pop = new Audio(M.cfg.wwwroot + '/mod/interactivevideo/sounds/pop.mp3');
     const point = new Audio(
@@ -73,12 +77,13 @@ const init = async(
     const $moreactionsmenu = $('.more-actions-menu');
     let sequence = $('#sequence').text().split(',');
 
-    let doptions = safeParse($('#doptions').text(), {});
-    let contentTypes = safeParse($('#contenttypes').text(), {});
-    let annotations = safeParse($('#items').text(), []);
+    let doptions = safeParse($('#doptions').val() || $('#doptions').text(), {});
+    let contentTypes = safeParse($('#contenttypes').val() || $('#contenttypes').text(), {});
+    let annotations = safeParse($('#items').val() || $('#items').text(), []);
 
     let ctRenderer = {};
-    window.console.log({doptions, contentTypes, annotations});
+    state.ctRenderer = ctRenderer;
+    state.annotations = annotations;
 
     // Remove all annotations that are not in the enabled content types.
     annotations = annotations.filter(x => contentTypes.find(y => y.name === x.type));
@@ -102,13 +107,153 @@ const init = async(
     });
 
     let activeid = null; // Current active annotation id. Mainly used when editing to relaunch the interaction afte editing.
+    const url = new URL(window.location);
+    let aid = url.searchParams.get('aid');
+    if (aid) {
+        activeid = aid;
+        url.searchParams.delete('aid');
+        window.history.replaceState({}, '', url);
+    }
+
+    /**
+     * Renders a preview of the interaction in the main stage area.
+     * @param {Object} annotation
+     */
+    const previewInStage = async(annotation) => {
+        if (!annotation) {
+            return;
+        }
+        activeid = annotation.id;
+
+        const $stage = $('#editor-stage');
+        const $canvas = $('#annotation-canvas');
+
+        // Clear canvas and existing messages
+        $canvas.empty();
+        $stage.find('#message').remove();
+        $('#navigationtoolbar').empty();
+
+        // Run interaction inline
+        try {
+            await ctRenderer[annotation.type].runInteraction(annotation, $stage);
+
+            // Fix: Bootstrap modals need 'show' class to be visible.
+            // Also adding 'active' for consistency with player logic.
+            $stage.find(`#message[data-id="${annotation.id}"]`).addClass('active show');
+
+            // Highlight active item in sidebar
+            $annotationlist.find('tr').removeClass('active-preview');
+            $annotationlist.find(`tr[data-id="${annotation.id}"]`).addClass('active-preview');
+
+            // Update control bar
+            updateControlBar(annotation);
+
+            // Resize stage
+            resizePreview();
+
+            // Update FAB
+            const $fab = $('#editor-edit-btn');
+            $fab.removeClass('d-none').data('id', annotation.id).data('type', annotation.type);
+        } catch (e) {
+            window.console.error("Preview failed:", e, annotation);
+        }
+    };
+
+    /**
+     * Resizes the preview stage to respect the aspect ratio.
+     * Uses #editor-stage-main as the reference container.
+     */
+    const resizePreview = () => {
+        const $main = $('#editor-stage-main');
+        const $videoWrapper = $('#video-wrapper');
+
+        if (!$main.length || !$videoWrapper.length) {
+            return;
+        }
+
+        // Stage metrics from the dedicated main wrapper
+        const availableWidth = $main.width();
+        const availableHeight = $main.height();
+
+        if (availableWidth <= 0 || availableHeight <= 0) {
+            return;
+        }
+
+        // Get the aspect ratio from display options
+        const aspectRatio = (doptions && doptions.aspectratio) ? doptions.aspectratio : null;
+
+        if (!aspectRatio) {
+            $videoWrapper.css({
+                width: '100%',
+                maxWidth: '1100px',
+                height: Math.floor(availableHeight - 20) + 'px',
+                maxHeight: '100%'
+            });
+            return;
+        }
+
+        const [ratioW, ratioH] = aspectRatio.split(':').map(Number);
+        const ratio = (ratioW && ratioH) ? (ratioW / ratioH) : null;
+
+        if (!ratio) {
+            $videoWrapper.css({
+                width: '100%',
+                maxWidth: '1100px',
+                height: Math.floor(availableHeight - 20) + 'px',
+                maxHeight: '100%'
+            });
+            return;
+        }
+
+        // Provide a small gap for aesthetics
+        const gap = 20;
+        const boundedWidth = availableWidth - gap;
+        const boundedHeight = availableHeight - gap;
+
+        let newWidth = boundedWidth;
+        let newHeight = newWidth / ratio;
+
+        if (newHeight > boundedHeight) {
+            newHeight = boundedHeight;
+            newWidth = newHeight * ratio;
+        }
+
+        $videoWrapper.css({
+            width: Math.floor(newWidth) + 'px',
+            height: Math.floor(newHeight) + 'px',
+            maxWidth: '100%',
+            maxHeight: '100%',
+            marginLeft: 'auto',
+            marginRight: 'auto'
+        });
+    };
+
+    /**
+     * Updates the simplified control bar in the editor.
+     * @param {Object} current
+     */
+    const updateControlBar = (current) => {
+        const index = annotations.findIndex(a => a.id == current.id);
+        $('#thisanno').text(index + 1);
+        $('#totalannos').text(annotations.length);
+
+
+        // XP
+        const totalXp = annotations.reduce((acc, a) => acc + (Number(a.xp) || 0), 0);
+        $('#xptotal').text(totalXp);
+        // Current interaction XP
+        $('#xpearned').text(current.xp || 0);
+    };
 
     /**
      * Handle rendering of annotation items on the list
      * @param {Array} annotations array of annotation objects
+     * @param {Boolean} refreshPreview Whether to force a preview refresh
+     * @param {Boolean} nopreview Whether to skip previewing
      * @returns
      */
-    const renderAnnotationItems = async(annotations) => {
+    const renderAnnotationItems = async(annotations, refreshPreview = false, nopreview = false) => {
+        state.annotations = annotations;
         $('#annotationwrapper .loader').remove();
         $annotationlist.empty().removeClass("d-flex align-items-center justify-content-center");
         if (annotations.length == 0) {
@@ -125,6 +270,7 @@ const init = async(
             let listItem = $listitem.clone();
             try {
                 ctRenderer[item.type].renderEditItem(annotations, listItem, item);
+                $annotationlist.append(listItem);
             } catch (e) {
                 window.console.error(e, item);
             }
@@ -132,12 +278,38 @@ const init = async(
 
         let xp = annotations.filter(x => x.xp).map(x => Number(x.xp)).reduce((a, b) => a + b, 0);
         $("#xp span").text(xp);
-
+        if (nopreview) {
+            $('#annotation-canvas').append(`<div class="text-center mt-5" id="clicktopreview">
+                <i class="bi bi-cursor" aria-hidden="true"></i>
+                <h5>${await getString('clicktheinteractiontopreview', 'mod_flexbook')}</h5></div>`);
+            return;
+        }
         if (activeid) {
             const activeAnno = annotations.find(x => x.id == activeid);
             if (activeAnno) {
-                ctRenderer[activeAnno.type].postEditCallback(activeAnno);
+                $('#clicktopreview').remove();
+                if (refreshPreview) {
+                    await previewInStage(activeAnno);
+                } else {
+                    // Just update UI highlights and control bar state
+                    $annotationlist.find('tr').removeClass('active-preview');
+                    $annotationlist.find(`tr[data-id="${activeAnno.id}"]`).addClass('active-preview');
+                    updateControlBar(activeAnno);
+                }
             }
+        } else if (annotations.length > 0 && refreshPreview) {
+            // Preview the first one if nothing is active and we want to refresh (e.g. initial load)
+            await previewInStage(annotations[0]);
+        }
+
+        if (aid) {
+            // Open the edit form.
+            const type = annotations.find(a => a.id == aid)?.type;
+            if (type && ctRenderer[type]) {
+                ctRenderer[type].editAnnotation(annotations, aid);
+            }
+            // Clear the aid so it's not re-opened on next render
+            aid = null;
         }
     };
 
@@ -182,6 +354,14 @@ const init = async(
                 return $(this).data('id');
             }).get();
             annotations = newOrder.map(id => annotations.find(x => x.id == id)).filter(x => x);
+
+            // Update control bar navigation state to reflect new order
+            if (activeid) {
+                const current = annotations.find(a => a.id == activeid);
+                if (current) {
+                    updateControlBar(current);
+                }
+            }
         },
         helper: function(e, item) {
             if (!item.hasClass('b-active')) {
@@ -242,7 +422,18 @@ const init = async(
 
     await Promise.all(initContentTypes);
 
-    renderAnnotationItems(annotations);
+    renderAnnotationItems(annotations, true, aid ? false : true);
+
+    // Use ResizeObserver for more robust resizing
+    if (window.ResizeObserver) {
+        const ro = new ResizeObserver(() => {
+            resizePreview();
+        });
+        ro.observe($('#editor-stage-main')[0]);
+    } else {
+        $(window).on('resize', resizePreview);
+    }
+    setTimeout(resizePreview, 200);
 
     let ModalFactory;
     if (getMoodleVersion() >= 403) {
@@ -421,10 +612,48 @@ const init = async(
 
     // Implement view annotation.
     $(document).on('click', 'tr.annotation .title', async function(e) {
+        if (e.ctrlKey || e.metaKey || state.isDnDInProgress) {
+            return;
+        }
         e.preventDefault();
         const id = $(this).closest('.annotation').data('id');
         const theAnnotation = annotations.find(annotation => annotation.id == id);
-        ctRenderer[theAnnotation.type].previewInteraction(theAnnotation);
+        await previewInStage(theAnnotation);
+    });
+
+    // Control bar navigation
+    $(document).on('click', '#prevanno', async function() {
+        const currentId = $annotationlist.find('tr.active-preview').data('id');
+        const index = annotations.findIndex(a => a.id == currentId);
+        if (index > 0) {
+            await previewInStage(annotations[index - 1]);
+        }
+    });
+
+    $(document).on('click', '#nextanno', async function() {
+        const currentId = $annotationlist.find('tr.active-preview').data('id');
+        const index = annotations.findIndex(a => a.id == currentId);
+        if (index < annotations.length - 1) {
+            await previewInStage(annotations[index + 1]);
+        }
+    });
+
+
+    // Floating Edit Button
+    $(document).on('click', '#editor-edit-btn', function() {
+        const id = $(this).data('id');
+        const type = $(this).data('type');
+        if (id && type) {
+            ctRenderer[type].editAnnotation(annotations, id);
+        }
+    });
+
+    // Sidebar Toggle
+    $(document).on('click', '#sidebar-toggle', function() {
+        $('#editor-sidebar').toggleClass('collapsed');
+        // Trigger resize after a short delay to account for CSS transitions
+        setTimeout(resizePreview, 100);
+        setTimeout(resizePreview, 350);
     });
 
     // Implement edit annotation
@@ -529,12 +758,14 @@ const init = async(
                     field: fld,
                     value: val,
                     contextid: M.cfg.contextid,
+                    draftitemid: 0
                 }
             }])[0];
             const updated = safeParse(anno.data, {});
             dispatchEvent('annotationupdated', {
                 annotation: updated,
-                action: 'edit'
+                action: 'edit',
+                isQuickEdit: true
             });
             return;
         }
@@ -553,6 +784,8 @@ const init = async(
     // Post annotation update (add, edit, clone).
     $(document).on('annotationupdated', async function(e) {
         const action = e.originalEvent.detail.action;
+        const isDnD = e.originalEvent.detail.isDnD;
+        const isQuickEdit = e.originalEvent.detail.isQuickEdit;
         let updated = e.originalEvent.detail.annotation;
         updated.prop = JSON.stringify(contentTypes.find(x => x.name === updated.type));
         if (action == 'edit') {
@@ -564,43 +797,63 @@ const init = async(
             });
         }
 
-        if (action == 'add' || action == 'clone') {
+        const wasPreviewingId = activeid;
+
+        if (action == 'add' || action == 'clone' || action == 'edit') {
             const anchorid = e.originalEvent.detail.anchorid;
-            const isDnD = e.originalEvent.detail.isDnD;
             // Add the new annotation after the anchorid, before the beforeItem, or at the end.
-            if (anchorid) {
-                const index = annotations.findIndex(x => x.id == anchorid);
-                if (index !== -1) {
-                    annotations.splice(index + 1, 0, updated);
+            if (action == 'add' || action == 'clone') {
+                if (anchorid) {
+                    const index = annotations.findIndex(x => x.id == anchorid);
+                    if (index !== -1) {
+                        annotations.splice(index + 1, 0, updated);
+                    } else {
+                        annotations.push(updated);
+                    }
+                } else if (beforeItem) {
+                    annotations.splice(annotations.findIndex(x => x.id == beforeItem), 0, updated);
                 } else {
                     annotations.push(updated);
                 }
-            } else if (beforeItem) {
-                annotations.splice(annotations.findIndex(x => x.id == beforeItem), 0, updated);
-            } else {
-                annotations.push(updated);
             }
+
             if (action == 'add') {
                 if (!isDnD) {
                     activeid = updated.id;
                 }
-            } else {
-                // Clone: do NOT auto-preview the duplicated item.
-                activeid = null;
+            } else if (action == 'edit') {
+                if (!e.originalEvent.detail.isQuickEdit) {
+                    // Only update activeid if we want to force refresh it later.
+                    // But wait, the user said only refresh if the CURRENT one is edited.
+                    // So we don't change activeid here if it was different.
+                }
             }
-        } else {
-            activeid = null;
+        }
+
+        let refreshPreview = false;
+        if (action == 'add' && !isDnD) {
+            // New interaction added (not via DnD or Clone): Preview it.
+            refreshPreview = true;
+        } else if (action == 'edit' && !isQuickEdit) {
+            // Only refresh if the edited interaction IS the one currently in the stage.
+            if (updated.id == wasPreviewingId) {
+                refreshPreview = true;
+            }
         }
         annotations.map(x => {
             x.editMode = true;
             return x;
         });
-        renderAnnotationItems(annotations);
+        if (!state.isBulkDnD) {
+            renderAnnotationItems(annotations, refreshPreview);
+        }
         if (action == 'add' || action == 'clone') {
-            addNotification(await getString('interactionadded', 'mod_interactivevideo'), 'success');
-            const addResult = await saveDraft();
-            if (addResult.status != 'success') {
-                addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
+            if (!state.isBulkDnD) {
+                addNotification(await getString('interactionadded', 'mod_interactivevideo'), 'success');
+                const addResult = await saveDraft();
+                if (addResult.status != 'success') {
+                    addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
+                }
             }
         } else if (action == 'edit') {
             addNotification(await getString('interactionupdated', 'mod_interactivevideo'), 'success');
@@ -615,15 +868,25 @@ const init = async(
     $(document).on('annotationdeleted', async function(e) {
         // Remove any tooltips that may be open.
         $('.tooltip').remove();
-        const annotation = e.originalEvent.detail.annotation;
-        activeid = null;
-        $annotationlist.find(`tr[data-id="${annotation.id}"]`).addClass('deleted');
+        const deletedAnnotation = e.originalEvent.detail.annotation;
+
+        let refreshPreview = false;
+        if (activeid == deletedAnnotation.id) {
+            // Find the next best item to preview before we remove this one.
+            const currentIndex = annotations.findIndex(a => a.id == deletedAnnotation.id);
+            const nextAnno = annotations[currentIndex + 1] || annotations[currentIndex - 1];
+            activeid = nextAnno ? nextAnno.id : null;
+            refreshPreview = true;
+        }
+
+        $annotationlist.find(`tr[data-id="${deletedAnnotation.id}"]`).addClass('deleted');
         syncBulkToolbar(); // Recount in case the deleted row was selected.
         setTimeout(async function() {
-            annotations = annotations.filter(function(item) {
-                return item.id != annotation.id;
-            });
-            renderAnnotationItems(annotations);
+            const index = annotations.findIndex(item => item.id == deletedAnnotation.id);
+            if (index !== -1) {
+                annotations.splice(index, 1);
+            }
+            renderAnnotationItems(annotations, refreshPreview);
             // Save after the deleted row is removed from the DOM so the
             // sequence written to the server does not include the deleted id.
             const deleteResult = await saveDraft();
@@ -674,9 +937,9 @@ const init = async(
     });
 
 
-    // Deselect all rows when the user clicks outside #content-region.
+    // Deselect all rows when the user clicks outside #editor-sidebar.
     $(document).on('click', function(e) {
-        if (!$(e.target).closest('#content-region').length) {
+        if (!$(e.target).closest('#editor-sidebar').length && !$(e.target).closest('.more-actions-menu').length) {
             $annotationlist.find('tr.b-active').removeClass('b-active');
             hideBulkToolbar();
         }
@@ -692,8 +955,8 @@ const init = async(
     $(document).on('click', '#bulk-delete-btn', async function() {
         const $selected = $annotationlist.find('tr.b-active');
         const ids = $selected.map(function() {
- return $(this).data('id');
-}).get();
+            return $(this).data('id');
+        }).get();
         if (!ids.length) {
             return;
         }
@@ -703,10 +966,19 @@ const init = async(
         const button = await getString('delete', 'mod_interactivevideo');
 
         const doDelete = async() => {
+            const deletedSet = new Set(ids.map(String));
+            let refreshPreview = false;
+
+            if (activeid && deletedSet.has(String(activeid))) {
+                // Find the first item that is NOT being deleted to transition to.
+                const nextAnno = annotations.find(a => !deletedSet.has(String(a.id)));
+                activeid = nextAnno ? nextAnno.id : null;
+                refreshPreview = true;
+            }
+
             // Visually mark rows as being removed.
             $selected.addClass('deleted');
             hideBulkToolbar();
-            activeid = null;
 
             // Delete all items in parallel.
             const results = await Promise.all(ids.map(id => Ajax.call([{
@@ -720,13 +992,16 @@ const init = async(
 
             const failed = results.filter(r => r.status !== 'success').length;
 
-            // Remove successfully deleted IDs from the annotations array.
-            const deletedSet = new Set(ids.map(String));
-            annotations = annotations.filter(a => !deletedSet.has(String(a.id)));
-
             // Wait for the fade-out animation, then re-render and persist.
             setTimeout(async function() {
-                renderAnnotationItems(annotations);
+                // Remove successfully deleted IDs from the annotations array in-place.
+                for (let i = annotations.length - 1; i >= 0; i--) {
+                    if (deletedSet.has(String(annotations[i].id))) {
+                        annotations.splice(i, 1);
+                    }
+                }
+
+                renderAnnotationItems(annotations, refreshPreview);
                 const result = await saveDraft();
                 if (result.status !== 'success' || failed > 0) {
                     addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
@@ -815,7 +1090,7 @@ const init = async(
     });
 
     // ── Drag and Drop Files ─────────────────────────────────────────────────
-    const $dropZone = $('#contentblock');
+    const $dropZone = $('#editor-sidebar');
     let dragCounter = 0;
 
     $dropZone.on('dragenter', function(e) {
@@ -823,6 +1098,7 @@ const init = async(
         e.stopPropagation();
         dragCounter++;
         $(this).addClass('dragover');
+        state.isDnDInProgress = true;
     });
 
     $dropZone.on('dragover', function(e) {
@@ -837,6 +1113,7 @@ const init = async(
         if (dragCounter <= 0) {
             $(this).removeClass('dragover');
             dragCounter = 0;
+            state.isDnDInProgress = false;
         }
     });
 
@@ -852,6 +1129,10 @@ const init = async(
             const anchorid = $targetRow.length ? $targetRow.data('id') : null;
             await handleFileDrop(files, anchorid);
         }
+        // Use a small timeout before clearing the flag to block any trailing click events.
+        setTimeout(() => {
+            state.isDnDInProgress = false;
+        }, 200);
     });
 
     // Handle dragover on specific items for insertion.
@@ -863,7 +1144,52 @@ const init = async(
         $(this).removeClass('dnd-target');
     });
 
+    /**
+     * Updates the DnD progress bar at the bottom right.
+     * @param {Number} percent
+     * @param {String} fileName
+     */
+    const updateDnDProgress = async(percent, fileName = '') => {
+        let $container = $('#dnd-progress-container');
+        if (!$container.length) {
+            $container = $(`
+                <div id="dnd-progress-container" class="bg-white p-3 rounded shadow-lg border"
+                     style="position:fixed; bottom:20px; right:20px; width:320px; z-index:9999; display:none;">
+                    <div class="d-flex justify-content-between mb-2 small iv-font-weight-bold text-dark">
+                        <span id="dnd-progress-label" class="text-truncate iv-mr-2" style="max-width: 200px;"></span>
+                        <span id="dnd-progress-percent">0%</span>
+                    </div>
+                    <div class="progress" style="height: 10px; background-color: #e9ecef;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary"
+                             role="progressbar" style="width: 0%"></div>
+                    </div>
+                </div>
+            `).appendTo('body');
+            $container.fadeIn();
+        }
+
+        const label = fileName ? await getString('processingfile', 'mod_flexbook', fileName) : '';
+        if (label) {
+            $container.find('#dnd-progress-label').text(label).attr('title', fileName);
+        }
+        $container.find('#dnd-progress-percent').text(Math.round(percent) + '%');
+        $container.find('.progress-bar').css('width', percent + '%');
+
+        if (percent >= 100) {
+            const savedStr = await getString('draftsaved', 'mod_flexbook');
+            $container.find('#dnd-progress-label').text(savedStr);
+            setTimeout(() => {
+                $container.fadeOut(() => $container.remove());
+            }, 2000);
+        }
+    };
+
     const handleFileDrop = async(files, anchorid = null) => {
+        const queue = [];
+        let globalSelectedPlugin = null;
+        let applyToAll = false;
+
+        // Phase 1: Validation & Plugin Selection
         for (let i = 0; i < files.length; i++) {
             const file = files[i];
             const ext = file.name.split('.').pop().toLowerCase();
@@ -872,24 +1198,81 @@ const init = async(
             });
 
             if (supportingPlugins.length === 0) {
-                addNotification(await getString('unsupportedfiletype', 'mod_flexbook', file.name), 'warning');
+                // Silently skip
                 continue;
             }
 
-            let selectedPlugin = supportingPlugins[0];
-            if (supportingPlugins.length > 1) {
-                selectedPlugin = await showPluginSelectionModal(file, supportingPlugins);
-                if (!selectedPlugin) {
-                    continue;
+            let selectedPlugin = null;
+
+            // If "Apply to All" was previously checked, try to reuse the selection.
+            if (applyToAll && globalSelectedPlugin) {
+                for (const p of supportingPlugins) {
+                    if (p.name === globalSelectedPlugin.name) {
+                        selectedPlugin = globalSelectedPlugin;
+                        break;
+                    }
                 }
             }
 
-            await processFileUpload(file, selectedPlugin, anchorid);
+            if (!selectedPlugin) {
+                if (supportingPlugins.length > 1) {
+                    const result = await showPluginSelectionModal(file, supportingPlugins, files.length > 1);
+                    if (!result || result.plugin === null) {
+                        if (result && result.applyToAll) {
+                            break; // Cancel all remaining files
+                        }
+                        continue; // User cancelled this file only
+                    }
+                    selectedPlugin = result.plugin;
+                    if (result.applyToAll) {
+                        globalSelectedPlugin = selectedPlugin;
+                        applyToAll = true;
+                    }
+                } else {
+                    selectedPlugin = supportingPlugins[0];
+                }
+            }
+
+            queue.push({file, plugin: selectedPlugin});
+        }
+
+        if (queue.length === 0) {
+            return;
+        }
+
+        // Phase 2: Consolidated Upload
+        state.isBulkDnD = true;
+        let createdCount = 0;
+
+        for (let i = 0; i < queue.length; i++) {
+            const {file, plugin} = queue[i];
+            const progress = (i / queue.length) * 100;
+            await updateDnDProgress(progress, file.name);
+
+            try {
+                await processFileUpload(file, plugin, anchorid);
+                createdCount++;
+            } catch (e) {
+                window.console.error("Upload failed for " + file.name, e);
+            }
+        }
+
+        // Phase 3: Finalize
+        await updateDnDProgress(100);
+        state.isBulkDnD = false;
+
+        if (createdCount > 0) {
+            addNotification(await getString('interactionscreated', 'mod_flexbook', createdCount), 'success');
+            await renderAnnotationItems(annotations, false);
+            await saveDraft();
         }
     };
 
     const processFileUpload = async(file, plugin, anchorid = null) => {
-        addNotification(await getString('uploading', 'mod_flexbook', file.name), 'info');
+        // If not bulk, show individual notification
+        if (!state.isBulkDnD) {
+            addNotification(await getString('uploading', 'mod_flexbook', file.name), 'info');
+        }
 
         try {
             let response = null;
@@ -897,8 +1280,8 @@ const init = async(
                 const content = await file.text();
                 response = {content: content};
             } else {
-                const draftitemid = await uploadFileToDraftArea(file);
-                response = {draftitemid: draftitemid};
+                const data = await uploadFileToDraftArea(file);
+                response = {draftitemid: data.itemid, url: data.url};
             }
 
             if (ctRenderer[plugin.name] && typeof ctRenderer[plugin.name].dnd === 'function') {
@@ -916,7 +1299,8 @@ const init = async(
                         title: file.name.replace(/\.[^/.]+$/, ""),
                         content: response.content || '',
                         draftitemid: response.draftitemid || 0,
-                        anchorid: anchorid || 0
+                        anchorid: anchorid || 0,
+                        url: response.url || '',
                     }
                 }])[0];
 
@@ -948,7 +1332,7 @@ const init = async(
                             filecontent: base64Content
                         }
                     }])[0];
-                    resolve(parseInt(result.data));
+                    resolve(JSON.parse(result.data || '{}'));
                 } catch (e) {
                     reject(e);
                 }
@@ -958,36 +1342,82 @@ const init = async(
         });
     };
 
-    const showPluginSelectionModal = async(file, supportingPlugins) => {
+    const showPluginSelectionModal = async(file, supportingPlugins, showApplyToAll = false) => {
         return new Promise((resolve) => {
             (async() => {
                 const body = $('<div></div>');
-                body.append($('<p></p>').text(await getString('selectinteractiontypefor', 'mod_flexbook', file.name)));
+                const label = await getString('selectinteractiontypefor', 'mod_flexbook', file.name);
+                body.append($('<p></p>').text(label));
                 const $list = $('<div class="list-group"></div>');
 
-                supportingPlugins.forEach(plugin => {
-                    const $item = $(`<a href="#" class="list-group-item list-group-item-action d-flex align-items-center">
+                let selectedPlugin = supportingPlugins[0];
+
+                supportingPlugins.forEach((plugin, index) => {
+                    let classes = 'list-group-item list-group-item-action d-flex align-items-center';
+                    if (index === 0) {
+                        classes += ' active';
+                    }
+                    const $item = $(`<a href="#" class="${classes}">
                         <i class="${plugin.icon} iv-mr-2 fs-20px"></i>
                         <span>${plugin.title}</span>
                     </a>`);
                     $item.on('click', (e) => {
                         e.preventDefault();
-                        modal.hide();
-                        resolve(plugin);
+                        $list.find('.active').removeClass('active');
+                        $item.addClass('active');
+                        selectedPlugin = plugin;
+                    });
+                    $item.on('dblclick', (e) => {
+                        e.preventDefault();
+                        selectedPlugin = plugin;
+                        resolveResult();
                     });
                     $list.append($item);
                 });
                 body.append($list);
 
+                let $switch = null;
+                if (showApplyToAll) {
+                    $switch = $(`
+                        <div class="form-check form-switch mt-3">
+                            <input class="form-check-input" type="checkbox" role="switch" id="apply-to-all-switch">
+                            <label class="form-check-label" for="apply-to-all-switch">
+                                ${await getString('applytoall', 'mod_flexbook')}
+                            </label>
+                        </div>
+                    `);
+                    body.append($switch);
+                }
+
+                const proceedLabel = await getString('proceed', 'mod_flexbook');
+                const cancelLabel = await getString('cancel', 'core');
+
                 const modal = await ModalFactory.create({
                     title: await getString('selecttype', 'mod_flexbook'),
                     body: body,
-                    buttons: {
-                        cancel: await getString('cancel', 'core'),
-                    }
+                    footer: `
+                        <button type="button" class="btn btn-primary" data-action="proceed">${proceedLabel}</button>
+                        <button type="button" class="btn btn-secondary" data-action="hide">${cancelLabel}</button>
+                    `
                 });
+
+                const resolveResult = () => {
+                    const applyToAll = $switch ? $switch.find('#apply-to-all-switch').is(':checked') : false;
+                    modal.hide();
+                    resolve({
+                        plugin: selectedPlugin,
+                        applyToAll: applyToAll
+                    });
+                };
+
                 modal.show();
-                let root = modal.getRoot();
+
+                const root = modal.getRoot();
+                root.on('click', '[data-action="proceed"]', (e) => {
+                    e.preventDefault();
+                    resolveResult();
+                });
+
                 root.on(ModalEvents.outsideClick, function(e) {
                     e.preventDefault();
                     root.addClass('jelly-anim');
@@ -1005,7 +1435,14 @@ const init = async(
                     }, 10);
                 });
 
-                modal.getRoot().on(ModalEvents.hidden, () => resolve(null));
+                modal.getRoot().on(ModalEvents.hidden, () => {
+                    const applyToAll = $switch ? $switch.find('#apply-to-all-switch').is(':checked') : false;
+                    // If we haven't resolved yet (e.g. closed via cancel or X), resolve with null plugin.
+                    setTimeout(() => resolve({
+                        plugin: null,
+                        applyToAll: applyToAll
+                    }), 100);
+                });
             })();
         });
     };

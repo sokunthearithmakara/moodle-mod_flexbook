@@ -65,7 +65,13 @@ class actions extends external_api {
      * @return void
      */
     public static function validate_edit_context($contextid) {
-        $context = \context::instance_by_id($contextid);
+        if (empty($contextid)) {
+            throw new \moodle_exception('invalidcontext', 'error');
+        }
+        $context = \context::instance_by_id($contextid, IGNORE_MISSING);
+        if (!$context) {
+            throw new \moodle_exception('invalidcontext', 'error');
+        }
         self::validate_context($context);
 
         // Check if the user has permission to manage this item.
@@ -252,7 +258,9 @@ class actions extends external_api {
             'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
             'id' => new external_value(PARAM_INT, 'The ID of the item to be edited'),
             'field' => new external_value(PARAM_TEXT, 'The field to be edited'),
-            'value' => new external_value(PARAM_TEXT, 'The value of the field'),
+            'value' => new external_value(PARAM_RAW, 'The value of the field'),
+            'draftitemid' => new external_value(PARAM_INT, 'The draft item ID', VALUE_DEFAULT, 0),
+            'olddraftitemid' => new external_value(PARAM_INT, 'The old draft item ID', VALUE_DEFAULT, 0),
         ]);
     }
 
@@ -278,19 +286,19 @@ class actions extends external_api {
      * @return array The result of the quick edit.
      * @throws \moodle_exception If the user is not logged in or does not have permission.
      */
-    public static function quick_edit($contextid, $id, $field, $value) {
-        global $DB;
-
+    public static function quick_edit($contextid, $id, $field, $value, $draftitemid = 0, $olddraftitemid = 0) {
         self::validate_parameters(self::quick_edit_parameters(), [
             'contextid' => $contextid,
             'id' => $id,
             'field' => $field,
             'value' => $value,
+            'draftitemid' => $draftitemid,
+            'olddraftitemid' => $olddraftitemid,
         ]);
 
         self::validate_edit_context($contextid);
 
-        $item = util::quick_edit($id, $field, $value, $contextid);
+        $item = util::quick_edit($id, $field, $value, $contextid, $draftitemid, $olddraftitemid);
 
         return ['status' => 'success', 'data' => json_encode($item)];
     }
@@ -311,9 +319,9 @@ class actions extends external_api {
             'gradeiteminstance' => new external_value(PARAM_INT, 'The grade item instance ID'),
             'c' => new external_value(PARAM_INT, 'The completion status'),
             'xp' => new external_value(PARAM_FLOAT, 'The experience'),
-            'completeditems' => new external_value(PARAM_TEXT, 'The completed items'),
-            'completiondetails' => new external_value(PARAM_TEXT, 'The completion details'),
-            'details' => new external_value(PARAM_TEXT, 'The details'),
+            'completeditems' => new external_value(PARAM_RAW, 'The completed items'),
+            'completiondetails' => new external_value(PARAM_RAW, 'The completion details'),
+            'details' => new external_value(PARAM_RAW, 'The details'),
             'annotationtype' => new external_value(PARAM_TEXT, 'The annotation type'),
             'cmid' => new external_value(PARAM_INT, 'The course module ID'),
             'completionid' => new external_value(PARAM_INT, 'The completion ID'),
@@ -364,7 +372,6 @@ class actions extends external_api {
         $updatestate,
         $courseid
     ) {
-        global $DB;
         self::validate_parameters(self::save_progress_parameters(), [
             'contextid' => $contextid,
             'id' => $id,
@@ -428,8 +435,8 @@ class actions extends external_api {
         return new external_function_parameters([
             'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
             'completionid' => new external_value(PARAM_INT, 'The completion record ID', VALUE_REQUIRED),
-            'details' => new external_value(PARAM_TEXT, 'JSON encoded interaction data (timespent + views)', VALUE_REQUIRED),
-            'lastviewed' => new external_value(PARAM_INT, 'Last viewed annotation ID', VALUE_DEFAULT, 0),
+            'details' => new external_value(PARAM_RAW, 'JSON encoded interaction data (timespent + views)', VALUE_REQUIRED),
+            'lastviewed' => new external_value(PARAM_RAW, 'Last viewed annotation ID', VALUE_DEFAULT, 0),
             'reachend' => new external_value(PARAM_BOOL, 'Whether the user reached the end', VALUE_DEFAULT, false),
         ]);
     }
@@ -440,7 +447,7 @@ class actions extends external_api {
      * @param int $contextid The context ID.
      * @param int $completionid The flexbook_completion record ID.
      * @param string $details JSON encoded object with timespent and views maps.
-     * @param int $lastviewed Last annotation ID the user viewed.
+     * @param string|int $lastviewed Last annotation ID the user viewed.
      * @param bool $reachend Whether the user reached the end.
      * @return array
      */
@@ -460,9 +467,10 @@ class actions extends external_api {
             $record = $DB->get_record('flexbook_completion', ['id' => $completionid], 'id, userid, cmid, courseid');
             if ($record) {
                 $DB->set_field('flexbook_completion', 'details', $details, ['id' => $completionid]);
-                if ($lastviewed > 0) {
-                    $DB->set_field('flexbook_completion', 'lastviewed', $lastviewed, ['id' => $completionid]);
+                if ($lastviewed === 'endscreen') {
+                    $lastviewed = 0;
                 }
+                $DB->set_field('flexbook_completion', 'lastviewed', $lastviewed, ['id' => $completionid]);
                 if ($reachend) {
                     $timeended = $DB->get_field('flexbook_completion', 'timeended', ['id' => $completionid]);
                     if (!$timeended) {
@@ -676,6 +684,10 @@ class actions extends external_api {
         self::validate_view_context($contextid);
 
         $result = util::delete_completion_data($id, $itemid, $userid, $contextid);
+        $resdecode = json_decode($result);
+        if (isset($resdecode->error)) {
+            return ['status' => 'error', 'data' => $result];
+        }
 
         return ['status' => 'success', 'data' => $result];
     }
@@ -712,6 +724,10 @@ class actions extends external_api {
         }
 
         $result = util::delete_completion_data($id, $itemid, $userid, $contextid);
+        $resdecode = json_decode($result);
+        if (isset($resdecode->error)) {
+            return ['status' => 'error', 'data' => $result];
+        }
 
         return ['status' => 'success', 'data' => $result];
     }
@@ -853,6 +869,8 @@ class actions extends external_api {
             'content' => new external_value(PARAM_RAW, 'The interaction content', VALUE_DEFAULT, ''),
             'draftitemid' => new external_value(PARAM_INT, 'The draft item ID', VALUE_DEFAULT, 0),
             'anchorid' => new external_value(PARAM_INT, 'The anchor interaction ID', VALUE_DEFAULT, 0),
+            'url' => new external_value(PARAM_URL, 'The URL of the file', VALUE_DEFAULT, ''),
+            'char1' => new external_value(PARAM_TEXT, 'Extra property 1', VALUE_DEFAULT, ''),
         ]);
     }
 
@@ -868,6 +886,8 @@ class actions extends external_api {
      * @param string $content The interaction content.
      * @param int $draftitemid The draft item ID.
      * @param int $anchorid The anchor interaction ID.
+     * @param string $url The URL of the file.
+     * @param string $char1 Extra property 1.
      * @return array The result of the creation.
      */
     public static function create_interaction(
@@ -879,7 +899,9 @@ class actions extends external_api {
         $title,
         $content = '',
         $draftitemid = 0,
-        $anchorid = 0
+        $anchorid = 0,
+        $url = '',
+        $char1 = ''
     ) {
         self::validate_parameters(self::create_interaction_parameters(), [
             'contextid' => $contextid,
@@ -891,6 +913,8 @@ class actions extends external_api {
             'content' => $content,
             'draftitemid' => $draftitemid,
             'anchorid' => $anchorid,
+            'url' => $url,
+            'char1' => $char1,
         ]);
 
         self::validate_edit_context($contextid);
@@ -910,6 +934,8 @@ class actions extends external_api {
             'xp' => 0,
             'timecreated' => time(),
             'timemodified' => time(),
+            'url' => $url,
+            'char1' => $char1,
         ];
 
         $item = util::create_instance($type, $data);
@@ -938,6 +964,7 @@ class actions extends external_api {
             'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
             'filename' => new external_value(PARAM_FILE, 'The file name', VALUE_REQUIRED),
             'filecontent' => new external_value(PARAM_RAW, 'The file content (base64)', VALUE_REQUIRED),
+            'itemid' => new external_value(PARAM_INT, 'The draft item ID', VALUE_DEFAULT, 0),
         ]);
     }
 
@@ -947,36 +974,55 @@ class actions extends external_api {
      * @param int $contextid The context ID.
      * @param string $filename The file name.
      * @param string $filecontent The file content.
+     * @param int $itemid The draft item ID.
      * @return array The result of the upload.
      */
-    public static function upload_file($contextid, $filename, $filecontent) {
+    public static function upload_file($contextid, $filename, $filecontent, $itemid = 0) {
         self::validate_parameters(self::upload_file_parameters(), [
             'contextid' => $contextid,
             'filename' => $filename,
             'filecontent' => $filecontent,
+            'itemid' => $itemid,
         ]);
 
         self::validate_edit_context($contextid);
-        global $CFG;
+        global $CFG, $USER;
 
-        $usercontext = \context_user::instance($GLOBALS['USER']->id);
+        $usercontext = \context_user::instance($USER->id);
 
         require_once($CFG->libdir . '/filelib.php');
         $fs = \get_file_storage();
+
+        $itemid = $itemid > 0 ? $itemid : \file_get_unused_draft_itemid();
+
+        // Handle duplicate filenames in the same draft area.
+        $originalfilename = $filename;
+        $counter = 1;
+        while ($fs->file_exists($usercontext->id, 'user', 'draft', $itemid, '/', $filename)) {
+            $pathinfo = pathinfo($originalfilename);
+            $ext = isset($pathinfo['extension']) ? '.' . $pathinfo['extension'] : '';
+            $filename = $pathinfo['filename'] . '_' . $counter . $ext;
+            $counter++;
+        }
+
         $filerecord = [
             'contextid' => $usercontext->id,
             'component' => 'user',
             'filearea' => 'draft',
-            'itemid' => \file_get_unused_draft_itemid(),
+            'itemid' => $itemid,
             'filepath' => '/',
             'filename' => $filename,
         ];
 
         $fs->create_file_from_string($filerecord, \base64_decode($filecontent));
+        $url = \moodle_url::make_draftfile_url($filerecord['itemid'], $filerecord['filepath'], $filerecord['filename']);
 
         return [
             'status' => 'success',
-            'data' => (string) $filerecord['itemid'],
+            'data' => json_encode([
+                'itemid' => $filerecord['itemid'],
+                'url' => $url->out(false),
+            ]),
         ];
     }
 

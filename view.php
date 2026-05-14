@@ -394,9 +394,19 @@ if (!empty($cm->customdata['posterimage'])) {
     $datafortemplate['posterimage'] = $cm->customdata['posterimage'];
 }
 
-echo $OUTPUT->render_from_template('mod_flexbook/canvas/player', $datafortemplate);
-echo \mod_flexbook\util::render_moodle_version();
+// Items.
+$items = mod_flexbook\util::get_items($cm->id, $modulecontext->id);
 
+$datafortemplate['containers'] = [
+    ['id' => 'sequence', 'content' => $moduleinstance->sequence],
+    ['id' => 'doptions', 'content' => json_encode($moduleinstance->displayoptions)],
+    ['id' => 'annotations', 'content' => json_encode($items)],
+    ['id' => 'contenttypes', 'content' => json_encode($contentoptions)],
+    ['id' => 'progress', 'content' => json_encode($progress)],
+];
+$datafortemplate['moodleversion'] = $CFG->branch;
+
+echo $OUTPUT->render_from_template('mod_flexbook/canvas/player', $datafortemplate);
 
 $PAGE->requires->js_call_amd('mod_flexbook/view', 'init', [[
     'cmid' => $cm->id, // Course module id from coursemodule table.
@@ -416,13 +426,4 @@ $PAGE->requires->js_call_amd('mod_flexbook/view', 'init', [[
     'new' => $new,
 ]]);
 
-echo '<textarea id="sequence" style="display: none;">' . $moduleinstance->sequence . '</textarea>';
-echo '<textarea id="doptions" style="display: none;">' . json_encode($moduleinstance->displayoptions) . '</textarea>';
-// Items.
-$items = mod_flexbook\util::get_items($cm->id, $modulecontext->id);
-
-echo '<textarea id="annotations" style="display: none;">' . json_encode($items) . '</textarea>';
-echo '<textarea id="contenttypes" style="display: none;">' . json_encode($contentoptions) . '</textarea>';
-
-echo '<textarea id="progress" style="display: none;">' . json_encode($progress) . '</textarea>';
 echo $OUTPUT->footer();

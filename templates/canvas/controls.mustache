@@ -32,7 +32,7 @@
                       data{{bs}}-trigger="hover"
                       data{{bs}}-title="{{#str}}togglechapter, mod_interactivevideo{{/str}}"
                         type="button"
-                        class="btn btn-dark btn-sm btn-rounded iv-font-weight-bold text-uppercase"
+                        class="btn btn-dark btn-rounded iv-font-weight-bold text-uppercase"
                         aria-label="{{#str}}togglechapter, mod_interactivevideo{{/str}}"
                         title="{{#str}}togglechapter, mod_interactivevideo{{/str}}">
                     <i class="bi bi-collection" aria-hidden="true"></i>
@@ -45,10 +45,11 @@
                       data{{bs}}-trigger="hover"
                       data{{bs}}-title="{{#str}}xp, mod_interactivevideo{{/str}}"
                         type="button"
-                        class="btn btn-dark btn-sm btn-rounded iv-font-weight-bold text-uppercase mx-1"
+                        class="btn {{#displayoptions.kidtheme}}btn-success{{/displayoptions.kidtheme}} {{^displayoptions.kidtheme}}btn-dark{{/displayoptions.kidtheme}} btn-rounded iv-font-weight-bold text-uppercase mx-1 no-pointer"
                         aria-label="{{#str}}xp, mod_interactivevideo{{/str}}"
                         title="{{#str}}xp, mod_interactivevideo{{/str}}">
-                    <i class="bi bi-star iv-mr-2" aria-hidden="true"></i><span id="xpearned">0</span>/<span id="xptotal">0</span>
+                    <i class="bi bi-star iv-mr-2" aria-hidden="true"></i>
+                    <span id="xpearned">0</span>/<span id="xptotal">0</span>
                 </button>
         {{/displayoptions.xpcounter}}
     </div>
@@ -61,7 +62,7 @@
             <button id="prevanno" data{{bs}}-toggle="tooltip" data{{bs}}-container="#wrapper"
                 data{{bs}}-trigger="hover"
                 data{{bs}}-title="{{#str}}previousanno, mod_flexbook{{/str}}"
-                    class="iv-ml-2 btn btn-sm btn-dark  btn-rounded iv-font-weight-bold text-uppercase">
+                    class="iv-ml-2 btn btn-dark btn-rounded iv-font-weight-bold text-uppercase">
                 <i class="bi bi-chevron-left dir-rtl-hide"></i>
                 <i class="bi bi-chevron-right dir-ltr-hide"></i>
             </button>
@@ -69,14 +70,14 @@
             <button id="currentanno" data{{bs}}-toggle="tooltip" data{{bs}}-container="#wrapper"
                 data{{bs}}-trigger="hover"
                 data{{bs}}-title="{{#str}}currentanno, mod_flexbook{{/str}}"
-                    class="btn btn-dark btn-sm iv-font-weight-bold no-pointer">
+                    class="btn btn-dark iv-font-weight-bold no-pointer">
                 <span id="thisanno">0</span>/<span id="totalannos">0</span>
             </button>
             {{/displayoptions.interactioncounter}}
             <button id="nextanno" data{{bs}}-toggle="tooltip" data{{bs}}-container="#wrapper"
                 data{{bs}}-trigger="hover"
                 data{{bs}}-title="{{#str}}nextanno, mod_flexbook{{/str}}"
-                    class="btn btn-dark btn-sm btn-rounded iv-font-weight-bold text-uppercase">
+                    class="btn btn-dark btn-rounded iv-font-weight-bold text-uppercase">
                 <i class="bi bi-chevron-right dir-rtl-hide"></i>
                 <i class="bi bi-chevron-left dir-ltr-hide"></i>
             </button>
@@ -87,7 +88,7 @@
                 data{{bs}}-trigger="hover"
                 data{{bs}}-title="{{#str}}sharethismoment,mod_interactivevideo{{/str}}"
                 type="button"
-                class="btn border-0 btn-sm btn-dark btn-rounded text-white mx-1 {{^displayoptions.share}}d-none{{/displayoptions.share}}"
+                class="btn border-0  btn-dark btn-rounded text-white mx-1 {{^displayoptions.share}}d-none{{/displayoptions.share}}"
                 aria-label="{{#str}}sharethismoment, mod_interactivevideo{{/str}}"
                 title="{{#str}}sharethismoment, mod_interactivevideo{{/str}}">
             <i class="bi bi-share" aria-hidden="true"></i>
@@ -97,7 +98,7 @@
               data{{bs}}-trigger="hover"
               data{{bs}}-title="{{#str}}togglefullscreen,mod_interactivevideo{{/str}}"
                     type="button"
-                    class="btn border-0 btn-sm btn-dark btn-rounded text-white mx-1 {{^displayoptions.fullscreen}}d-none{{/displayoptions.fullscreen}}"
+                    class="btn border-0 btn-dark btn-rounded text-white mx-1 {{^displayoptions.fullscreen}}d-none{{/displayoptions.fullscreen}}"
                     aria-label="{{#str}}togglefullscreen, mod_interactivevideo{{/str}}"
                     title="{{#str}}togglefullscreen, mod_interactivevideo{{/str}}">
                 <i class="bi bi-fullscreen" aria-hidden="true"></i>

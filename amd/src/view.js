@@ -59,6 +59,7 @@ const init = async config => {
     uprogress = safeParse($('#progress').text(), {});
     sequence = $('#sequence').text().split(',');
     let ctRenderer = {};
+    state.ctRenderer = ctRenderer;
 
     // Set completion id for later use.
     completionid = uprogress.id || null;
@@ -134,9 +135,17 @@ const init = async config => {
         trackingAnnotationId = null; // Fully reset – no annotation is active.
     };
 
+    const dismissedInstructions = new Set();
+    $(document).on('fb:instructiondismissed', (e, data) => {
+        if (data && data.id) {
+            dismissedInstructions.add(data.id);
+        }
+    });
+
     $(document).on('interactionrun', function(e) {
         stopInteractionTimer(); // Flush any previously running timer.
-        const id = e.detail.annotation.id;
+        const annotation = e.detail.annotation;
+        const id = annotation.id;
         if (!interactionData[id]) {
             interactionData[id] = {t: 0, v: 0};
         }
@@ -144,10 +153,46 @@ const init = async config => {
         trackingAnnotationId = id;
         interactionStartTime = Date.now();
         state.interactionData = interactionData;
+
+        // Show instructions if available.
+        const advanced = safeParse(annotation.advanced, {});
+        if (advanced.instructions && advanced.instructions.trim() !== "") {
+            // Check if already dismissed in this session.
+            if (dismissedInstructions.has(id)) {
+                return;
+            }
+
+            // Check if 'Hide on completion' is enabled and interaction is completed.
+            if (advanced.hideinstructionsoncomplete == 1 && annotation.completed) {
+                return;
+            }
+
+            if (state.isMascotActive && state.say) {
+                state.say(advanced.instructions, 0, id); // Persistent bubble
+            } else {
+                // Show pop-up at bottom right.
+                $('#instruction-popup').remove();
+                const $popup = $(`
+                    <div id="instruction-popup">
+                        <div class="popup-content">${advanced.instructions}</div>
+                        <button class="popup-close"><i class="fa fa-close"></i></button>
+                    </div>
+                `);
+                $popup.find('.popup-close').on('click', () => {
+                    dismissedInstructions.add(id);
+                    $popup.fadeOut(300, () => $popup.remove());
+                });
+                $wrapper.append($popup);
+            }
+        }
     });
 
     $(document).on('interactionclose interactionrefresh', function() {
         stopInteractionTimer();
+        if (state.hideSay) {
+            state.hideSay();
+        }
+        $('#instruction-popup').fadeOut(300, () => $('#instruction-popup').remove());
     });
 
     $(document).on('fb:ended', function() {
@@ -159,7 +204,11 @@ const init = async config => {
         }
     });
 
+    let isSaving = false;
     const saveInteractionData = (reachend = false) => {
+        if (isSaving && !reachend) {
+            return;
+        }
         pauseInteractionTimer(); // Flush without resetting trackingAnnotationId.
         const lastviewed = state.currentanno ? state.currentanno.id : 0;
         const args = {
@@ -183,9 +232,15 @@ const init = async config => {
                 return data;
             }).catch(e => window.console.error(e));
         } else {
+            isSaving = true;
             const url = `${M.cfg.wwwroot}/lib/ajax/service.php?sesskey=${M.cfg.sesskey}`;
             const body = JSON.stringify([{index: 0, methodname: 'mod_flexbook_save_interaction_data', args}]);
             navigator.sendBeacon(url, new Blob([body], {type: 'application/json'}));
+
+            // Allow subsequent saves after a short delay (e.g. if the user stays on page).
+            setTimeout(() => {
+                isSaving = false;
+            }, 1000);
         }
     };
 
@@ -195,6 +250,14 @@ const init = async config => {
         } else if (document.visibilityState === 'visible') {
             resumeInteractionTimer();
         }
+    });
+
+    window.addEventListener('pagehide', () => {
+        saveInteractionData();
+    });
+
+    window.addEventListener('beforeunload', () => {
+        saveInteractionData();
     });
 
     $startscreen.find('#start').focus();
@@ -438,7 +501,7 @@ const init = async config => {
             displayAnnos = visibleAnnos.slice(start, end + 1);
         }
 
-        if (state.currentanno && state.currentanno.id == 999) {
+        if (state.currentanno && state.currentanno.id == 'endscreen') {
             // Get the last 5.
             displayAnnos = visibleAnnos.slice(-5);
         }
@@ -494,7 +557,7 @@ const init = async config => {
         }
 
         // Update the page counter.
-        if (state.currentanno && state.currentanno.id != 999) {
+        if (state.currentanno && state.currentanno.id != 'endscreen') {
             $controlBar
                 .find('#thisanno')
                 .text(state.currentanno.order);
@@ -549,7 +612,7 @@ const init = async config => {
         }
 
         let advanced;
-        if (state.currentanno && state.currentanno.id != 999) {
+        if (state.currentanno && state.currentanno.id != 'endscreen') {
             state.currentanno = annotations.find(x => x.id == state.currentanno.id); // Update the currentanno with the latest data.
             // Check if this current annotation can be dismissed or skipped.
             advanced = safeParse(state.currentanno.advanced, {});
@@ -654,7 +717,7 @@ const init = async config => {
 
     const animateInNew = async(annotation, force = false) => {
         const id = annotation.id;
-        if (id == 999) {
+        if (id == 'endscreen') {
             $('#end-screen').removeClass('d-none').addClass('active show');
             setTimeout(() => {
                 $videowrapper.removeClass('bg-white');
@@ -682,25 +745,86 @@ const init = async config => {
         }, 1000);
     };
 
-    const navigateToAnnotation = async(id, force = false) => {
-        if (id == 999) {
-            if (state.currentanno && state.currentanno.id == 999) {
+    // eslint-disable-next-line complexity
+    const navigateToInteraction = async(id, force = false, direction = 'next') => {
+        if (!state.ready) {
+            return;
+        }
+
+        // 1. Resolve special identifiers.
+        let resolvedId = id;
+        if (id === 'endscreen') {
+            resolvedId = 'endscreen';
+        } else if (id === 'firstpage') {
+            resolvedId = state.sequence[0];
+            direction = 'next';
+        } else if (id === 'previousinteraction') {
+            const index = state.currentanno ? state.sequence.indexOf(state.currentanno.id.toString()) : 0;
+            resolvedId = index > 0 ? state.sequence[index - 1] : state.sequence[0];
+            direction = 'prev';
+        } else if (id === 'nextinteraction') {
+            const index = state.currentanno ? state.sequence.indexOf(state.currentanno.id.toString()) : -1;
+            resolvedId = (index < state.sequence.length - 1) ? state.sequence[index + 1] : 'endscreen';
+            direction = 'next';
+        }
+
+        // 2. Normalize numeric ID.
+        if (typeof resolvedId === 'string' && resolvedId.startsWith('@@ANNOID#')) {
+            resolvedId = resolvedId.replace('@@ANNOID#', '');
+        }
+
+        // 3. Handle non-existent or hidden annotations with directional search.
+        if (resolvedId != 'endscreen') {
+            const visibleAnnos = getVisibleAnnotations(annotations);
+            if (!visibleAnnos.find(x => x.id == resolvedId)) {
+                // The target is either deleted or hidden. Find the next/prev available in sequence.
+                const seqIndex = state.sequence.indexOf(resolvedId.toString());
+                if (seqIndex !== -1) {
+                    let foundId = null;
+                    if (direction === 'next') {
+                        for (let i = seqIndex; i < state.sequence.length; i++) {
+                            if (visibleAnnos.find(x => x.id == state.sequence[i])) {
+                                foundId = state.sequence[i];
+                                break;
+                            }
+                        }
+                        resolvedId = foundId || 'endscreen';
+                    } else { // Prev
+                        for (let i = seqIndex; i >= 0; i--) {
+                            if (visibleAnnos.find(x => x.id == state.sequence[i])) {
+                                foundId = state.sequence[i];
+                                break;
+                            }
+                        }
+                        resolvedId = foundId || state.sequence[0];
+                    }
+                } else {
+                    // If ID is not in sequence at all, we can't do directional search.
+                    // Just fallback to first available or endscreen.
+                    resolvedId = visibleAnnos.length > 0 ? visibleAnnos[0].id : 'endscreen';
+                }
+            }
+        }
+
+        // 4. Actual navigation logic.
+        if (resolvedId == 'endscreen') {
+            if (state.currentanno && state.currentanno.id == 'endscreen') {
                 return;
             }
 
-            if (!(await validateAnnotationAccess({id: 999, order: annotations.length + 1}))) {
+            if (!(await validateAnnotationAccess({id: 'endscreen', order: annotations.length + 1}))) {
                 return;
             }
 
             const url = new URL(window.location);
-            if (url.searchParams.get('aid') != id) {
-                url.searchParams.set('aid', id);
-                window.history.pushState({aid: id}, '', url);
+            if (url.searchParams.get('aid') != resolvedId) {
+                url.searchParams.set('aid', resolvedId);
+                window.history.pushState({aid: resolvedId}, '', url);
             }
 
-            animateOutCurrent({id: 999, order: annotations.length + 1});
+            animateOutCurrent({id: 'endscreen', order: annotations.length + 1});
 
-            state.currentanno = {id: 999, order: annotations.length + 1};
+            state.currentanno = {id: 'endscreen', order: annotations.length + 1};
             await renderAnnotationItems(annotations);
             $videowrapper.addClass('bg-white');
 
@@ -710,26 +834,18 @@ const init = async config => {
         }
 
         // Hide endscreen if coming back from it.
-        if (state.currentanno && state.currentanno.id == 999) {
+        if (state.currentanno && state.currentanno.id == 'endscreen') {
             $('#end-screen').removeClass('active show').addClass('d-none');
         }
 
-        if (state.currentanno && state.currentanno.id == id && !force) {
+        if (state.currentanno && state.currentanno.id == resolvedId && !force) {
             return;
         }
 
-        if (id != 999) {
-            const visible = getVisibleAnnotations(annotations);
-            if (!visible.find(x => x.id == id)) {
-                // Skip to next visible.
-                const fullIndex = annotations.findIndex(x => x.id == id);
-                const nextVisible = annotations.slice(fullIndex + 1).find(x => visible.includes(x));
-                navigateToAnnotation(nextVisible ? nextVisible.id : 999);
-                return;
-            }
+        const annotation = annotations.find(x => x.id == resolvedId);
+        if (!annotation) {
+            return;
         }
-
-        const annotation = annotations.find(x => x.id == id);
 
         if (!(await validateAnnotationAccess(annotation))) {
             return;
@@ -737,12 +853,11 @@ const init = async config => {
 
         // Now we're good to go.
         const url = new URL(window.location);
-        if (url.searchParams.get('aid') != id) {
-            url.searchParams.set('aid', id);
-            window.history.pushState({aid: id}, '', url);
+        if (url.searchParams.get('aid') != resolvedId) {
+            url.searchParams.set('aid', resolvedId);
+            window.history.pushState({aid: resolvedId}, '', url);
         }
 
-        // Let's first handle the active message if exists. 2 things: slide it out and decide whether to remove it.
         animateOutCurrent(annotation, force);
 
         state.currentanno = annotation;
@@ -754,6 +869,11 @@ const init = async config => {
         dispatchEvent('interactionrun', {annotation: annotation});
     };
 
+    const navigateToAnnotation = async(id, force = false) => {
+        return navigateToInteraction(id, force);
+    };
+
+    state.navigateToInteraction = navigateToInteraction;
     state.navigateToAnnotation = navigateToAnnotation;
 
     $annotationbar.on('click', '.annotation-item', async function() {
@@ -770,23 +890,14 @@ const init = async config => {
         }
 
         if (state.currentanno) {
-            if (state.currentanno.id == 999) {
+            if (state.currentanno.id == 'endscreen') {
                 return;
             }
-            const index = state.sequence.indexOf(state.currentanno.id.toString());
             const advanced = safeParse(state.currentanno.advanced, {});
             if (!advanced.jumpto || advanced.jumpto == '') {
-                const nextid = state.sequence[index + 1];
-                if (nextid) {
-                    await navigateToAnnotation(nextid);
-                } else {
-                    // Show endscreen if text is available.
-                    await navigateToAnnotation(999);
-                }
-            } else if (advanced.jumpto == 'endscreen' || advanced.jumpto == '999') {
-                await navigateToAnnotation(999);
+                await navigateToInteraction('nextinteraction', false, 'next');
             } else {
-                await navigateToAnnotation(advanced.jumpto);
+                await navigateToInteraction(advanced.jumpto, false, 'next');
             }
         }
     };
@@ -799,23 +910,17 @@ const init = async config => {
             return;
         }
         if (state.currentanno) {
-            if (state.currentanno.id == 999) {
+            if (state.currentanno.id == 'endscreen') {
                 window.history.back();
                 return;
             }
-            const index = state.sequence.indexOf(state.currentanno.id.toString());
             const advanced = safeParse(state.currentanno.advanced, {});
             if (!advanced.backto || advanced.backto == '') {
-                const backto = state.sequence[index - 1];
-                if (backto) {
-                    await navigateToAnnotation(backto);
-                }
+                await navigateToInteraction('previousinteraction', false, 'prev');
             } else if (advanced.backto == 'previouslyviewed') {
                 window.history.back();
-            } else if (advanced.backto == 'endscreen' || advanced.backto == '999') {
-                await navigateToAnnotation(999);
             } else {
-                await navigateToAnnotation(advanced.backto);
+                await navigateToInteraction(advanced.backto, false, 'prev');
             }
         }
     };
@@ -871,12 +976,12 @@ const init = async config => {
         const url = new URL(window.location);
         const aid = url.searchParams.get('aid');
         let annotation = annotations.find(x => x.order == 1) || annotations[0];
-        if (aid && aid != '999') {
+        if (aid && aid != 'endscreen' && aid != '0') {
             const found = annotations.find(x => x.id == aid);
             if (found) {
                 annotation = found;
             }
-        } else if (uprogress.lastviewed && uprogress.lastviewed != '999') {
+        } else if (uprogress.lastviewed && uprogress.lastviewed != 'endscreen' && uprogress.lastviewed != '0') {
             // Resume from last viewed annotation if no aid in URL.
             const found = annotations.find(x => x.id == uprogress.lastviewed);
             if (found) {
@@ -886,6 +991,7 @@ const init = async config => {
         $startscreen.addClass('slide-out-start active');
         $controlBar.removeClass('no-pointer-events');
         dispatchEvent('fb:started');
+        state.ready = true;
         await navigateToAnnotation(annotation.id);
     });
 
@@ -914,7 +1020,7 @@ const init = async config => {
 
     // Handle browser back/forward buttons.
     window.addEventListener('popstate', async() => {
-        if (!state.currentanno) {
+        if (!state.ready) {
             return; // Start screen hasn't been dismissed yet.
         }
         const url = new URL(window.location);
@@ -1031,7 +1137,7 @@ const init = async config => {
                 break;
             case 's':
             case 'S':
-                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || e.altKey || e.ctrlKey || e.metaKey) {
                     return;
                 }
                 e.preventDefault();
@@ -1039,7 +1145,7 @@ const init = async config => {
                 break;
             case 'f':
             case 'F':
-                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || e.altKey || e.ctrlKey || e.metaKey) {
                     return;
                 }
                 e.preventDefault();
@@ -1047,7 +1153,7 @@ const init = async config => {
                 break;
             case 'c':
             case 'C':
-                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || e.altKey || e.ctrlKey || e.metaKey) {
                     return;
                 }
                 e.preventDefault();
@@ -1159,7 +1265,7 @@ const init = async config => {
     const url = new URL(window.location);
     const aid = url.searchParams.get('aid');
     if (aid) {
-        if (annotations.find(x => x.id == aid) || aid == 999) {
+        if (annotations.find(x => x.id == aid) || aid == 'endscreen') {
             $('#play').trigger('click');
         } else {
             // Invalid aid, notify user and clean up URL.

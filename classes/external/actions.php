@@ -283,6 +283,8 @@ class actions extends external_api {
      * @param int $id The ID of the item to be updated.
      * @param string $field The field to be updated.
      * @param string $value The value of the field.
+     * @param int $draftitemid The draft item ID.
+     * @param int $olddraftitemid The old draft item ID.
      * @return array The result of the quick edit.
      * @throws \moodle_exception If the user is not logged in or does not have permission.
      */

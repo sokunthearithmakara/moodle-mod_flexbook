@@ -155,6 +155,16 @@ export default class Base {
     }
 
     /**
+     * Edit annotation
+     * @param {Array} annotations array of annotations
+     * @param {number} id the id of the annotation to edit
+     * @returns {Promise}
+     */
+    async linkedEdit(annotations, id) {
+        this.editAnnotation(annotations, id);
+    }
+
+    /**
      * Dispatch an event
      * @param {string} name The event name
      * @param {Object} detail The event detail
@@ -444,12 +454,60 @@ export default class Base {
         });
     }
 
-    async renderMessageTitle(annotation) {
+    async renderMessageTitle(annotation, playermode = false) {
+        let self = this;
         let props = safeParse(annotation.prop, {});
+
+        if (!playermode) {
+            let $title = await Templates.render('mod_flexbook/messagetitle', {
+                id: annotation.id,
+                title: annotation.formattedtitle,
+                icon: props.icon || 'bi bi-info-circle',
+            });
+            return $title;
+        }
+
+        let completionbutton = "";
+        if (annotation.hascompletion == 1 && annotation.xp > 0) {
+            if (Number(annotation.earned) % 1 != 0) {
+                annotation.earned = Math.round(Number(annotation.earned) * 100) / 100;
+            } else {
+                annotation.earned = Number(annotation.earned);
+            }
+            let earned = annotation.completed ? annotation.xp : annotation.earned + '/' + annotation.xp;
+            completionbutton += `<span class="badge ${annotation.completed ? 'alert-success' : 'iv-badge-secondary'} iv-mr-2">
+        ${annotation.completed ? earned : Number(annotation.xp)} XP</span>`;
+        }
+
+        completionbutton += await Templates.render('mod_flexbook/canvas/completionbutton', {
+            id: annotation.id,
+            manual: annotation.completiontracking == 'manual',
+            iscompleted: annotation.completed,
+            isPlayerMode: true,
+            refreshonly: (annotation.hascompletion != 1) || self.isEditMode(),
+            iseditor: state.config.iseditor,
+            editurl: M.cfg.wwwroot + '/mod/flexbook/interactions.php?id=' + this.cm + '&aid=' + annotation.id
+        });
+
+        let showdelete = false;
+        let settings = safeParse(annotation.advanced, {});
+        if (settings.deletebeforecomplete == 1 || settings.deleteaftercomplete == 1) {
+            showdelete = true;
+        }
+        if (annotation.hascompletion == 0 || annotation.completiontracking == 'manual' || annotation.completiontracking == 'none') {
+            showdelete = false;
+        }
+
+        annotation.activitycomplete = this.options.isCompleted ? 1 : 0;
+
         let $title = await Templates.render('mod_flexbook/messagetitle', {
             id: annotation.id,
             title: annotation.formattedtitle,
             icon: props.icon || 'bi bi-info-circle',
+            completionbutton: completionbutton,
+            showdelete: showdelete,
+            candelete: annotation.completed == true && ((annotation.activitycomplete == 1 && settings.deleteaftercomplete == 1) ||
+                (annotation.activitycomplete == 0 && settings.deletebeforecomplete == 1))
         });
         return $title;
     }
@@ -463,7 +521,7 @@ export default class Base {
         }, 10);
     }
 
-    async createModal(annotation) {
+    async createModal(annotation, playermode = false) {
         const self = this;
         const found = this.annotations.find(x => x.id == annotation.id);
         if (found) {
@@ -511,6 +569,21 @@ export default class Base {
                 });
             });
 
+            if (playermode) {
+                root.find('#message').on('click', '#refresh', function(e) {
+                    e.preventDefault();
+                    e.stopImmediatePropagation();
+                    $(this).find('i').addClass('fa-spin');
+
+                    delete self.cache[annotation.id];
+
+                    setTimeout(function() {
+                        modal.hide();
+                        self.launchModalInteraction(annotation);
+                    }, 1000);
+                });
+            }
+
             root.off(ModalEvents.hidden).on(ModalEvents.hidden, function() {
                 $('#annotation-modal').remove();
                 modal.destroy();
@@ -525,7 +598,7 @@ export default class Base {
                 self.animateModal(root);
                 if (annotation) {
                     root.find('.modal-header').attr('id', 'title')
-                        .html(await this.renderMessageTitle(annotation));
+                        .html(await this.renderMessageTitle(annotation, playermode));
                 }
                 resolve(root);
             });
@@ -538,6 +611,55 @@ export default class Base {
         let root = await this.createModal(annotation);
         const $message = root.find(`#message[data-id="${annotation.id}"]`);
         await self.applyContent(annotation, $message, log);
+    }
+
+    async launchModalInteraction(annotation, log) {
+        let self = this;
+
+        // 1. Backup background state
+        const previousAnno = state.currentanno;
+
+        // 2. Switch context to the target interaction
+        state.currentanno = annotation;
+
+        // 3. Dispatch interactionrun for the target modal interaction
+        dispatchEvent('interactionrun', {annotation: annotation});
+
+        // 4. Create the modal in player mode!
+        let root = await this.createModal(annotation, true);
+
+        const modal = root.data('modal');
+        if (modal) {
+            root.off(ModalEvents.hidden).on(ModalEvents.hidden, function() {
+                $('#annotation-modal').remove();
+                modal.destroy();
+
+                // 5. Dispatch closing events for target cleanup and canvas disposal
+                if (annotation && annotation.id) {
+                    dispatchEvent('interactionclose', {annotation: annotation});
+                    dispatchEvent('interactionrefresh', {annotation: annotation});
+                }
+
+                // 6. Restore background interaction context
+                if (previousAnno) {
+                    state.currentanno = previousAnno;
+                    dispatchEvent('interactionrun', {annotation: previousAnno});
+
+                    const bgRenderer = state.ctRenderer[previousAnno.type];
+                    if (bgRenderer && typeof bgRenderer.activatePlayerBoardContext === 'function') {
+                        bgRenderer.activatePlayerBoardContext(previousAnno.id);
+                    }
+                }
+            });
+        }
+
+        const $message = root.find(`#message[data-id="${annotation.id}"]`);
+        await self.applyContent(annotation, $message, log);
+
+        // 7. Set up manual completion bindings for popup modal interaction if applicable
+        if (annotation.hascompletion == 1 && annotation.completiontracking == 'manual') {
+            this.enableManualCompletion(annotation);
+        }
     }
 
     async postContentRender() {
@@ -608,6 +730,7 @@ export default class Base {
             candelete: annotation.completed == true && ((annotation.activitycomplete == 1 && settings.deleteaftercomplete == 1) ||
                 (annotation.activitycomplete == 0 && settings.deletebeforecomplete == 1)),
             bottomheader: settings.bottomheader == 1,
+            darkmode: state.config.darkmode
         });
 
         const $message = await self.handleInlineDisplay(annotation, messageTitle, $annotationcontent);
@@ -674,6 +797,7 @@ export default class Base {
          data-id="${annotation.id}" class="${annotation.type} modal" tabindex="0">
          ${messageTitle !== '' ?
             `<div id="title" class="modal-header iv-rounded-0 ${hideheader == 1 ? "hide-header" : "shadow-sm"} ` +
+            `${state.config.darkmode ? 'btn-dark' : ''} ` +
             `${advanced.bottomheader == 1 ? "bottom-header" : ""}">
          ${messageTitle}</div>` : ''}
          <div class="modal-body" id="content"></div></div>`);
@@ -1206,6 +1330,10 @@ export default class Base {
                        `<i class="fs-unset ${prop.icon || this.prop.icon} iv-mr-2 d-none"></i>`;
         }
 
+        const xpHtml = annotation.xp > 0
+            ? `<span class="text-nowrap xp-pill">
+                     ${annotation.xp}<i class="bi bi-star iv-ml-1 fs-unset"></i></span>`
+            : '';
         let html = `<li class="anno d-flex align-items-center justify-content-between small
                      p-2 ${annotation.completed ? "completed" : ""} ${classes}" data-id="${annotation.id}">
                      <span class="text-nowrap">
@@ -1214,8 +1342,7 @@ export default class Base {
                      ${iconHtml}
                      </span>
                      <span class="flex-grow-1 text-truncate">${annotation.formattedtitle}</span>
-                     <span class="text-nowrap ${annotation.hascompletion == 0 ? "invisible" : ""}">
-                     ${annotation.xp > 0 ? annotation.xp + '<i class="bi bi-star iv-ml-1 fs-unset"></i>' : ''}</span></li>`;
+                     ${annotation.hascompletion == 0 ? '' : xpHtml}</li>`;
         return html;
     }
 
@@ -1262,6 +1389,7 @@ export default class Base {
      * @returns {void}
      */
     async displayReportView(annotation, tabledatajson, DataTable, root) {
+        this.isflexbook = true;
         const data = await this.render(annotation, 'html');
         let $message = root.find(`#message[data-id='${annotation.id}']`);
         $message.find(`.modal-body`).html(data);
@@ -1331,6 +1459,7 @@ export default class Base {
                     'intg4': data.intg4 || 0,
                     'intg5': data.intg5 || 0,
                     'intg6': data.intg6 || 0,
+                    'completionid': data.completionid || self.completionid || 0,
                 }),
                 userid: userid,
                 replaceexisting: replaceexisting,

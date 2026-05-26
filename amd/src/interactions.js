@@ -48,6 +48,11 @@ const init = async(
     userid,
     extendedcompletion = null,
 ) => {
+
+    let doptions = safeParse($('#doptions').val() || $('#doptions').text(), {});
+    let contentTypes = safeParse($('#contenttypes').val() || $('#contenttypes').text(), {});
+    let annotations = safeParse($('#items').val() || $('#items').text(), []);
+
     state.config = {
         cmid,
         flexbook,
@@ -55,7 +60,8 @@ const init = async(
         coursecontextid,
         userid,
         extendedcompletion,
-        isEditMode: true
+        isEditMode: true,
+        darkmode: doptions.darkmode == 1
     };
 
     require(['theme_boost/bootstrap/modal']);
@@ -76,10 +82,6 @@ const init = async(
     $('#annotation-template').remove();
     const $moreactionsmenu = $('.more-actions-menu');
     let sequence = $('#sequence').text().split(',');
-
-    let doptions = safeParse($('#doptions').val() || $('#doptions').text(), {});
-    let contentTypes = safeParse($('#contenttypes').val() || $('#contenttypes').text(), {});
-    let annotations = safeParse($('#items').val() || $('#items').text(), []);
 
     let ctRenderer = {};
     state.ctRenderer = ctRenderer;
@@ -239,10 +241,55 @@ const init = async(
 
 
         // XP
-        const totalXp = annotations.reduce((acc, a) => acc + (Number(a.xp) || 0), 0);
+        let totalXp = annotations.reduce((acc, a) => acc + (Number(a.xp) || 0), 0);
+        if (totalXp % 1 !== 0) {
+            totalXp = Math.round(totalXp * 100) / 100;
+        }
         $('#xptotal').text(totalXp);
         // Current interaction XP
-        $('#xpearned').text(current.xp || 0);
+        $('#xpearned').text(Number(current.xp) || 0);
+    };
+
+    const initResizableSidebar = () => {
+        const $sidebar = $('#editor-sidebar');
+        const $handle = $('#sidebar-resize-handle');
+        const storageKey = `mod_flexbook_sidebar_width_${cmid}`;
+        const minWidth = 320;
+        const maxWidth = () => Math.max(minWidth, Math.floor($(window).width() * 0.75));
+        const applyWidth = (width) => {
+            const nextWidth = Math.min(maxWidth(), Math.max(minWidth, Math.floor(width)));
+            $sidebar.css({
+                width: nextWidth + 'px',
+                minWidth: nextWidth + 'px',
+            });
+            return nextWidth;
+        };
+        const savedWidth = parseInt(window.localStorage.getItem(storageKey), 10);
+        if (savedWidth > 0 && $(window).width() >= 992) {
+            applyWidth(savedWidth);
+        }
+        $handle.off('mousedown.flexbookresize').on('mousedown.flexbookresize', (e) => {
+            if ($sidebar.hasClass('collapsed') || $(window).width() < 992) {
+                return;
+            }
+            e.preventDefault();
+            const startX = e.pageX;
+            const startWidth = $sidebar.outerWidth();
+            $sidebar.addClass('resizing');
+            $('body').addClass('sidebar-resizing');
+            $(document).off('.flexbookresize')
+                .on('mousemove.flexbookresize', (moveEvent) => {
+                    const newWidth = applyWidth(startWidth + startX - moveEvent.pageX);
+                    window.localStorage.setItem(storageKey, newWidth);
+                    resizePreview();
+                })
+                .on('mouseup.flexbookresize', () => {
+                    $sidebar.removeClass('resizing');
+                    $('body').removeClass('sidebar-resizing');
+                    $(document).off('.flexbookresize');
+                    resizePreview();
+                });
+        });
     };
 
     /**
@@ -306,7 +353,7 @@ const init = async(
             // Open the edit form.
             const type = annotations.find(a => a.id == aid)?.type;
             if (type && ctRenderer[type]) {
-                ctRenderer[type].editAnnotation(annotations, aid);
+                ctRenderer[type].linkedEdit(annotations, aid);
             }
             // Clear the aid so it's not re-opened on next render
             aid = null;
@@ -414,6 +461,7 @@ const init = async(
                 return;
             }
             require([contentType.fbamdmodule], function(Type) {
+                Type = Type.default || Type;
                 ctRenderer[contentType.name] = new Type(annotations, contentType);
                 resolve();
             });
@@ -434,6 +482,7 @@ const init = async(
         $(window).on('resize', resizePreview);
     }
     setTimeout(resizePreview, 200);
+    initResizableSidebar();
 
     let ModalFactory;
     if (getMoodleVersion() >= 403) {
@@ -650,7 +699,24 @@ const init = async(
 
     // Sidebar Toggle
     $(document).on('click', '#sidebar-toggle', function() {
-        $('#editor-sidebar').toggleClass('collapsed');
+        const $sidebar = $('#editor-sidebar');
+        const storageKey = `mod_flexbook_sidebar_width_${cmid}`;
+        const minWidth = 320;
+        const maxWidth = Math.max(minWidth, Math.floor($(window).width() * 0.75));
+        $sidebar.toggleClass('collapsed');
+        if ($sidebar.hasClass('collapsed')) {
+            $sidebar.css({
+                width: '0',
+                minWidth: '0',
+            });
+        } else {
+            const savedWidth = parseInt(window.localStorage.getItem(storageKey), 10) || 380;
+            const nextWidth = Math.min(maxWidth, Math.max(minWidth, savedWidth));
+            $sidebar.css({
+                width: nextWidth + 'px',
+                minWidth: nextWidth + 'px',
+            });
+        }
         // Trigger resize after a short delay to account for CSS transitions
         setTimeout(resizePreview, 100);
         setTimeout(resizePreview, 350);
@@ -1276,18 +1342,23 @@ const init = async(
 
         try {
             let response = null;
+            const ext = file.name.split('.').pop().toLowerCase();
             if (plugin.name === 'richtext') {
                 const content = await file.text();
                 response = {content: content};
+            } else if (ext === 'zip' && plugin.name === 'fbboard') {
+                response = {};
             } else {
                 const data = await uploadFileToDraftArea(file);
                 response = {draftitemid: data.itemid, url: data.url};
             }
 
             if (ctRenderer[plugin.name] && typeof ctRenderer[plugin.name].dnd === 'function') {
-                await ctRenderer[plugin.name].dnd(annotations, file, response, anchorid);
+                const dndResult = await ctRenderer[plugin.name].dnd(annotations, file, response, anchorid);
+                if (dndResult === false) {
+                    throw new Error('cancelled');
+                }
             } else {
-                // Fallback.
                 const result = await Ajax.call([{
                     methodname: 'mod_flexbook_create_interaction',
                     args: {
@@ -1313,8 +1384,11 @@ const init = async(
                 });
             }
         } catch (error) {
-            window.console.error(error);
-            addNotification(await getString('erroruploading', 'mod_flexbook', file.name), 'danger');
+            window.console.error("processFileUpload error:", error);
+            if (error.message !== 'cancelled') {
+                addNotification(await getString('erroruploading', 'mod_flexbook', file.name), 'danger');
+            }
+            throw error;
         }
     };
 

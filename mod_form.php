@@ -317,6 +317,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 'aftercompletionbehavior',
                 'aspectratio',
                 'kidtheme',
+                'openchapterpanel',
                 'character',
             ];
             if (empty($defaultvalues['displayoptions'])) {
@@ -380,6 +381,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 'controlbar',
                 'interactionbar',
                 'chaptertoggle',
+                'openchapterpanel',
             ];
 
             foreach ($defaultappearance as $option) {

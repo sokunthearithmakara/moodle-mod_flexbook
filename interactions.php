@@ -82,6 +82,11 @@ $PAGE->set_pagelayout('embedded');
 $PAGE->add_body_class('path-mod-interactivevideo page-interactions distraction-free '
     . $moduleinstance->type . ($CFG->branch >= 500 ? ' bs-5' : ''));
 
+// Toggle dark-mode.
+if ($moduleinstance->displayoptions['darkmode'] && $moduleinstance->displayoptions['distractionfreemode'] != 0) {
+    $PAGE->add_body_class('darkmode bg-dark');
+}
+
 // Sort the content types by title.
 usort($contentoptions, function ($a, $b) {
     return strcmp($a['title'], $b['title']);

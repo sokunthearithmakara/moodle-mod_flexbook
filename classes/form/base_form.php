@@ -72,12 +72,12 @@ class base_form extends \core_form\dynamic_form {
         $data->completiontracking = $this->optional_param('completiontracking', null, PARAM_TEXT);
         $data->xp = $this->optional_param('xp', null, PARAM_INT);
         $data->hascompletion = $this->optional_param('hascompletion', 0, PARAM_INT);
-        $data->intg1 = $this->optional_param('intg1', null, PARAM_INT);
-        $data->intg2 = $this->optional_param('intg2', null, PARAM_INT);
-        $data->intg3 = $this->optional_param('intg3', null, PARAM_INT);
-        $data->char1 = $this->optional_param('char1', null, PARAM_TEXT);
-        $data->char2 = $this->optional_param('char2', null, PARAM_TEXT);
-        $data->char3 = $this->optional_param('char3', null, PARAM_TEXT);
+        $data->intg1 = $this->optional_param('intg1', null, PARAM_RAW);
+        $data->intg2 = $this->optional_param('intg2', null, PARAM_RAW);
+        $data->intg3 = $this->optional_param('intg3', null, PARAM_RAW);
+        $data->char1 = $this->optional_param('char1', null, PARAM_RAW);
+        $data->char2 = $this->optional_param('char2', null, PARAM_RAW);
+        $data->char3 = $this->optional_param('char3', null, PARAM_RAW);
         $data->text1 = $this->optional_param('text1', '', PARAM_RAW);
         $data->text2 = $this->optional_param('text2', '', PARAM_RAW);
         $data->text3 = $this->optional_param('text3', '', PARAM_RAW);
@@ -159,9 +159,10 @@ class base_form extends \core_form\dynamic_form {
     /**
      * Jump section fields
      * @param bool $hascompletion
+     * @param bool $jumptopassfail
      * @return void
      */
-    public function jump_section_fields($hascompletion = false) {
+    public function jump_section_fields($hascompletion = false, $jumptopassfail = false) {
         $mform = &$this->_form;
         $allannotations = $this->get_annotations() ?? [];
         $annotations = $allannotations;
@@ -211,19 +212,21 @@ class base_form extends \core_form\dynamic_form {
             $mform->addGroup($elements, 'lockedgroup', '', '', false);
             $mform->hideIf('lockedgroup', 'completiontracking', 'eq', 'none');
 
-            // Jump to option on pass grade.
-            $mform->addElement('select', 'jumptopass', get_string('jumptopass', 'mod_flexbook'), ['' => get_string('default')]
-                + $allannotations);
-            $mform->setType('jumptopass', PARAM_RAW);
+            if ($jumptopassfail) {
+                // Jump to option on pass grade.
+                $mform->addElement('select', 'jumptopass', get_string('jumptopass', 'mod_flexbook'), ['' => get_string('default')]
+                    + $allannotations);
+                $mform->setType('jumptopass', PARAM_RAW);
 
-            // Jump to option on fail grade.
-            $mform->addElement('select', 'jumptofail', get_string('jumptofail', 'mod_flexbook'), ['' => get_string('default')]
-                + $allannotations);
-            $mform->setType('jumptofail', PARAM_RAW);
+                // Jump to option on fail grade.
+                $mform->addElement('select', 'jumptofail', get_string('jumptofail', 'mod_flexbook'), ['' => get_string('default')]
+                    + $allannotations);
+                $mform->setType('jumptofail', PARAM_RAW);
 
-            // Hide if completion tracking is null or view or manual.
-            $mform->hideIf('jumptofail', 'completiontracking', 'in', ['none', 'view', 'manual']);
-            $mform->hideIf('jumptopass', 'completiontracking', 'in', ['none', 'view', 'manual']);
+                // Hide if completion tracking is null or view or manual.
+                $mform->hideIf('jumptofail', 'completiontracking', 'in', ['none', 'view', 'manual']);
+                $mform->hideIf('jumptopass', 'completiontracking', 'in', ['none', 'view', 'manual']);
+            }
         }
     }
 
@@ -787,7 +790,9 @@ class base_form extends \core_form\dynamic_form {
      * @return array
      */
     public function editor_options() {
+        global $COURSE;
         return [
+            'maxbytes' => $COURSE->maxbytes,
             'maxfiles' => EDITOR_UNLIMITED_FILES,
             'changeformat' => 1,
             'noclean' => 1,

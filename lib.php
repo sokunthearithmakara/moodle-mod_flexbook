@@ -104,6 +104,7 @@ function flexbook_display_options($moduleinstance) {
         'courseindex' => in_array('courseindex', $defaultappearance) ? 1 : 0,
         'aspectratio' => get_config('mod_flexbook', 'defaultaspectratio') ?? '',
         'kidtheme' => in_array('kidtheme', $defaultappearance) ? 1 : 0,
+        'openchapterpanel' => in_array('openchapterpanel', $defaultappearance) ? 1 : 0,
         'character' => 'none',
     ];
 
@@ -857,6 +858,101 @@ function flexbook_core_calendar_provide_event_action(
 }
 
 /**
+ * Render complete report row for a Flexbook user.
+ *
+ * @param \stdClass $course The course object.
+ * @param \stdClass $user The user object.
+ * @param cm_info|\stdClass $mod The course module object.
+ * @param \stdClass $flexbook The Flexbook instance object.
+ * @return void
+ */
+function flexbook_user_complete($course, $user, $mod, $flexbook) {
+    global $DB;
+
+    $completion = $DB->get_record_sql(
+        'SELECT fc.*, fi.title AS lastviewedtitle
+           FROM {flexbook_completion} fc
+      LEFT JOIN {flexbook_items} fi
+             ON fi.id = fc.lastviewed
+            AND fi.cmid = fc.cmid
+          WHERE fc.cmid = :cmid
+            AND fc.userid = :userid',
+        ['cmid' => $mod->id, 'userid' => $user->id]
+    );
+    if (!$completion) {
+        echo '<p>' . get_string('notstarted', 'mod_flexbook') . '</p>';
+        return;
+    }
+
+    $details = json_decode($completion->details ?? '{}', true);
+    $totaltimespent = 0;
+    $totalviews = 0;
+    if (is_array($details)) {
+        foreach ($details as $itemdetails) {
+            if (!is_array($itemdetails)) {
+                continue;
+            }
+            $totaltimespent += !empty($itemdetails['t']) ? (int) $itemdetails['t'] : 0;
+            $totalviews += !empty($itemdetails['v']) ? (int) $itemdetails['v'] : 0;
+        }
+    }
+
+    $lastviewed = '-';
+    if (!empty($completion->lastviewedtitle)) {
+        $lastviewed = format_string($completion->lastviewedtitle);
+    } else if (!empty($completion->timeended)) {
+        $lastviewed = get_string('endscreen', 'mod_flexbook');
+    }
+
+    $formattedduration = function (int $milliseconds): string {
+        if ($milliseconds <= 0) {
+            return '-';
+        }
+        $seconds = (int) floor($milliseconds / 1000);
+        $hours = intdiv($seconds, HOURSECS);
+        $minutes = intdiv($seconds % HOURSECS, MINSECS);
+        $seconds = $seconds % MINSECS;
+
+        if ($hours > 0) {
+            return sprintf('%d:%02d:%02d', $hours, $minutes, $seconds);
+        }
+        return sprintf('%d:%02d', $minutes, $seconds);
+    };
+
+    $formatdate = function ($timestamp): string {
+        return !empty($timestamp) ? userdate($timestamp, get_string('strftimedatetime', 'langconfig')) : '-';
+    };
+
+    echo '<table class="table table-sm table-striped small w-100">';
+    echo '<thead>';
+    echo '<tr>';
+    echo '<th>' . get_string('timestarted', 'mod_flexbook') . '</th>';
+    echo '<th>' . get_string('completionpercentage', 'mod_flexbook')
+        . ($flexbook->completionpercentage ? ' (' . (int) $flexbook->completionpercentage . '%)' : '') . '</th>';
+    echo '<th>' . get_string('xp', 'mod_flexbook') . '</th>';
+    echo '<th>' . get_string('timecompleted', 'mod_flexbook') . '</th>';
+    echo '<th>' . get_string('reachedend', 'mod_flexbook') . '</th>';
+    echo '<th>' . get_string('lastviewed', 'mod_flexbook') . '</th>';
+    echo '<th>' . get_string('totaltimespent', 'mod_flexbook') . '</th>';
+    echo '<th>' . get_string('views', 'mod_flexbook') . '</th>';
+    echo '</tr>';
+    echo '</thead>';
+    echo '<tbody>';
+    echo '<tr>';
+    echo '<td>' . $formatdate($completion->timecreated) . '</td>';
+    echo '<td>' . (int) $completion->completionpercentage . '%</td>';
+    echo '<td>' . format_float((float) $completion->xp, 2, true, true) . '</td>';
+    echo '<td>' . $formatdate($completion->timecompleted) . '</td>';
+    echo '<td>' . (!empty($completion->timeended) ? get_string('yes') : get_string('no')) . '</td>';
+    echo '<td>' . s($lastviewed) . '</td>';
+    echo '<td>' . $formattedduration($totaltimespent) . '</td>';
+    echo '<td>' . (int) $totalviews . '</td>';
+    echo '</tr>';
+    echo '</tbody>';
+    echo '</table>';
+}
+
+/**
  * This function is called when a module instance is updated.
  *
  * @param \stdClass $moduleinstance The module instance object.
@@ -1023,6 +1119,15 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
             [0, 1]
         );
         $mform->hideIf('courseindex', 'distractionfreemode', 'eq', 0);
+
+        $group[] = $mform->createElement(
+            'advcheckbox',
+            'openchapterpanel',
+            '',
+            get_string('openchapterpanel', 'mod_flexbook'),
+            ['group' => 1],
+            [0, 1]
+        );
 
         $mform->addGroup($group, 'appearancegroup', '', '', false);
 

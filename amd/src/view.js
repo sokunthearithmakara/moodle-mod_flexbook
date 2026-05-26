@@ -72,7 +72,8 @@ const init = async config => {
         ...config,
         completionid,
         isEditMode: false,
-        isPreviewMode: false
+        isPreviewMode: false,
+        darkmode: doptions.darkmode == 1
     };
 
     const isEmbed = new URLSearchParams(window.location.search).get('embed') === '1';
@@ -284,6 +285,7 @@ const init = async config => {
                 maxWidth: '',
                 maxHeight: '',
                 margin: '',
+                marginTop: doptions.kidtheme == 1 ? 5 : '',
             });
             return;
         }
@@ -292,7 +294,7 @@ const init = async config => {
         const ratio = ratioW / ratioH;
 
         const controllerHeight = doptions.controlbar == 1 ? ($controlBar.outerHeight() || 55) : 0;
-        const gap = 20;
+        const gap = $body.hasClass('embed-mode') ? 0 : 20;
         let availableHeight = window.innerHeight - controllerHeight - gap;
         if (doptions.distractionfreemode != 1) {
             availableHeight -= 40;
@@ -376,6 +378,9 @@ const init = async config => {
                 // IV1.4.1 introduce percent to handle when teacher updates XP afterward.
                 x.earned = x.xp * thisitem.percent;
             }
+            if (x.earned % 1 !== 0) {
+                x.earned = Math.round(x.earned * 100) / 100;
+            }
             if (x.earned > x.xp) {
                 // What if the teacher decreases the XP afterward?
                 x.earned = x.xp;
@@ -401,6 +406,11 @@ const init = async config => {
         return;
     } else {
         $('#chaptertoggle, #chapter-container-left, #chapter-container-right').removeClass('d-none');
+    }
+
+    if (doptions.openchapterpanel == 1 && window.innerWidth >= 1200 && !$body.hasClass('embed-mode')) {
+        $('#interactivevideo-container').addClass('chapter-open');
+        $('#chaptertoggle .btn i').removeClass('bi-collection').addClass('bi-collection-fill');
     }
 
     // Initialize the content type renderers for interactive video annotations.
@@ -546,8 +556,14 @@ const init = async config => {
         }
 
         // Update xpcounter in the control bar.
-        const totalXp = annotations.reduce((sum, x) => sum + (x.xp || 0), 0);
-        const earnedXp = annotations.reduce((sum, x) => sum + (x.earned || 0), 0);
+        let totalXp = annotations.reduce((sum, x) => sum + parseFloat(x.xp || 0), 0);
+        let earnedXp = annotations.reduce((sum, x) => sum + parseFloat(x.earned || 0), 0);
+        if (totalXp % 1 !== 0) {
+            totalXp = Math.round(totalXp * 100) / 100;
+        }
+        if (earnedXp % 1 !== 0) {
+            earnedXp = Math.round(earnedXp * 100) / 100;
+        }
         $controlBar.find('#xpearned').text(earnedXp);
         $controlBar.find('#xptotal').text(totalXp);
         if (totalXp === 0) {
@@ -945,8 +961,12 @@ const init = async config => {
         setTimeout(function() {
             state.currentanno = null;
             thisbutton.closest('#message').remove();
+            const renderer = state.ctRenderer[annotation?.type];
+            if (renderer?.cache) {
+                delete renderer.cache[annotation.id];
+            }
             dispatchEvent('interactionrefresh', {annotation: annotation});
-            navigateToAnnotation(id);
+            navigateToAnnotation(id, true);
         }, 1000);
     });
 

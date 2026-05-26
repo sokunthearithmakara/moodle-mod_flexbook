@@ -80,11 +80,19 @@ foreach ($customs as $custom) {
 // Sort the content types by name a-z.
 asort($contenttypes);
 
+$defaultcontenttypes = array_intersect_key(array_fill_keys([
+    'ivplugin_chapter',
+    'ivplugin_contentbank',
+    'ivplugin_iframe',
+    'ivplugin_richtext',
+    'mod_interactivevideo',
+], 1), $contenttypes);
+
 $gsettings->add(new admin_setting_configmulticheckbox(
     'mod_flexbook/enablecontenttypes',
     get_string('enablecontenttypes', 'mod_interactivevideo'),
     get_string('enablecontenttypes_desc', 'mod_interactivevideo'),
-    $contenttypes,
+    $defaultcontenttypes,
     $contenttypes,
 ));
 
@@ -129,6 +137,7 @@ $asettings->add(new admin_setting_configmulticheckbox(
         'controlbar' => 1,
         'interactionbar' => 1,
         'chaptertoggle' => 1,
+        'openchapterpanel' => 0,
         'share' => 1,
         'fullscreen' => 1,
         'xpcounter' => 1,
@@ -144,6 +153,7 @@ $asettings->add(new admin_setting_configmulticheckbox(
         'controlbar' => get_string('controlbar', 'mod_flexbook'),
         'interactionbar' => get_string('interactionbar', 'mod_flexbook'),
         'chaptertoggle' => get_string('chaptertoggle', 'mod_flexbook'),
+        'openchapterpanel' => get_string('openchapterpanel', 'mod_flexbook'),
         'share' => get_string('share', 'mod_flexbook'),
         'fullscreen' => get_string('fullscreen', 'mod_flexbook'),
         'xpcounter' => get_string('xpcounter', 'mod_flexbook'),

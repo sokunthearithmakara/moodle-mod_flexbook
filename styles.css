@@ -1038,7 +1038,6 @@
 }
 
 .path-mod-flexbook.kidtheme #interactivevideo-container {
-    overflow: hidden;
     overflow: clip;
     overflow-clip-margin: 500px;
     clip-path: inset(-500px -100px -500px -500px);

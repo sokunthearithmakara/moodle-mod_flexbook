@@ -2,6 +2,16 @@
     @template mod_flexbook/embed
 
     Minimal shell for embed.php — same idea as report modal: #message is the host, no player chrome.
+
+    Example context (json):
+    {
+        "containers": [
+            { "id": "annotation", "content": "{}" },
+            { "id": "contenttypes", "content": "[]" },
+            { "id": "doptions", "content": "{}" }
+        ],
+        "moodleversion": "500"
+    }
 }}
 <div id="wrapper" class="modal position-relative w-100" data-fb-embed-target="1">
     <button type="button"

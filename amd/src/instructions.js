@@ -116,7 +116,7 @@ export const destroy = () => {
     $(document).off('click.fb-instructions');
     $('#instructions-sidebar').off('.fb-instructions').remove();
     $body.removeClass('hassidebar');
-    $('#instructions-toggle').attr('aria-pressed', 'false').removeClass('active');
+    $('#instructions-toggle').attr('aria-pressed', 'false').removeAttr('aria-controls').removeClass('active');
     currentAnnotationId = null;
     isOpen = false;
 };
@@ -166,6 +166,7 @@ export const render = async(annotation) => {
     const $instructionsBody = $sidebar.find('.fb-instructions-body');
     $instructionsBody.html(formatted);
     $mount.append($sidebar);
+    $('#instructions-toggle').attr('aria-controls', 'instructions-sidebar');
 
     const bodyEl = $instructionsBody[0];
     if (bodyEl) {

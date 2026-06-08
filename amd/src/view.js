@@ -49,6 +49,17 @@ let sequence; // Sequence of annotations.
 const $controlBar = $('#controller');
 const $annotationbar = $controlBar.find('.top-bar');
 
+/**
+ * Whether a keyboard shortcut should be ignored (typing in form fields or with modifiers).
+ *
+ * @param {KeyboardEvent} e Keyboard event.
+ * @returns {boolean}
+ */
+const shouldIgnoreKeyboardShortcut = (e) => {
+    const tag = document.activeElement?.tagName;
+    return ['INPUT', 'TEXTAREA'].includes(tag) || e.altKey || e.ctrlKey || e.metaKey;
+};
+
 const init = async config => {
     // Move toast-wrapper to the #wrapper element so it can be displayed on top of the video in fullscreen mode.
     let $toast = $('.toast-wrapper').detach();
@@ -1185,6 +1196,7 @@ const init = async config => {
 
     // Implement keyboard shortcuts.
     document.addEventListener('keydown', async function(e) {
+        const ignoreShortcut = shouldIgnoreKeyboardShortcut(e);
         switch (e.key) {
             case 'ArrowLeft':
                 e.preventDefault();
@@ -1196,7 +1208,7 @@ const init = async config => {
                 break;
             case 's':
             case 'S':
-                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || e.altKey || e.ctrlKey || e.metaKey) {
+                if (ignoreShortcut) {
                     return;
                 }
                 e.preventDefault();
@@ -1204,7 +1216,7 @@ const init = async config => {
                 break;
             case 'f':
             case 'F':
-                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || e.altKey || e.ctrlKey || e.metaKey) {
+                if (ignoreShortcut) {
                     return;
                 }
                 e.preventDefault();
@@ -1212,7 +1224,7 @@ const init = async config => {
                 break;
             case 'c':
             case 'C':
-                if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName) || e.altKey || e.ctrlKey || e.metaKey) {
+                if (ignoreShortcut) {
                     return;
                 }
                 e.preventDefault();

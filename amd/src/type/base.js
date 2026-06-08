@@ -50,6 +50,24 @@ const isReportPage = () => {
         || bodyId === 'page-mod-interactivevideo-report';
 };
 
+/**
+ * Build serialisable log field payload for mod_flexbook_save_log.
+ *
+ * @param {Object} data Log input data.
+ * @param {number} completionid Fallback completion id.
+ * @returns {Object}
+ */
+const buildSaveLogPayload = (data, completionid) => {
+    const payload = {};
+    for (let i = 1; i <= 6; i++) {
+        payload['text' + i] = data['text' + i] || '';
+        payload['char' + i] = data['char' + i] || '';
+        payload['intg' + i] = data['intg' + i] || 0;
+    }
+    payload.completionid = data.completionid || completionid || 0;
+    return payload;
+};
+
 export default class Base {
     /**
      * Creates an instance of the base class for interactive video.
@@ -514,7 +532,6 @@ export default class Base {
         return {headeractions, instructionstoggle, showinstructions, showdelete, candelete};
     }
 
-    // eslint-disable-next-line complexity
     async renderMessageTitle(annotation, playermode = false) {
         let self = this;
         let props = safeParse(annotation.prop, {});
@@ -1545,36 +1562,15 @@ export default class Base {
      * @returns {Promise}
      */
     async saveLog(annotation, data, userid, replaceexisting = 1) {
-        let self = this;
         const log = await Ajax.call([{
             methodname: 'mod_flexbook_save_log',
             args: {
                 contextid: M.cfg.contextid,
                 annotationid: annotation.id,
-                data: JSON.stringify({
-                    'text1': data.text1 || '',
-                    'text2': data.text2 || '',
-                    'text3': data.text3 || '',
-                    'text4': data.text4 || '',
-                    'text5': data.text5 || '',
-                    'text6': data.text6 || '',
-                    'char1': data.char1 || '',
-                    'char2': data.char2 || '',
-                    'char3': data.char3 || '',
-                    'char4': data.char4 || '',
-                    'char5': data.char5 || '',
-                    'char6': data.char6 || '',
-                    'intg1': data.intg1 || 0,
-                    'intg2': data.intg2 || 0,
-                    'intg3': data.intg3 || 0,
-                    'intg4': data.intg4 || 0,
-                    'intg5': data.intg5 || 0,
-                    'intg6': data.intg6 || 0,
-                    'completionid': data.completionid || self.completionid || 0,
-                }),
+                data: JSON.stringify(buildSaveLogPayload(data, this.completionid)),
                 userid: userid,
                 replaceexisting: replaceexisting,
-                cmid: self.cm,
+                cmid: this.cm,
             }
         }])[0];
         return log;

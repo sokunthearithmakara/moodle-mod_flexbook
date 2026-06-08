@@ -455,7 +455,6 @@ const init = async(config) => {
         filterTimer = ReportBase.applyFilter(tabledata, $(this), e, filterTimer);
     });
 
-
     ReportBase.registerSearchFilters(tabledata, columns);
     ReportBase.registerClickHandlers(tabledata, columns);
 
@@ -703,7 +702,6 @@ const init = async(config) => {
         });
     });
 };
-
 
 export {
     init

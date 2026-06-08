@@ -7,7 +7,7 @@
  */
 
 import $ from 'jquery';
-import {get_string} from 'core/str';
+import {get_string as getString} from 'core/str';
 import state from './state';
 
 /**
@@ -39,7 +39,7 @@ class Mascot {
                 return;
             }
             const stringKey = this.isNew ? 'mascot_hello' : 'mascot_welcomeback';
-            const text = await get_string(stringKey, 'mod_flexbook', this.firstname);
+            const text = await getString(stringKey, 'mod_flexbook', this.firstname);
             this.say(text);
         }, 1500);
 
@@ -59,7 +59,7 @@ class Mascot {
         }
 
         const svg = this.getSvg(this.character);
-        const dismissLabel = await get_string('mascot_dismiss', 'mod_flexbook');
+        const dismissLabel = await getString('mascot_dismiss', 'mod_flexbook');
 
         this.$el = $(`
             <div id="fb-mascot" class="pop-in mascot-${this.character}">
@@ -373,7 +373,7 @@ class Mascot {
                 this.say('⭐ +' + earned + ' XP!');
             } else if (earned < 0) {
                 this.animate('sad');
-                const oops = await get_string('mascot_oops', 'mod_flexbook');
+                const oops = await getString('mascot_oops', 'mod_flexbook');
                 this.say(oops);
             } else if (data.action === 'mark-done') {
                 // Fallback to generic happy reaction if no XP change.
@@ -523,7 +523,14 @@ class Mascot {
      * @param {string} effect
      */
     static _playOwl(t, effect) {
-        const baseFreq = effect === 'happy' ? 380 : (effect === 'sad' ? 240 : 320);
+        let baseFreq;
+        if (effect === 'happy') {
+            baseFreq = 380;
+        } else if (effect === 'sad') {
+            baseFreq = 240;
+        } else {
+            baseFreq = 320;
+        }
         const hoo = (startTime, freq, dur) => {
             const osc = this.audioCtx.createOscillator();
             const gain = this.audioCtx.createGain();
@@ -562,7 +569,14 @@ class Mascot {
      * @param {string} effect
      */
     static _playMonkey(t, effect) {
-        const count = effect === 'happy' ? 4 : (effect === 'speak' ? 6 : 2);
+        let count;
+        if (effect === 'happy') {
+            count = 4;
+        } else if (effect === 'speak') {
+            count = 6;
+        } else {
+            count = 2;
+        }
         const freq = effect === 'sad' ? 600 : 1200;
         for (let i = 0; i < count; i++) {
             const start = t + (i * 0.15);
@@ -795,7 +809,7 @@ class Mascot {
      */
     static async sayRandom(category) {
         const index = Math.floor(Math.random() * 4) + 1;
-        const text = await get_string(`mascot_${category}_${index}`, 'mod_flexbook', this.firstname);
+        const text = await getString(`mascot_${category}_${index}`, 'mod_flexbook', this.firstname);
         this.say(text);
     }
 }

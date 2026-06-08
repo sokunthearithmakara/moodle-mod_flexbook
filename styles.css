@@ -1236,8 +1236,6 @@
     background-image: radial-gradient(#4e5456 2px, transparent 2px);
 }
 
-
-
 .path-mod-flexbook.kidtheme #video-wrapper.fb {
     outline: 4px solid #e5e5e5;
     border-radius: 2rem !important;
@@ -2121,8 +2119,10 @@
     animation: fb-header-actions-in 0.16s ease-out;
 }
 
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions .fb-header-actions-menu.fb-header-actions-menu--dropup.show,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions .fb-header-actions-menu.fb-header-actions-menu--dropup.show {
+.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions
+.fb-header-actions-menu.fb-header-actions-menu--dropup.show,
+.path-mod-flexbook #annotation-modal #message #title .fb-header-actions
+.fb-header-actions-menu.fb-header-actions-menu--dropup.show {
     animation: fb-header-actions-dropup-in 0.16s ease-out;
 }
 

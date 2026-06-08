@@ -477,6 +477,14 @@ class util extends \interactivevideo_util {
         $courseid = 0
     ) {
         global $DB, $CFG;
+        $decodearray = function ($value): array {
+            $decoded = json_decode((string) $value);
+            return is_array($decoded) ? $decoded : [];
+        };
+        $completion = json_decode((string) $completiondetails);
+        $completionid = is_object($completion) && isset($completion->id) ? $completion->id : null;
+        $completeditems = json_encode(array_values($decodearray($completeditems)));
+
         // If guess user, save progress in the session; otherwise in the database.
         if ($userid == 1 || isguestuser()) {
             $cache = \cache::make('mod_flexbook', 'fb_progress');
@@ -489,56 +497,67 @@ class util extends \interactivevideo_util {
                 'xp' => $xp,
                 'userid' => $userid,
                 'completionid' => 0,
+                'completiondetails' => '[]',
             ];
             $currentprogress = $cache->get($cmid);
-            if ($currentprogress) {
-                $completion = json_decode($completiondetails);
-                $cdetails = $currentprogress['completiondetails'];
-                $cdetails = json_decode($cdetails);
+            if ($currentprogress && $completionid !== null) {
+                $cdetails = $decodearray($currentprogress['completiondetails'] ?? '[]');
                 // Remove the detail item with the same id.
-                $cdetails = array_filter($cdetails, function ($item) use ($completion) {
+                $cdetails = array_filter($cdetails, function ($item) use ($completionid) {
                     $item = json_decode($item);
-                    return $item->id != $completion->id;
+                    return !is_object($item) || !isset($item->id) || $item->id != $completionid;
                 });
                 if ($markdone) {
                     $cdetails[] = $completiondetails;
                 }
-                $progress['completiondetails'] = json_encode($cdetails);
+                $progress['completiondetails'] = json_encode(array_values($cdetails));
             }
             $cache->set($cmid, $progress);
             return $progress;
         }
         $record = $DB->get_record('flexbook_completion', ['cmid' => $cmid, 'userid' => $userid]);
+        if (!$record) {
+            $record = new \stdClass();
+            $record->cmid = $cmid;
+            $record->userid = $userid;
+            $record->timecreated = time();
+            $record->timecompleted = 0;
+            $record->completeditems = '[]';
+            $record->completionpercentage = 0;
+            $record->completiondetails = '[]';
+            $record->courseid = $courseid;
+            $record->id = $DB->insert_record('flexbook_completion', $record);
+        }
         $record->completeditems = $completeditems;
         $record->timecompleted = $completed ? time() : 0;
         $record->completionpercentage = round($percentage);
         $record->xp = $xp;
         $record->courseid = $courseid;
-        $completion = json_decode($completiondetails);
-        $cdetails = json_decode($record->completiondetails);
-        // Remove the detail item with the same id.
-        $cdetails = array_filter($cdetails, function ($item) use ($completion) {
-            $item = json_decode($item);
-            return $item->id != $completion->id;
-        });
-        if ($markdone) {
-            $cdetails[] = $completiondetails;
+        if ($completionid !== null) {
+            $cdetails = $decodearray($record->completiondetails);
+            // Remove the detail item with the same id.
+            $cdetails = array_filter($cdetails, function ($item) use ($completionid) {
+                $item = json_decode($item);
+                return !is_object($item) || !isset($item->id) || $item->id != $completionid;
+            });
+            if ($markdone) {
+                $cdetails[] = $completiondetails;
+            }
+            $record->completiondetails = json_encode(array_values($cdetails));
         }
-        $cdetails = array_values($cdetails);
-        $record->completiondetails = json_encode($cdetails);
         $DB->update_record('flexbook_completion', $record);
 
         // Add/delete details to flexbook_log table.
-        if ($completion->hasDetails) { // We don't want to query the database if there is no details.
+        if (is_object($completion) && !empty($completion->hasDetails) && $completionid !== null) {
             if (!$markdone) {
                 $DB->delete_records_select('flexbook_log', "annotationid = :annotationid AND userid = :userid", [
-                    'annotationid' => $completion->id,
+                    'annotationid' => $completionid,
                     'userid' => $userid,
                 ]);
             } else {
                 // Check if the log already exists.
                 $existing = $DB->get_record('flexbook_log', [
-                    'annotationid' => $completion->id,
+                    'annotationid' => $completionid,
                     'userid' => $userid,
                     'completionid' => $record->id,
                 ]);
@@ -547,7 +566,7 @@ class util extends \interactivevideo_util {
                     $log->userid = $userid;
                     $log->cmid = $cmid;
                     $log->char1 = $type;
-                    $log->annotationid = $completion->id;
+                    $log->annotationid = $completionid;
                     $log->timecreated = time();
                     $log->text1 = $details;
                     $log->timemodified = time();
@@ -826,6 +845,30 @@ class util extends \interactivevideo_util {
     }
 
     /**
+     * Delete flexbook_log rows (and file areas) for one user/interaction pair.
+     *
+     * @param int $userid
+     * @param int $itemid Interaction id
+     * @param int $contextid
+     * @return void
+     */
+    public static function delete_interaction_logs($userid, $itemid, $contextid) {
+        global $DB;
+        $logs = $DB->get_records('flexbook_log', ['userid' => $userid, 'annotationid' => $itemid]);
+        if (!$logs) {
+            return;
+        }
+        $fs = get_file_storage();
+        foreach ($logs as $log) {
+            $fs->delete_area_files($contextid, 'mod_flexbook', 'attachments', $log->id);
+            $fs->delete_area_files($contextid, 'mod_flexbook', 'text1', $log->id);
+            $fs->delete_area_files($contextid, 'mod_flexbook', 'text2', $log->id);
+            $fs->delete_area_files($contextid, 'mod_flexbook', 'text3', $log->id);
+        }
+        $DB->delete_records('flexbook_log', ['userid' => $userid, 'annotationid' => $itemid]);
+    }
+
+    /**
      * Delete completion data.
      *
      * @param int $id
@@ -864,21 +907,12 @@ class util extends \interactivevideo_util {
                 $completion->details = json_encode($details);
             }
             $DB->update_record('flexbook_completion', $completion);
-            $logs = $DB->get_records('flexbook_log', ['userid' => $userid, 'annotationid' => $itemid]);
-            $fs = get_file_storage();
-            if ($logs) {
-                foreach ($logs as $log) {
-                    $fs->delete_area_files($contextid, 'mod_flexbook', 'attachments', $log->id);
-                    $fs->delete_area_files($contextid, 'mod_flexbook', 'text1', $log->id);
-                    $fs->delete_area_files($contextid, 'mod_flexbook', 'text2', $log->id);
-                    $fs->delete_area_files($contextid, 'mod_flexbook', 'text3', $log->id);
-                }
-                $DB->delete_records('flexbook_log', ['userid' => $userid, 'annotationid' => $itemid]);
-            }
+            self::delete_interaction_logs($userid, $itemid, $contextid);
             return json_encode(['id' => $id, 'itemid' => $itemid]);
-        } else {
-            return json_encode(['error' => 'Completion record not found']);
         }
+
+        self::delete_interaction_logs($userid, $itemid, $contextid);
+        return json_encode(['id' => $id, 'itemid' => $itemid]);
     }
 
     /**
@@ -931,25 +965,25 @@ class util extends \interactivevideo_util {
     public static function get_logs_by_userids($userids, $annotationid, $contextid, $type, $cmid) {
         global $DB, $CFG;
         require_once($CFG->libdir . '/filelib.php');
-        $inparams = $DB->get_in_or_equal($userids)[1];
-        $inparams = implode(',', $inparams);
-        $where = '';
+        $userids = array_values(array_filter(array_map('intval', $userids), fn($userid) => $userid > 0));
+        if (empty($userids)) {
+            return [];
+        }
+
+        [$insql, $inparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'userid');
+        $where = "userid $insql";
+        $params = $inparams;
         if ($annotationid != 0) {
-            $where = "annotationid = ? ";
+            $where .= " AND annotationid = :annotationid";
+            $params['annotationid'] = $annotationid;
         }
         if ($type) {
-            $where .= ($where ? ' AND ' : '') . "char1 = ? AND cmid = ?";
+            $where .= " AND char1 = :type AND cmid = :cmid";
+            $params['type'] = $type;
+            $params['cmid'] = $cmid;
         }
-        $sql = "SELECT * FROM {flexbook_log} WHERE {$where} AND userid IN ($inparams) ORDER BY
+        $sql = "SELECT * FROM {flexbook_log} WHERE {$where} ORDER BY
         timecreated DESC";
-        $params = [];
-        if ($annotationid != 0) {
-            $params[] = $annotationid;
-        }
-        if ($type) {
-            $params[] = $type;
-            $params[] = $cmid;
-        }
         $records = $DB->get_records_sql($sql, $params);
         foreach ($records as $record) {
             $record->formattedtimecreated = userdate($record->timecreated, get_string('strftimedatetime', 'langconfig'));

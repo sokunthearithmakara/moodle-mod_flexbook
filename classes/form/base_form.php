@@ -96,6 +96,21 @@ class base_form extends \core_form\dynamic_form {
                 $data->{$key} = $value;
             }
         }
+
+        $instructions = $data->instructions ?? '';
+        $format = $data->instructionsformat ?? FORMAT_HTML;
+        if (
+            !isset($data->instructionsformat) && $instructions !== ''
+            && strip_tags($instructions) === $instructions
+        ) {
+            $format = FORMAT_MOODLE;
+        }
+        $data->instructionseditor = [
+            'text' => $instructions,
+            'format' => $format,
+            'itemid' => 0,
+        ];
+
         return $data;
     }
 
@@ -307,6 +322,11 @@ class base_form extends \core_form\dynamic_form {
      * @return string
      */
     public function process_advanced_settings($data) {
+        if (isset($data->instructionseditor) && is_array($data->instructionseditor)) {
+            $data->instructions = $data->instructionseditor['text'] ?? '';
+            $data->instructionsformat = $data->instructionseditor['format'] ?? FORMAT_HTML;
+        }
+
         $adv = new \stdClass();
         $properties = [
             'hideheader' => 0,
@@ -328,6 +348,7 @@ class base_form extends \core_form\dynamic_form {
             'backto' => '',
             'bottomheader' => 0,
             'instructions' => '',
+            'instructionsformat' => FORMAT_HTML,
             'hideinstructionsoncomplete' => 0,
         ];
         foreach ($properties as $key => $default) {
@@ -462,13 +483,14 @@ class base_form extends \core_form\dynamic_form {
         $mform->setExpanded('advanced', false);
 
         $mform->addElement(
-            'textarea',
-            'instructions',
+            'editor',
+            'instructionseditor',
             get_string('instructions', 'mod_flexbook'),
-            ['rows' => 3, 'class' => 'w-100']
+            ['rows' => 5, 'class' => 'w-100'],
+            $this->instructions_editor_options()
         );
-        $mform->addHelpButton('instructions', 'instructions', 'mod_flexbook');
-        $mform->setType('instructions', PARAM_TEXT);
+        $mform->addHelpButton('instructionseditor', 'instructions', 'mod_flexbook');
+        $mform->setType('instructionseditor', PARAM_RAW);
 
         $mform->addElement(
             'advcheckbox',
@@ -533,7 +555,7 @@ class base_form extends \core_form\dynamic_form {
                 'deletecompletion',
                 '',
                 '<span class="text-muted small w-100 d-block">'
-                    . get_string('deletecompletiondesc', 'mod_flexbook') . '</span>'
+                    . get_string('deletecompletiondesc', 'mod_interactivevideo') . '</span>'
             );
             $mform->addGroup($elementarray, '', get_string('deletecompletion', 'mod_interactivevideo'));
         }
@@ -677,69 +699,6 @@ class base_form extends \core_form\dynamic_form {
     }
 
     /**
-     * Add interaction fields (Go to URL, Go to Interaction, Play Audio)
-     *
-     * @param array $options Options to control which interaction types are available.
-     * @return void
-     */
-    public function interaction_fields($options = []) {
-        $options += [
-            'gotourl' => true,
-            'gotointeraction' => true,
-            'playaudio' => true,
-        ];
-
-        $mform = &$this->_form;
-        $mform->addElement('header', 'interactionheader', get_string('interaction', 'local_fbcanvas'));
-
-        $typeoptions = ['none' => get_string('none', 'local_fbcanvas')];
-        if ($options['gotourl']) {
-            $typeoptions['gotourl'] = get_string('gotourl', 'local_fbcanvas');
-        }
-        if ($options['gotointeraction']) {
-            $typeoptions['gotointeraction'] = get_string('gotointeraction', 'local_fbcanvas');
-        }
-        if ($options['playaudio']) {
-            $typeoptions['playaudio'] = get_string('playaudio', 'local_fbcanvas');
-        }
-
-        $mform->addElement('select', 'interactiontype', get_string('interactiontype', 'local_fbcanvas'), $typeoptions);
-        $mform->setDefault('interactiontype', 'none');
-
-        if ($options['gotourl']) {
-            $mform->addElement('text', 'gotourl', get_string('gotourl', 'local_fbcanvas'), ['size' => 100]);
-            $mform->setType('gotourl', PARAM_URL);
-            $mform->addRule(
-                'gotourl',
-                get_string('invalidurlformat', 'local_fbcanvas'),
-                'regex',
-                "/\b(?:(?:https?|ftp):\/\/|www\.)[-a-z0-9+&@#\/%?=~_|!:,.;]*\.[a-z]{2,}[-a-z0-9+&@#\/%=~_|]*/i",
-                'client'
-            );
-            $mform->hideIf('gotourl', 'interactiontype', 'neq', 'gotourl');
-        }
-
-        if ($options['gotointeraction']) {
-            $annotationoptions = [0 => get_string('none', 'local_fbcanvas')] + ($this->get_annotations() ?? []);
-            $mform->addElement('select', 'gotointeraction', get_string('gotointeraction', 'local_fbcanvas'), $annotationoptions);
-            $mform->setType('gotointeraction', PARAM_RAW);
-            $mform->hideIf('gotointeraction', 'interactiontype', 'neq', 'gotointeraction');
-        }
-
-        if ($options['playaudio']) {
-            global $COURSE;
-            $filemanageroptions = [
-                'maxbytes'       => $COURSE->maxbytes,
-                'subdirs'        => 0,
-                'maxfiles'       => 1,
-                'accepted_types' => ['html_audio'],
-            ];
-            $mform->addElement('filemanager', 'audio', get_string('audiofile', 'local_fbcanvas'), null, $filemanageroptions);
-            $mform->hideIf('audio', 'interactiontype', 'neq', 'playaudio');
-        }
-    }
-
-    /**
      * Standard close form element
      *
      * @return void
@@ -796,6 +755,21 @@ class base_form extends \core_form\dynamic_form {
             'maxfiles' => EDITOR_UNLIMITED_FILES,
             'changeformat' => 1,
             'noclean' => 1,
+            'context' => $this->get_context_for_dynamic_submission(),
+        ];
+    }
+
+    /**
+     * Editor options for the instructions field (no file uploads).
+     *
+     * @return array
+     */
+    public function instructions_editor_options() {
+        return [
+            'maxbytes' => 0,
+            'maxfiles' => 0,
+            'subdirs' => 0,
+            'changeformat' => 1,
             'context' => $this->get_context_for_dynamic_submission(),
         ];
     }

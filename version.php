@@ -31,5 +31,5 @@ $plugin->requires = 2021112800;
 $plugin->supported = [400, 502];
 $plugin->maturity = MATURITY_RC;
 $plugin->dependencies = [
-    'mod_interactivevideo' => 2026042600,
+    'mod_interactivevideo' => 2026052603,
 ];

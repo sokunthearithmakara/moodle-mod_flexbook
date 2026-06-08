@@ -32,8 +32,23 @@ import ModalEvents from 'core/modal_events';
 import Ajax from 'core/ajax';
 import Templates from 'core/templates';
 import state from '../state';
-import {safeParse, getMoodleVersion} from '../utils';
+import {safeParse, getMoodleVersion, formatContent as formatFlexbookContent} from '../utils';
+import {shouldShowInstructions} from '../instructions';
 import {notifyFilterContentUpdated as notifyFilter} from 'core_filters/events';
+
+/**
+ * Whether the current page is an IV/Flexbook completion report.
+ *
+ * @returns {boolean}
+ */
+const isReportPage = () => {
+    if (state.config?.isReportMode === true) {
+        return true;
+    }
+    const bodyId = document.body?.id || '';
+    return bodyId === 'page-mod-flexbook-report'
+        || bodyId === 'page-mod-interactivevideo-report';
+};
 
 export default class Base {
     /**
@@ -129,6 +144,7 @@ export default class Base {
         this.options = {
             isEditMode: state.config.isEditMode,
             isPreviewMode: state.config.isPreviewMode,
+            isEmbedMode: state.config.isEmbedMode,
             isCompleted: state.config.isCompleted,
             isGuest: state.config.isGuest
         };
@@ -454,15 +470,68 @@ export default class Base {
         });
     }
 
+    /**
+     * Build header action dropdown and instructions toggle for player mode.
+     *
+     * @param {Object} annotation
+     * @param {boolean} isPlayerMode
+     * @returns {Promise<Object>}
+     */
+    async buildHeaderChrome(annotation, isPlayerMode) {
+        const settings = safeParse(annotation.advanced, {});
+        let showdelete = false;
+        if (settings.deletebeforecomplete == 1 || settings.deleteaftercomplete == 1) {
+            showdelete = true;
+        }
+        if (annotation.hascompletion == 0 || annotation.completiontracking == 'manual' || annotation.completiontracking == 'none') {
+            showdelete = false;
+        }
+        annotation.activitycomplete = this.options.isCompleted ? 1 : 0;
+        const candelete = annotation.completed == true && (
+            (annotation.activitycomplete == 1 && settings.deleteaftercomplete == 1) ||
+            (annotation.activitycomplete == 0 && settings.deletebeforecomplete == 1)
+        );
+
+        const bs = this.isBS5 ? '-bs' : '';
+        let headeractions = '';
+        if (isPlayerMode) {
+            headeractions = await Templates.render('mod_flexbook/canvas/headeractions', {
+                id: annotation.id,
+                iseditor: state.config.iseditor,
+                editurl: M.cfg.wwwroot + '/mod/flexbook/interactions.php?id=' + this.cm + '&aid=' + annotation.id,
+                showdelete,
+                candelete,
+                isPlayerMode: true,
+                bs,
+            });
+        }
+
+        const showinstructions = shouldShowInstructions(annotation);
+        const instructionstoggle = showinstructions
+            ? await Templates.render('mod_flexbook/canvas/instructionstoggle', {id: annotation.id, bs})
+            : '';
+
+        return {headeractions, instructionstoggle, showinstructions, showdelete, candelete};
+    }
+
+    // eslint-disable-next-line complexity
     async renderMessageTitle(annotation, playermode = false) {
         let self = this;
         let props = safeParse(annotation.prop, {});
 
         if (!playermode) {
+            const bs = this.isBS5 ? '-bs' : '';
+            const showinstructions = shouldShowInstructions(annotation);
+            const instructionstoggle = showinstructions
+                ? await Templates.render('mod_flexbook/canvas/instructionstoggle', {id: annotation.id, bs})
+                : '';
             let $title = await Templates.render('mod_flexbook/messagetitle', {
                 id: annotation.id,
                 title: annotation.formattedtitle,
                 icon: props.icon || 'bi bi-info-circle',
+                showinstructions,
+                instructionstoggle,
+                bs,
             });
             return $title;
         }
@@ -489,36 +558,34 @@ export default class Base {
             editurl: M.cfg.wwwroot + '/mod/flexbook/interactions.php?id=' + this.cm + '&aid=' + annotation.id
         });
 
-        let showdelete = false;
-        let settings = safeParse(annotation.advanced, {});
-        if (settings.deletebeforecomplete == 1 || settings.deleteaftercomplete == 1) {
-            showdelete = true;
-        }
-        if (annotation.hascompletion == 0 || annotation.completiontracking == 'manual' || annotation.completiontracking == 'none') {
-            showdelete = false;
-        }
-
-        annotation.activitycomplete = this.options.isCompleted ? 1 : 0;
+        const chrome = await self.buildHeaderChrome(annotation, true);
 
         let $title = await Templates.render('mod_flexbook/messagetitle', {
             id: annotation.id,
             title: annotation.formattedtitle,
             icon: props.icon || 'bi bi-info-circle',
             completionbutton: completionbutton,
-            showdelete: showdelete,
-            candelete: annotation.completed == true && ((annotation.activitycomplete == 1 && settings.deleteaftercomplete == 1) ||
-                (annotation.activitycomplete == 0 && settings.deletebeforecomplete == 1))
+            headeractions: chrome.headeractions,
+            instructionstoggle: chrome.instructionstoggle,
+            showinstructions: chrome.showinstructions,
         });
         return $title;
     }
 
-    animateModal(root) {
+    /**
+     * Play the jelly entrance/deny animation on a modal root.
+     *
+     * @param {jQuery} root Modal root element.
+     * @param {Number} [delayMs=10] Delay before starting animation.
+     * @return {void}
+     */
+    playJellyAnim(root, delayMs = 10) {
         setTimeout(() => {
             root.addClass('jelly-anim');
             setTimeout(() => {
                 root.removeClass('jelly-anim');
             }, 500);
-        }, 10);
+        }, delayMs);
     }
 
     async createModal(annotation, playermode = false) {
@@ -529,10 +596,10 @@ export default class Base {
         }
 
         let ModalFactory;
-        if (getMoodleVersion() < 403) {
-            ModalFactory = await import('core/modal_factory');
-        } else {
+        if (getMoodleVersion() >= 403 || $('body').hasClass('bs-5')) {
             ModalFactory = await import('core/modal');
+        } else {
+            ModalFactory = await import('core/modal_factory');
         }
 
         let modal = await ModalFactory.create({
@@ -555,9 +622,6 @@ export default class Base {
             .addClass('active ' + annotation?.type);
             modal.show();
             root.data('modal', modal);
-            root.on(ModalEvents.hidden, () => {
-                modal.destroy();
-            });
 
             // Enable draggable.
             this.setModalDraggable('#annotation-modal .modal-dialog');
@@ -570,7 +634,7 @@ export default class Base {
             });
 
             if (playermode) {
-                root.find('#message').on('click', '#refresh', function(e) {
+                root.find('#message').on('click', '[data-action="refresh"]', function(e) {
                     e.preventDefault();
                     e.stopImmediatePropagation();
                     $(this).find('i').addClass('fa-spin');
@@ -584,21 +648,37 @@ export default class Base {
                 });
             }
 
-            root.off(ModalEvents.hidden).on(ModalEvents.hidden, function() {
+            root.on(ModalEvents.hidden, function() {
                 $('#annotation-modal').remove();
                 modal.destroy();
             });
 
             root.on(ModalEvents.outsideClick, function(e) {
                 e.preventDefault();
-                self.animateModal(root);
+                self.playJellyAnim(root, 0);
             });
 
             root.on(ModalEvents.shown, async() => {
-                self.animateModal(root);
+                self.playJellyAnim(root);
                 if (annotation) {
-                    root.find('.modal-header').attr('id', 'title')
-                        .html(await this.renderMessageTitle(annotation, playermode));
+                    const settings = safeParse(annotation.advanced, {});
+                    const hideHeader = !isReportPage() && settings.hideheader == 1;
+                    const $message = root.find('#message');
+                    $message.toggleClass('header-hidden', hideHeader);
+                    const $title = root.find('.modal-header').attr('id', 'title');
+                    $title.removeClass('shadow-sm hide-header bottom-header btn-dark');
+                    if (hideHeader) {
+                        $title.addClass('hide-header');
+                    } else {
+                        $title.addClass('shadow-sm');
+                    }
+                    if (settings.bottomheader == 1) {
+                        $title.addClass('bottom-header');
+                    }
+                    if (state.config.darkmode) {
+                        $title.addClass('btn-dark');
+                    }
+                    $title.html(await this.renderMessageTitle(annotation, playermode));
                 }
                 resolve(root);
             });
@@ -667,6 +747,21 @@ export default class Base {
         return;
     }
 
+    /**
+     * Render a standalone embedded interaction (no header, no completion UI).
+     *
+     * @param {Object} annotation The annotation object.
+     * @param {JQuery} $wrapper The wrapper element.
+     * @returns {Promise<void>}
+     */
+    async runEmbedInteraction(annotation, $wrapper) {
+        const $host = $wrapper.find('[data-fb-embed-target]').first();
+        const $stage = $host.length ? $host : $wrapper;
+        const $message = await this.handleInlineDisplay(annotation, '', $stage);
+        await this.applyContent(annotation, $message);
+        $message.addClass('active show');
+    }
+
 
     // eslint-disable-next-line complexity
     async runInteraction(annotation, $wrapper) {
@@ -702,19 +797,11 @@ export default class Base {
             completionbutton = ``;
         }
 
-        // Message title.
-        let showdelete = false;
-        let settings = safeParse(annotation.advanced, {});
-        if (settings.deletebeforecomplete == 1 || settings.deleteaftercomplete == 1) {
-            showdelete = true;
-        }
-
-        if (annotation.hascompletion == 0 || annotation.completiontracking == 'manual' || annotation.completiontracking == 'none') {
-            showdelete = false;
-        }
+        const settings = safeParse(annotation.advanced, {});
+        const isPlayerMode = !self.isEditMode() && !self.isPreviewMode();
+        const chrome = await self.buildHeaderChrome(annotation, isPlayerMode);
 
         let prop = safeParse(annotation.prop, {});
-        annotation.activitycomplete = this.options.isCompleted ? 1 : 0;
         let logourl = null;
         if ($('body').hasClass('kidtheme') && prop.component) {
             logourl = M.util.image_url('cicon', prop.component);
@@ -726,9 +813,9 @@ export default class Base {
             title: annotation.formattedtitle || '',
             completionbutton: completionbutton,
             id: annotation.id,
-            showdelete,
-            candelete: annotation.completed == true && ((annotation.activitycomplete == 1 && settings.deleteaftercomplete == 1) ||
-                (annotation.activitycomplete == 0 && settings.deletebeforecomplete == 1)),
+            headeractions: chrome.headeractions,
+            instructionstoggle: chrome.instructionstoggle,
+            showinstructions: chrome.showinstructions,
             bottomheader: settings.bottomheader == 1,
             darkmode: state.config.darkmode
         });
@@ -751,7 +838,14 @@ export default class Base {
         if ((annotation.completiontracking == 'view' || annotation.completiontracking == 'manual')
             && annotation.requiremintime > 0) {
             let todo = await getString("spendatleast", "mod_interactivevideo", annotation.requiremintime);
-            const infoIcon = `<i class="bi bi-info-circle-fill iv-mr-2 info" title="${todo}"></i>`;
+            const bs = self.isBS5 ? '-bs' : '';
+            const safeTodo = todo.replace(/"/g, '&quot;');
+            const infoIcon = `<i class="bi bi-info-circle-fill iv-mr-2 info"
+                data${bs}-toggle="tooltip"
+                data${bs}-html="true"
+                data${bs}-placement="auto"
+                data${bs}-container="#message"
+                title="${safeTodo}"></i>`;
 
 
             if (state.isMascotActive && state.say) {
@@ -762,7 +856,7 @@ export default class Base {
                 $message.find('#title .info').remove();
                 $completiontoggle.before(infoIcon);
                 // Show and hide tooltip
-                const $tooltip = $(`#message[data-id='${annotation.id}'] #title .info`);
+                const $tooltip = $message.find('#title .info');
                 $tooltip.tooltip('dispose');
                 setTimeout(() => {
                     $tooltip.tooltip({
@@ -788,20 +882,27 @@ export default class Base {
 
     async handleInlineDisplay(annotation, messageTitle = '', $annotationcontent) {
         const advanced = safeParse(annotation.advanced, {});
-        let hideheader = false;
-        if (advanced.hideheader == 1) {
-            hideheader = true;
-        }
+        let hideheader = !isReportPage() && advanced.hideheader == 1;
+        const isEmbed = state.config?.isEmbedMode === true;
+        const modalClass = isEmbed ? '' : ' modal';
+        const showClass = isEmbed ? ' show active' : '';
+        const headerHidden = hideheader || (isEmbed && messageTitle === '');
         return new Promise((resolve) => {
             $annotationcontent.append(`<div id="message" style="z-index:105;top:0;" data-placement="inline"
-         data-id="${annotation.id}" class="${annotation.type} modal" tabindex="0">
+         data-id="${annotation.id}" class="${annotation.type}${modalClass}` +
+         `${headerHidden ? ' header-hidden' : ''}${showClass}" tabindex="0">
          ${messageTitle !== '' ?
-            `<div id="title" class="modal-header iv-rounded-0 ${hideheader == 1 ? "hide-header" : "shadow-sm"} ` +
+            `<div id="title" class="modal-header iv-rounded-0 ${hideheader ? "hide-header" : "shadow-sm"} ` +
             `${state.config.darkmode ? 'btn-dark' : ''} ` +
             `${advanced.bottomheader == 1 ? "bottom-header" : ""}">
          ${messageTitle}</div>` : ''}
          <div class="modal-body" id="content"></div></div>`);
-            $(`#message[data-id='${annotation.id}']`).fadeIn(300, function() {
+            const $message = $(`#message[data-id='${annotation.id}']`);
+            if (isEmbed) {
+                resolve($message);
+                return;
+            }
+            $message.fadeIn(300, function() {
                 resolve($(this));
             });
         });
@@ -838,17 +939,13 @@ export default class Base {
     /**
      * Format text content using Moodle filters and pluginfile URL rewriting.
      * @param {string} text The text to format.
-     * @param {number} contextid The context id.
-     * @param {number} format The text format.
+     * @param {number|null} contextid The context id.
+     * @param {number} format The text format (0 = FORMAT_MOODLE, 1 = FORMAT_HTML).
      * @param {number} itemid The item id for pluginfile URLs.
      * @returns {Promise<string>}
      */
     async formatContent(text, contextid = null, format = 1, itemid = 0) {
-        return Fragment.loadFragment('mod_flexbook', 'format_text', contextid || M.cfg.contextid, {
-            text: text,
-            format: format,
-            itemid: itemid
-        });
+        return formatFlexbookContent(text, contextid, format, itemid);
     }
 
     /**
@@ -877,7 +974,7 @@ export default class Base {
             $body.attr('id', 'content');
             await self.postContentRender(annotation, $message);
         }
-        if (annotation.completed || self.isEditMode()) {
+        if (annotation.completed || self.isEditMode() || self.isPreviewMode() || self.isEmbedMode()) {
             return;
         }
         this.completiononview(annotation);
@@ -954,7 +1051,7 @@ export default class Base {
         }
 
         const $badge = $message.find(`#title .badge`);
-        const $delete = $message.find(`#delete-completiondata`);
+        const $delete = $message.find(`[data-action="delete-completion"]`);
         if (action == 'mark-done') {
             $toggleButton
                 .removeClass('btn-secondary mark-done')
@@ -1024,6 +1121,9 @@ export default class Base {
         if (this.isEditMode()) {
             return Promise.resolve(); // Return a resolved promise for consistency
         }
+        if (this.isEmbedMode()) {
+            return Promise.resolve();
+        }
         if (this.isPreviewMode()) {
             this.addNotification(await getString('completionnotrecordedinpreviewmode', 'mod_interactivevideo'));
             return Promise.resolve(); // Return a resolved promise for consistency
@@ -1083,27 +1183,29 @@ export default class Base {
         if (isNaN(g) || !g || g < 0) {
             g = 0;
         }
+        const progressArgs = {
+            contextid: M.cfg.contextid,
+            id: this.flexbook,
+            markdone: action == 'mark-done',
+            uid: this.userid,
+            percentage: (completedItems.length / gradableitems.length) * 100,
+            g,
+            gradeiteminstance: this.gradeiteminstance,
+            c: completed,
+            xp: earnedXp,
+            completeditems: JSON.stringify(completedItems),
+            completiondetails: JSON.stringify(completionDetails),
+            details: JSON.stringify(details.details || {}),
+            annotationtype: this.prop.name,
+            cmid: this.cm,
+            completionid: this.completionid,
+            updatestate: this.completionpercentage > 0 || Object.keys(this.extracompletion).length != 0 ? 1 : 0,
+            courseid: this.course,
+        };
+
         const saveProgress = await Ajax.call([{
             methodname: 'mod_flexbook_save_progress',
-            args: {
-                contextid: M.cfg.contextid,
-                id: this.flexbook,
-                markdone: action == 'mark-done',
-                uid: this.userid,
-                percentage: (completedItems.length / gradableitems.length) * 100,
-                g,
-                gradeiteminstance: this.gradeiteminstance,
-                c: completed,
-                xp: earnedXp,
-                completeditems: JSON.stringify(completedItems),
-                completiondetails: JSON.stringify(completionDetails),
-                details: JSON.stringify(details.details || {}),
-                annotationtype: this.prop.name,
-                cmid: this.cm,
-                completionid: this.completionid,
-                updatestate: this.completionpercentage > 0 || Object.keys(this.extracompletion).length != 0 ? 1 : 0,
-                courseid: this.course,
-            }
+            args: progressArgs,
         }])[0];
 
         this.annotations = this.annotations.map(x => {
@@ -1268,6 +1370,14 @@ export default class Base {
     }
 
     /**
+     * Check if the page is in standalone embed mode.
+     * @returns {boolean}
+     */
+    isEmbedMode() {
+        return this.options.isEmbedMode;
+    }
+
+    /**
      * Check if the annotation is clickable from video navigation
      * @param {Object} annotation
      * @returns boolean
@@ -1354,10 +1464,11 @@ export default class Base {
         } else {
             let rdata = details.reportView.split('|');
             rdata[0] = rdata[0].replace('##', '');
-            let bsAffix = window.M.version > 405 ? '-bs' : '';
-            res += `<span data${bsAffix}-toggle="tooltip" data${bsAffix}-html="true"
-                 title='<span class="d-flex flex-column align-items-start"><span><i class="bi bi-calendar iv-mr-2"></i>
-                 ${rdata[0]?.trim()}</span><span><i class="bi bi-stopwatch iv-mr-2"></i>${rdata[1]?.trim()}</span></span>'>
+            const bsAffix = (getMoodleVersion() > 405 || $('body').hasClass('bs-5')) ? '-bs' : '';
+            res += `<span class="cursor-pointer" data${bsAffix}-toggle="tooltip" data${bsAffix}-html="true"
+                 data${bsAffix}-title='<span class="d-flex flex-column align-items-start">` +
+                `<span><i class="bi bi-calendar iv-mr-2"></i>${rdata[0]?.trim()}</span>` +
+                `<span><i class="bi bi-stopwatch iv-mr-2"></i>${rdata[1]?.trim()}</span></span>'>
                  <i class="fa fa-check text-success"></i><br><span>${rdata[2]?.trim()}</span></span></span>`;
         }
         if (data.access.canedit == 1) {
@@ -1483,33 +1594,32 @@ export default class Base {
      * @returns {Promise}
      */
     async deleteProgress(annotation) {
-        let self = this;
-        let $message = $('#message[data-id=' + annotation.id + ']');
-        $message.find('#refresh').find('i').addClass('fa-spin');
+        const self = this;
+        const $message = $('#message[data-id=' + annotation.id + ']');
+        $message.find('[data-action="refresh"]').find('i').addClass('fa-spin');
 
-        self.toggleCompletion(annotation.id, 'mark-undone', 'automatic', {}, false);
-
-        $(document).off('completionupdated.deleteprogress');
-        $(document).one('completionupdated.deleteprogress', async function() {
-            try {
-                await Ajax.call([{
-                    methodname: 'mod_flexbook_delete_own_completion_data',
-                    args: {
-                        contextid: M.cfg.contextid,
-                        id: self.completionid,
-                        itemid: annotation.id,
-                        userid: self.userid,
-                    }
-                }]);
-                // Clear cache and trigger a full refresh via navigation.
-                delete self.cache[annotation.id];
-                dispatchEvent('fb:refresh_interaction', {id: annotation.id});
-                self.addNotification(await getString('progressdeleted', 'mod_flexbook'), 'success', '🗑️');
-            } catch (error) {
-                window.console.error(error);
-            } finally {
-                $message.find('#refresh').find('i').removeClass('fa-spin');
+        try {
+            if (!self.isEditMode() && !self.isPreviewMode()) {
+                await self.toggleCompletion(annotation.id, 'mark-undone', 'automatic', {}, false);
             }
-        });
+
+            await Ajax.call([{
+                methodname: 'mod_flexbook_delete_own_completion_data',
+                args: {
+                    contextid: M.cfg.contextid,
+                    id: self.completionid,
+                    itemid: annotation.id,
+                    userid: self.userid,
+                }
+            }])[0];
+
+            delete self.cache[annotation.id];
+            dispatchEvent('fb:refresh_interaction', {id: annotation.id});
+            self.addNotification(await getString('progressdeleted', 'mod_flexbook'), 'success', '🗑️');
+        } catch (error) {
+            window.console.error(error);
+        } finally {
+            $message.find('[data-action="refresh"]').find('i').removeClass('fa-spin');
+        }
     }
 }

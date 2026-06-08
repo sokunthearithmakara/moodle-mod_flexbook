@@ -300,7 +300,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 'mod_flexbook',
                 'posterimage',
                 0,
-                ['subdirs' => 0]
+                flexbook_posterimage_file_options()
             );
             $defaultvalues['posterimage'] = $draftitemid;
 
@@ -395,6 +395,44 @@ class mod_flexbook_mod_form extends moodleform_mod {
             $defaultvalues['theme'] = get_config('mod_flexbook', 'defaulttheme') ?? '';
             $defaultvalues['aspectratio'] = get_config('mod_flexbook', 'defaultaspectratio') ?? '';
         }
+    }
+
+    /**
+     * Validates the form data.
+     *
+     * @param array $data The form data.
+     * @param array $files Uploaded files.
+     * @return array Validation errors.
+     */
+    public function validation($data, $files) {
+        global $USER;
+
+        $errors = parent::validation($data, $files);
+
+        if (!empty($data['posterimage'])) {
+            $usercontext = \context_user::instance($USER->id);
+            $fs = get_file_storage();
+            $draftfiles = $fs->get_area_files(
+                $usercontext->id,
+                'user',
+                'draft',
+                $data['posterimage'],
+                'id',
+                false
+            );
+            foreach ($draftfiles as $file) {
+                if ($file->get_filesize() > FLEXBOOK_POSTER_MAX_BYTES) {
+                    $errors['posterimage'] = get_string(
+                        'uploadfiletoolarge',
+                        'mod_flexbook',
+                        display_size(FLEXBOOK_POSTER_MAX_BYTES)
+                    );
+                    break;
+                }
+            }
+        }
+
+        return $errors;
     }
 
     /**

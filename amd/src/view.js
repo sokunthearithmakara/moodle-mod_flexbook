@@ -30,6 +30,7 @@ import Notification from 'core/notification';
 import 'mod_interactivevideo/libraries/jquery-ui';
 import state from './state';
 import {safeParse} from './utils';
+import {init as initInstructions} from './instructions';
 
 const isBS5 = $('body').hasClass('bs-5');
 const bsAffix = isBS5 ? '-bs' : '';
@@ -90,6 +91,8 @@ const init = async config => {
         Mascot.init(doptions.character, config.firstname, config.new);
     }
 
+    initInstructions();
+
     // Initialize interaction tracking data from saved progress (resumable).
     const interactionData = safeParse(uprogress.details, {});
     state.interactionData = interactionData;
@@ -136,13 +139,6 @@ const init = async config => {
         trackingAnnotationId = null; // Fully reset – no annotation is active.
     };
 
-    const dismissedInstructions = new Set();
-    $(document).on('fb:instructiondismissed', (e, data) => {
-        if (data && data.id) {
-            dismissedInstructions.add(data.id);
-        }
-    });
-
     $(document).on('interactionrun', function(e) {
         stopInteractionTimer(); // Flush any previously running timer.
         const annotation = e.detail.annotation;
@@ -154,46 +150,10 @@ const init = async config => {
         trackingAnnotationId = id;
         interactionStartTime = Date.now();
         state.interactionData = interactionData;
-
-        // Show instructions if available.
-        const advanced = safeParse(annotation.advanced, {});
-        if (advanced.instructions && advanced.instructions.trim() !== "") {
-            // Check if already dismissed in this session.
-            if (dismissedInstructions.has(id)) {
-                return;
-            }
-
-            // Check if 'Hide on completion' is enabled and interaction is completed.
-            if (advanced.hideinstructionsoncomplete == 1 && annotation.completed) {
-                return;
-            }
-
-            if (state.isMascotActive && state.say) {
-                state.say(advanced.instructions, 0, id); // Persistent bubble
-            } else {
-                // Show pop-up at bottom right.
-                $('#instruction-popup').remove();
-                const $popup = $(`
-                    <div id="instruction-popup">
-                        <div class="popup-content">${advanced.instructions}</div>
-                        <button class="popup-close"><i class="fa fa-close"></i></button>
-                    </div>
-                `);
-                $popup.find('.popup-close').on('click', () => {
-                    dismissedInstructions.add(id);
-                    $popup.fadeOut(300, () => $popup.remove());
-                });
-                $wrapper.append($popup);
-            }
-        }
     });
 
     $(document).on('interactionclose interactionrefresh', function() {
         stopInteractionTimer();
-        if (state.hideSay) {
-            state.hideSay();
-        }
-        $('#instruction-popup').fadeOut(300, () => $('#instruction-popup').remove());
     });
 
     $(document).on('fb:ended', function() {
@@ -294,7 +254,7 @@ const init = async config => {
         const ratio = ratioW / ratioH;
 
         const controllerHeight = doptions.controlbar == 1 ? ($controlBar.outerHeight() || 55) : 0;
-        const gap = $body.hasClass('embed-mode') ? 0 : 20;
+        const gap = $body.hasClass('embed-mode') ? 0 : 50;
         let availableHeight = window.innerHeight - controllerHeight - gap;
         if (doptions.distractionfreemode != 1) {
             availableHeight -= 40;
@@ -436,6 +396,12 @@ const init = async config => {
         }).observe($wrapper[0]);
     }
     $(window).on('resize', resizeVideoWrapper);
+
+    $(document).on('click', '#chaptertoggle .btn, #closechapter', () => {
+        window.requestAnimationFrame(() => {
+            setTimeout(resizeVideoWrapper, 320);
+        });
+    });
 
     // Run the init function on the content types.
     await Promise.all(
@@ -949,11 +915,84 @@ const init = async config => {
         await prevAnnotation();
     });
 
+    const positionHeaderActionsMenu = ($btn, $menu) => {
+        const rect = $btn[0].getBoundingClientRect();
+        const menuWidth = $menu.outerWidth() || 184;
+        const menuHeight = $menu.outerHeight() || 0;
+        const margin = 8;
+        const gap = 4;
+        const isBottomHeader = $btn.closest('#title').hasClass('bottom-header');
+        const spaceBelow = window.innerHeight - rect.bottom - margin;
+        const spaceAbove = rect.top - margin;
+        const openUpward = isBottomHeader
+            || (menuHeight > 0 && spaceBelow < menuHeight + gap && spaceAbove > spaceBelow);
+
+        let left = rect.right - menuWidth;
+        left = Math.max(margin, Math.min(left, window.innerWidth - menuWidth - margin));
+
+        let top;
+        if (openUpward) {
+            top = Math.round(rect.top - menuHeight - gap);
+            if (menuHeight > 0) {
+                top = Math.max(margin, Math.min(top, window.innerHeight - menuHeight - margin));
+            }
+            $menu.addClass('fb-header-actions-menu--dropup');
+        } else {
+            top = Math.round(rect.bottom + gap);
+            $menu.removeClass('fb-header-actions-menu--dropup');
+        }
+
+        $menu
+            .addClass('fb-header-actions-menu--fixed')
+            .css({
+                top: top,
+                left: Math.round(left),
+                right: 'auto',
+            });
+    };
+
+    const closeHeaderActionsMenus = () => {
+        $('.fb-header-actions .fb-header-actions-menu.show').each(function() {
+            $(this)
+                .removeClass('show fb-header-actions-menu--fixed fb-header-actions-menu--dropup')
+                .css({top: '', left: '', right: ''});
+        });
+        $('.fb-header-actions-toggle').attr('aria-expanded', 'false');
+    };
+
+    // Header actions dropdown (manual toggle — templates are rendered client-side without Bootstrap auto-init).
+    $(document).on('click', '.fb-header-actions-toggle', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const $btn = $(this);
+        const $menu = $btn.closest('.fb-header-actions').find('.fb-header-actions-menu');
+        const wasOpen = $menu.hasClass('show');
+
+        closeHeaderActionsMenus();
+
+        if (!wasOpen) {
+            $menu.addClass('show');
+            $btn.attr('aria-expanded', 'true');
+            positionHeaderActionsMenu($btn, $menu);
+            setTimeout(() => {
+                $(document).one('click.fb-header-actions', (ev) => {
+                    if (!$(ev.target).closest('.fb-header-actions-menu, .fb-header-actions-toggle').length) {
+                        closeHeaderActionsMenus();
+                    }
+                });
+            }, 0);
+        }
+    });
+
+    $(document).on('click', '.fb-header-actions .fb-header-action-item', () => {
+        closeHeaderActionsMenus();
+    });
+
     // Handle the refresh button:: allowing user to refresh the content
-    $wrapper.on('click', '#message #refresh', function(e) {
+    $wrapper.on('click', '#message [data-action="refresh"]', function(e) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        $(this).tooltip('hide');
+        $(this).tooltip?.('hide');
         const id = $(this).data('id');
         const annotation = annotations.find(x => x.id == id);
         $(this).find('i').addClass('fa-spin');
@@ -1108,7 +1147,7 @@ const init = async config => {
         }
     });
 
-    $(document).on('click', '#delete-completiondata', async function(e) {
+    $(document).on('click', '[data-action="delete-completion"]', async function(e) {
         e.preventDefault();
         const id = $(this).attr('data-id');
 

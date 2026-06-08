@@ -26,6 +26,22 @@
 
 define('FLEXBOOK_DISPLAY_INLINE', 1);
 define('FLEXBOOK_EVENT_TYPE_DUE', 'due');
+define('FLEXBOOK_POSTER_MAX_BYTES', 1024 * 1024);
+
+/**
+ * File manager options for the poster image field.
+ *
+ * @return array
+ */
+function flexbook_posterimage_file_options(): array {
+    return [
+        'subdirs' => 0,
+        'maxfiles' => 1,
+        'maxbytes' => FLEXBOOK_POSTER_MAX_BYTES,
+        'accepted_types' => ['web_image'],
+    ];
+}
+
 /**
  * Return if the plugin supports $feature.
  *
@@ -178,18 +194,8 @@ function flexbook_add_instance($moduleinstance, $mform = null) {
             'mod_flexbook',
             'posterimage',
             0,
-            ['subdirs' => 0]
+            flexbook_posterimage_file_options()
         );
-
-        // Resize the image.
-        $fs = get_file_storage();
-        $files = $fs->get_area_files($context->id, 'mod_flexbook', 'posterimage', 0, 'id', false);
-        if ($files) {
-            $file = reset($files);
-            if (preg_match('|^image/|', $file->get_mimetype()) && $file->get_mimetype() !== 'image/gif') {
-                $file->resize_image(1100, null);
-            }
-        }
     }
 
     if ($requiredupdate) {
@@ -272,18 +278,8 @@ function flexbook_update_instance($moduleinstance, $mform = null) {
             'mod_flexbook',
             'posterimage',
             0,
-            ['subdirs' => 0]
+            flexbook_posterimage_file_options()
         );
-
-        // Resize the image.
-        $fs = get_file_storage();
-        $files = $fs->get_area_files($context->id, 'mod_flexbook', 'posterimage', 0, 'id', false);
-        if ($files) {
-            $file = reset($files);
-            if (preg_match('|^image/|', $file->get_mimetype()) && $file->get_mimetype() !== 'image/gif') {
-                $file->resize_image(1100, null);
-            }
-        }
     }
 
     $moduleinstance->displayoptions = json_encode(flexbook_display_options($moduleinstance));
@@ -1064,7 +1060,7 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
             'posterimage',
             get_string('posterimage', 'mod_flexbook'),
             null,
-            ['maxfiles' => 1, 'accepted_types' => ['web_image']]
+            flexbook_posterimage_file_options()
         );
 
         $aspectratios = [
@@ -1357,4 +1353,88 @@ function flexbook_output_fragment_format_text($args) {
     $text = format_text($text, $format, ['context' => $context]);
 
     return str_replace('brokenfile.php#', 'draftfile.php', $text);
+}
+
+/**
+ * Build embed-only display options from URL parameters (not parent activity settings).
+ *
+ * @param int|null $dmode Dark mode URL param (dm). 1 enables, otherwise off.
+ * @param int|null $kid Kid theme URL param (kid). 1 enables, otherwise off.
+ * @return array Embed display options for AMD (#doptions).
+ */
+function flexbook_build_embed_options(?int $dmode, ?int $kid): array {
+    return [
+        'darkmode' => ($dmode === 1) ? 1 : 0,
+        'kidtheme' => ($kid === 1) ? 1 : 0,
+        'distractionfreemode' => 1,
+    ];
+}
+
+/**
+ * Apply embed display options to the page (body classes and forced theme).
+ *
+ * @param array $embedoptions From flexbook_build_embed_options().
+ * @param string|null $forcetheme Optional Moodle theme name from URL.
+ * @return void
+ */
+function flexbook_apply_embed_page_display(array $embedoptions, ?string $forcetheme = null): void {
+    global $PAGE;
+
+    if (!empty($embedoptions['darkmode'])) {
+        $PAGE->add_body_class('darkmode bg-dark');
+    }
+    if (!empty($embedoptions['kidtheme'])) {
+        $PAGE->add_body_class('kidtheme');
+    }
+    if ($forcetheme) {
+        $PAGE->force_theme($forcetheme);
+    }
+}
+
+/**
+ * Validate access to a standalone embedded interaction.
+ *
+ * Phase 1: require login and mod/flexbook:view on the parent activity.
+ * Phase 2: optional $token for off-course / external iframe access (not implemented yet).
+ *
+ * @param int $itemid flexbook_items.id (interaction id, not cmid).
+ * @param string|null $token Optional mobile/external token (phase 2).
+ * @return array{item: stdClass, cm: cm_info, course: stdClass, moduleinstance: stdClass, context: context_module}
+ * @throws moodle_exception
+ */
+function flexbook_validate_embed_access(int $itemid, ?string $token = null): array {
+    global $DB;
+
+    $item = $DB->get_record('flexbook_items', ['id' => $itemid]);
+    if (!$item) {
+        throw new moodle_exception('invalidinteraction', 'mod_flexbook');
+    }
+
+    $cm = get_coursemodule_from_id('flexbook', $item->cmid, 0, false, MUST_EXIST);
+    $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
+    $moduleinstance = $DB->get_record('flexbook', ['id' => $cm->instance], '*', MUST_EXIST);
+    $context = context_module::instance($cm->id);
+
+    // Phase 2: token-based login when not logged in.
+    if ($token !== null && !isloggedin()) {
+        // Reserved for external embed access via flexbook_validate_embed_token().
+        throw new moodle_exception('invalidtoken', 'mod_flexbook');
+    }
+
+    require_login($course, true, $cm);
+
+    $modinfo = get_fast_modinfo($course);
+    $cm = $modinfo->get_cm($cm->id);
+
+    if (!has_capability('mod/flexbook:view', $context)) {
+        throw new moodle_exception('nopermissiontoview', 'mod_flexbook');
+    }
+
+    return [
+        'item' => $item,
+        'cm' => $cm,
+        'course' => $course,
+        'moduleinstance' => $moduleinstance,
+        'context' => $context,
+    ];
 }

@@ -41,6 +41,10 @@ Alternatively, you can run
 
 to complete the installation from the command line.
 
+## Standalone interaction embed ##
+
+Single interactions can be embedded via `embed.php` (e.g. in a Page iframe). See [docs/embed.md](docs/embed.md) for usage, the postMessage protocol, and the **phase 2** roadmap (token auth, full parent ↔ embed communication).
+
 ## License ##
 
 2026 Sokunthearith Makara <sokunthearithmakara@gmail.com>

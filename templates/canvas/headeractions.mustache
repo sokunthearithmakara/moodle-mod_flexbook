@@ -1,0 +1,64 @@
+{{!
+    @template mod_flexbook/canvas/headeractions
+
+    Header actions dropdown (edit, refresh, delete completion).
+
+    Example context (json):
+    {
+        "id": 1,
+        "iseditor": true,
+        "editurl": "https://example.com/edit",
+        "showdelete": true,
+        "candelete": true,
+        "isPlayerMode": true
+    }
+}}
+{{#isPlayerMode}}
+<div class="dropdown fb-header-actions">
+    <button
+        id="header-actions-toggle-{{id}}"
+        class="btn btn-flex fb-title-action fb-header-actions-toggle iv-ml-2 p-0 border-0"
+        type="button"
+        aria-haspopup="true"
+        aria-expanded="false"
+        title="{{#str}}actions, mod_flexbook{{/str}}"
+        aria-label="{{#str}}actions, mod_flexbook{{/str}}"
+    >
+        <i class="bi bi-three-dots-vertical fs-25px" aria-hidden="true"></i>
+        <span class="sr-only">{{#str}}actions, mod_flexbook{{/str}}</span>
+    </button>
+    <div class="dropdown-menu dropdown-menu-end fb-header-actions-menu" aria-labelledby="header-actions-toggle-{{id}}">
+        {{#iseditor}}
+        <a
+            class="dropdown-item fb-header-action-item"
+            href="{{editurl}}"
+            data-action="edit"
+        >
+            <i class="bi bi-pencil-square" aria-hidden="true"></i>
+            <span>{{#str}}edit, core{{/str}}</span>
+        </a>
+        {{/iseditor}}
+        <button
+            class="dropdown-item fb-header-action-item"
+            type="button"
+            data-action="refresh"
+            data-id="{{id}}"
+        >
+            <i class="bi bi-arrow-repeat" aria-hidden="true"></i>
+            <span>{{#str}}refresh, mod_interactivevideo{{/str}}</span>
+        </button>
+        {{#showdelete}}
+        <div class="fb-header-action-divider {{^candelete}}d-none{{/candelete}}" role="separator"></div>
+        <button
+            class="dropdown-item fb-header-action-item fb-header-action-item--danger {{^candelete}}d-none{{/candelete}}"
+            type="button"
+            data-action="delete-completion"
+            data-id="{{id}}"
+        >
+            <i class="bi bi-trash3" aria-hidden="true"></i>
+            <span>{{#str}}deletecompletion, mod_interactivevideo{{/str}}</span>
+        </button>
+        {{/showdelete}}
+    </div>
+</div>
+{{/isPlayerMode}}

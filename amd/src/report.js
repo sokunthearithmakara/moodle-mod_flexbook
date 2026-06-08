@@ -35,9 +35,21 @@ import 'mod_interactivevideo/libraries/select.bootstrap4';
 import 'mod_interactivevideo/libraries/select2';
 import ModalEvents from 'core/modal_events';
 import Ajax from 'core/ajax';
+import {get_string as getString} from 'core/str';
 import state from 'mod_flexbook/state';
 import {getMoodleVersion, safeParse} from 'mod_flexbook/utils';
 import ReportBase from 'mod_interactivevideo/report_base';
+
+/**
+ * Resolve the interaction type icon class from annotation prop JSON.
+ *
+ * @param {Object} annotation
+ * @returns {string}
+ */
+const getAnnotationTypeIcon = (annotation) => {
+    const prop = safeParse(annotation.prop, {});
+    return prop.icon || 'bi bi-info-circle';
+};
 
 const init = async(config) => {
     const {groupid, itemids, cmid, courseid, access} = config;
@@ -49,16 +61,19 @@ const init = async(config) => {
         ...config,
         isEditMode: false,
         isPreviewMode: false,
+        isReportMode: true,
         isCompleted: false,
         isGuest: false,
         token: config.token || '',
         extendedcompletion: config.extendedcompletion || null,
     };
 
-    if (getMoodleVersion() < 403) {
-        ModalFactory = await import('core/modal_factory');
-    } else {
+    const editInteractionLabel = config.iseditor ? await getString('edit', 'core') : '';
+
+    if (getMoodleVersion() >= 403 || $('body').hasClass('bs-5')) {
         ModalFactory = await import('core/modal');
+    } else {
+        ModalFactory = await import('core/modal_factory');
     }
 
     require(['theme_boost/bootstrap/tooltip']);
@@ -86,7 +101,13 @@ const init = async(config) => {
 
     const response = await getReportData;
     const data = safeParse(response.data, []);
+    const globalContentTypes = safeParse($('#contenttypes').text(), []);
     contentTypes = itemsdata.map(x => safeParse(x.prop, {}));
+    // Merge stored item props with the current plugin registry so report AMD modules stay available.
+    contentTypes = contentTypes.map((contentType) => {
+        const fresh = globalContentTypes.find((item) => item.name === contentType.name);
+        return fresh ? {...fresh, ...contentType} : contentType;
+    });
     // Unique content types based on name.
     contentTypes = contentTypes.filter((value, index, self) =>
         index === self.findIndex((t) => (
@@ -387,11 +408,34 @@ const init = async(config) => {
 
     // Handle select.
     tabledata.on("draw", function() {
+        const tooltipSelector = '#completiontable [data-toggle="tooltip"], ' +
+            '#completiontable [data-bs-toggle="tooltip"], ' +
+            '#reporttable [data-toggle="tooltip"], ' +
+            '#reporttable [data-bs-toggle="tooltip"]';
+
+        $(tooltipSelector).each(function() {
+            const $el = $(this);
+            // Keep both BS4 and BS5 data attributes so either tooltip runtime can read them.
+            if ($el.attr('data-toggle') === 'tooltip' && !$el.attr('data-bs-toggle')) {
+                $el.attr('data-bs-toggle', 'tooltip');
+            }
+            if ($el.attr('data-bs-toggle') === 'tooltip' && !$el.attr('data-toggle')) {
+                $el.attr('data-toggle', 'tooltip');
+            }
+            // Mirror title attributes for compatibility across Bootstrap versions.
+            if ($el.attr('data-bs-title') && !$el.attr('title')) {
+                $el.attr('title', $el.attr('data-bs-title'));
+            }
+            if ($el.attr('title') && !$el.attr('data-bs-title')) {
+                $el.attr('data-bs-title', $el.attr('title'));
+            }
+            $el.tooltip('dispose');
+        });
+
         $('.tooltip').remove();
         $('tr.selected td.checkbox input').prop("checked", true);
         $('tr:not(.selected) td.checkbox input').prop("checked", false);
-        const bsAffix = isBS5 ? '-bs' : '';
-        $(`#completiontable [data${bsAffix}-toggle="tooltip"], #reporttable [data${bsAffix}-toggle="tooltip"]`).tooltip();
+        $(tooltipSelector).tooltip({html: true, trigger: 'hover'});
     });
 
         ReportBase.registerBulkActions(tabledata, {
@@ -533,6 +577,7 @@ const init = async(config) => {
         let theAnnotation = itemsdata.find(x => x.id == annotationid);
         let tabledatajson = tabledata.rows().data().toArray();
         let title = theAnnotation.formattedtitle;
+        const typeIcon = getAnnotationTypeIcon(theAnnotation);
 
         $('#annotation-modal').remove();
         let modal = await ModalFactory.create({
@@ -560,18 +605,24 @@ const init = async(config) => {
         }).addClass('active ' + theAnnotation.type);
         root.find('#message').html(`<div class="modal-content iv-rounded-lg">
                 <div class="modal-header d-flex align-items-center shadow-sm" id="title">
-                    <h5 class="modal-title text-truncate mb-0">${title}</h5>
+                    <h5 class="modal-title text-truncate mb-0 d-flex align-items-center">
+                        <i class="${typeIcon} iv-mr-2 d-none d-md-inline fs-25px" aria-hidden="true"></i>
+                        <span class="text-truncate">${title}</span>
+                    </h5>
                     <div class="btns d-flex align-items-center">
                         ${state.config.iseditor ? `
-                            <a class="btn btn-flex iv-mr-2 p-0 border-0 text-dark"
+                            <a class="btn btn-flex iv-ml-3 p-0 border-0 bg-transparent"
                                href="${M.cfg.wwwroot}/mod/flexbook/interactions.php?id=${cmid}&aid=${theAnnotation.id}"
-                               target="_blank" title="${M.util.get_string('edit', 'core')}">
-                                <i class="bi bi-pencil-square fs-25px"></i>
+                               target="_blank"
+                               title="${editInteractionLabel}"
+                               aria-label="${editInteractionLabel}">
+                                <i class="bi bi-pencil-square fs-25px" aria-hidden="true"></i>
                             </a>
                         ` : ''}
-                        <button id="close-${theAnnotation.id}" class="btn close-modal p-0 border-0"
+                        <button id="close-${theAnnotation.id}"
+                         class="btn btn-flex iv-ml-3 p-0 border-0 bg-transparent interaction-dismiss close-modal"
                          aria-label="Close" data${isBS5 ? '-bs' : ''}-dismiss="modal">
-                        <i class="bi bi-x-lg fa-fw fs-25px"></i>
+                        <i class="bi bi-x-lg fs-25px" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
@@ -652,7 +703,6 @@ const init = async(config) => {
         });
     });
 };
-
 
 
 export {

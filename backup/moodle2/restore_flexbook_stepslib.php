@@ -124,6 +124,12 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
                 }
             }
         }
+        foreach (['char1', 'char2', 'char3'] as $charfield) {
+            if (property_exists($data, $charfield) && $data->$charfield === 'null') {
+                $data->$charfield = null;
+            }
+        }
+        $this->normalize_numeric_fields($data, 'flexbook_items');
         $newitemid = $DB->insert_record('flexbook_items', $data);
         $this->set_mapping('annotationitems', $oldid, $newitemid, true);
     }
@@ -228,6 +234,7 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
             $data->details = json_encode($newdetails);
         }
 
+        $this->normalize_numeric_fields($data, 'flexbook_completion');
         $newitemid = $DB->insert_record('flexbook_completion', $data);
         $this->set_mapping('completiondata', $oldid, $newitemid);
     }
@@ -296,6 +303,40 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
         }, $text);
 
         return $text;
+    }
+
+    /**
+     * Normalize numeric fields from backup XML before insert.
+     *
+     * Backup exports may contain decimal strings (e.g. "0.00"). PostgreSQL integer/bigint
+     * columns reject those literals, while numeric columns expect real numbers not strings.
+     *
+     * @param stdClass $data Row about to be inserted.
+     * @param string $table Table name without prefix.
+     */
+    protected function normalize_numeric_fields(\stdClass $data, string $table): void {
+        global $DB;
+
+        static $columncache = [];
+        if (!isset($columncache[$table])) {
+            $columncache[$table] = $DB->get_columns($table);
+        }
+        $columns = $columncache[$table];
+
+        foreach (['timestamp', 'xp'] as $field) {
+            if (!property_exists($data, $field) || $data->$field === null || $data->$field === '') {
+                continue;
+            }
+            if (!isset($columns[$field])) {
+                continue;
+            }
+            $value = (float) $data->$field;
+            if ($columns[$field]->meta_type === 'I') {
+                $data->$field = (int) round($value);
+            } else {
+                $data->$field = $value;
+            }
+        }
     }
 
     /**

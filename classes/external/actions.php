@@ -465,6 +465,7 @@ class actions extends external_api {
 
         self::validate_view_context($contextid);
 
+        $overallcomplete = null;
         if ($completionid > 0) {
             $record = $DB->get_record('flexbook_completion', ['id' => $completionid], 'id, userid, cmid, courseid');
             if ($record) {
@@ -988,12 +989,37 @@ class actions extends external_api {
         ]);
 
         self::validate_edit_context($contextid);
-        global $CFG, $USER;
+        global $CFG, $DB, $USER;
 
+        $context = \context::instance_by_id($contextid);
+        if ($context->contextlevel !== CONTEXT_MODULE) {
+            throw new \moodle_exception('invalidcontext', 'error');
+        }
+        $cm = get_coursemodule_from_id('flexbook', $context->instanceid, 0, false, MUST_EXIST);
+        $course = $DB->get_record('course', ['id' => $cm->course], '*', MUST_EXIST);
         $usercontext = \context_user::instance($USER->id);
 
         require_once($CFG->libdir . '/filelib.php');
         $fs = \get_file_storage();
+
+        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+        $allowedextensions = self::get_allowed_upload_extensions();
+        if (!$extension || !in_array($extension, $allowedextensions, true)) {
+            throw new \moodle_exception('invaliduploadfiletype', 'mod_flexbook', '', s($extension));
+        }
+
+        $decodedcontent = base64_decode($filecontent, true);
+        if ($decodedcontent === false || $decodedcontent === '') {
+            throw new \moodle_exception('invaliduploadcontent', 'mod_flexbook');
+        }
+
+        $filesize = strlen($decodedcontent);
+        $maxbytes = get_max_upload_file_size($CFG->maxbytes, $course->maxbytes);
+        if ($maxbytes > 0 && $filesize > $maxbytes) {
+            throw new \moodle_exception('uploadfiletoolarge', 'mod_flexbook', '', display_size($maxbytes));
+        }
+
+        self::validate_upload_mimetype($filename, $decodedcontent);
 
         $itemid = $itemid > 0 ? $itemid : \file_get_unused_draft_itemid();
 
@@ -1016,7 +1042,7 @@ class actions extends external_api {
             'filename' => $filename,
         ];
 
-        $fs->create_file_from_string($filerecord, \base64_decode($filecontent));
+        $fs->create_file_from_string($filerecord, $decodedcontent);
         $url = \moodle_url::make_draftfile_url($filerecord['itemid'], $filerecord['filepath'], $filerecord['filename']);
 
         return [
@@ -1035,5 +1061,63 @@ class actions extends external_api {
      */
     public static function upload_file_returns() {
         return self::default_returns();
+    }
+
+    /**
+     * Get upload extensions supported by enabled Flexbook drag-and-drop content types.
+     *
+     * @return array
+     */
+    protected static function get_allowed_upload_extensions(): array {
+        $extensions = [];
+        foreach (util::get_all_activitytypes() as $contenttype) {
+            if (empty($contenttype['dndextensions']) || !is_array($contenttype['dndextensions'])) {
+                continue;
+            }
+            foreach ($contenttype['dndextensions'] as $extension) {
+                $extension = strtolower(trim((string) $extension, ". \t\n\r\0\x0B"));
+                if ($extension !== '') {
+                    $extensions[$extension] = true;
+                }
+            }
+        }
+        return array_keys($extensions);
+    }
+
+    /**
+     * Validate the uploaded file MIME type where content sniffing can make a reliable decision.
+     *
+     * @param string $filename
+     * @param string $content
+     * @return void
+     */
+    protected static function validate_upload_mimetype(string $filename, string $content): void {
+        if (!class_exists('\finfo')) {
+            return;
+        }
+
+        $expected = mimeinfo('type', $filename);
+        if (empty($expected) || $expected === 'document/unknown') {
+            return;
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $detected = $finfo->buffer($content);
+        if (empty($detected) || in_array($detected, ['application/octet-stream', 'text/plain'], true)) {
+            return;
+        }
+
+        $containerformats = [
+            'application/zip',
+            'application/x-zip',
+            'application/x-zip-compressed',
+        ];
+        if (in_array($detected, $containerformats, true)) {
+            return;
+        }
+
+        if ($detected !== $expected) {
+            throw new \moodle_exception('invaliduploadmimetype', 'mod_flexbook', '', s($detected));
+        }
     }
 }

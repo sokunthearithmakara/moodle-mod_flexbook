@@ -33,6 +33,7 @@ import 'mod_interactivevideo/libraries/jquery-ui';
 import Ajax from 'core/ajax';
 import {safeParse, getMoodleVersion} from './utils';
 import state from './state';
+import {init as initInstructions} from './instructions';
 
 const addNotification = (msg, type = "info") => {
     addToast(msg, {
@@ -87,6 +88,8 @@ const init = async(
     state.ctRenderer = ctRenderer;
     state.annotations = annotations;
 
+    initInstructions();
+
     // Remove all annotations that are not in the enabled content types.
     annotations = annotations.filter(x => contentTypes.find(y => y.name === x.type));
 
@@ -125,6 +128,12 @@ const init = async(
         if (!annotation) {
             return;
         }
+        if (activeid && String(activeid) !== String(annotation.id)) {
+            const previous = annotations.find((item) => String(item.id) === String(activeid));
+            if (previous) {
+                dispatchEvent('interactionclose', {annotation: previous});
+            }
+        }
         activeid = annotation.id;
 
         const $stage = $('#editor-stage');
@@ -138,6 +147,7 @@ const init = async(
         // Run interaction inline
         try {
             await ctRenderer[annotation.type].runInteraction(annotation, $stage);
+            dispatchEvent('interactionrun', {annotation});
 
             // Fix: Bootstrap modals need 'show' class to be visible.
             // Also adding 'active' for consistency with player logic.
@@ -186,8 +196,8 @@ const init = async(
 
         if (!aspectRatio) {
             $videoWrapper.css({
-                width: '100%',
-                maxWidth: '1100px',
+                width: 'calc(100% - 20px)',
+                maxWidth: '1250px',
                 height: Math.floor(availableHeight - 20) + 'px',
                 maxHeight: '100%'
             });
@@ -199,8 +209,8 @@ const init = async(
 
         if (!ratio) {
             $videoWrapper.css({
-                width: '100%',
-                maxWidth: '1100px',
+                width: 'calc(100% - 20px)',
+                maxWidth: '1250px',
                 height: Math.floor(availableHeight - 20) + 'px',
                 maxHeight: '100%'
             });
@@ -485,7 +495,7 @@ const init = async(
     initResizableSidebar();
 
     let ModalFactory;
-    if (getMoodleVersion() >= 403) {
+    if (getMoodleVersion() >= 403 || $('body').hasClass('bs-5')) {
         ModalFactory = await import('core/modal');
     } else {
         ModalFactory = await import('core/modal_factory');
@@ -1349,6 +1359,9 @@ const init = async(
             } else if (ext === 'zip' && plugin.name === 'fbboard') {
                 response = {};
             } else {
+                if (ctRenderer[plugin.name] && typeof ctRenderer[plugin.name].validateDnDFile === 'function') {
+                    await ctRenderer[plugin.name].validateDnDFile(file);
+                }
                 const data = await uploadFileToDraftArea(file);
                 response = {draftitemid: data.itemid, url: data.url};
             }

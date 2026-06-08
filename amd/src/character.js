@@ -743,16 +743,20 @@ class Mascot {
 
     /**
      * Display a speech bubble
-     * @param {string} text
+     * @param {string} text Message text or formatted HTML.
      * @param {number} duration Duration in ms. If 0, stays until cleared.
      * @param {string|null} id Optional interaction ID for tracking.
+     * @param {boolean} isHtml Whether text is already formatted HTML from formatContent.
      */
-    static say(text, duration = 3000, id = null) {
+    static say(text, duration = 3000, id = null, isHtml = false) {
         if (!this.$el) {
             return;
         }
         this.playSound('speak');
-        this.$bubble.html(`<span>${text}</span>`).addClass('show');
+        const $content = isHtml
+            ? $('<div class="bubble-text"></div>').html(text)
+            : $('<span></span>').text(text);
+        this.$bubble.empty().append($content).addClass('show');
 
         if (duration === 0) {
             const $close = $('<button class="bubble-close"><i class="fa fa-close"></i></button>');

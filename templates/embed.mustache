@@ -1,0 +1,15 @@
+{{!
+    @template mod_flexbook/embed
+
+    Minimal shell for embed.php — same idea as report modal: #message is the host, no player chrome.
+}}
+<div id="wrapper" class="modal position-relative w-100" data-fb-embed-target="1">
+    <button type="button"
+            id="fb-embed-fullscreen"
+            class="fb-embed-fullscreen-toggle btn p-0 border-0"
+            aria-label="{{#str}}togglefullscreen, mod_interactivevideo{{/str}}"
+            title="{{#str}}togglefullscreen, mod_interactivevideo{{/str}}">
+        <i class="bi bi-fullscreen" aria-hidden="true"></i>
+    </button>
+</div>
+{{> mod_flexbook/data_containers}}

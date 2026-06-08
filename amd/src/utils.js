@@ -21,6 +21,30 @@
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 import $ from 'jquery';
+import Fragment from 'core/fragment';
+
+/** @type {number} Moodle FORMAT_MOODLE – preserves line breaks in plain text. */
+export const FORMAT_MOODLE = 0;
+
+/** @type {number} Moodle FORMAT_HTML. */
+export const FORMAT_HTML = 1;
+
+/**
+ * Format text via the mod_flexbook format_text fragment (filters, pluginfile URLs).
+ *
+ * @param {string} text The text to format.
+ * @param {number|null} contextid The context id.
+ * @param {number} format Text format constant (e.g. FORMAT_MOODLE, FORMAT_HTML).
+ * @param {number} itemid Item id for pluginfile URLs.
+ * @returns {Promise<string>}
+ */
+export const formatContent = async (text, contextid = null, format = FORMAT_HTML, itemid = 0) => {
+    return Fragment.loadFragment('mod_flexbook', 'format_text', contextid || M.cfg.contextid, {
+        text: text,
+        format: format,
+        itemid: itemid,
+    });
+};
 
 /**
  * Safely parse a JSON string, returning a fallback value if parsing fails.
@@ -48,7 +72,7 @@ export const safeParse = (str, fallback = null) => {
  */
 export const getMoodleVersion = () => {
     if (typeof window.M.version === 'undefined' || window.M.version === null) {
-        let version = $('#mod_flexbook_moodle_version').attr('data-version') || 0;
+        let version = $('#mod_flexbook_moodle_version').attr('data-version') || 403;
         window.M.version = parseInt(version);
     }
     return window.M.version;

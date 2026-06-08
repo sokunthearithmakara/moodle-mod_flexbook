@@ -35,13 +35,13 @@
         <div class="chapter-panel-poster" style="background-image: url('{{{posterimage}}}');"></div>
         {{/posterimage}}
         <button id="closechapter"
-            class="btn btn-small iv-rounded-circle bg-secondary border-0"
+            class="btn btn-small iv-rounded-circle bg-secondary border-0 d-flex"
             aria-label="{{#str}}closechapterpanel, mod_interactivevideo{{/str}}">
         <i class="bi bi-x-lg" aria-hidden="true"></i>
         <span class="sr-only">{{#str}}closechapterpanel, mod_interactivevideo{{/str}}</span>
         </button>
         <div class="metadata" role="region" aria-label="{{#str}}chaptermetadata, mod_interactivevideo{{/str}}"></div>
-        <span class="h4 mt-2 mb-0" role="heading" aria-level="2">{{{title}}}</span>
+        <span class="h4 mt-2 mb-0 clamp-3 w-100" role="heading" aria-level="2">{{{title}}}</span>
     </div>
     <ul data-region="chapterlists"
         class="list-group w-100 iv-rounded-0 m-0"

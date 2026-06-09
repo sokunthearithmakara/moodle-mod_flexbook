@@ -1002,12 +1002,6 @@ class actions extends external_api {
         require_once($CFG->libdir . '/filelib.php');
         $fs = \get_file_storage();
 
-        $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
-        $allowedextensions = self::get_allowed_upload_extensions();
-        if (!$extension || !in_array($extension, $allowedextensions, true)) {
-            throw new \moodle_exception('invaliduploadfiletype', 'mod_flexbook', '', s($extension));
-        }
-
         $decodedcontent = base64_decode($filecontent, true);
         if ($decodedcontent === false || $decodedcontent === '') {
             throw new \moodle_exception('invaliduploadcontent', 'mod_flexbook');
@@ -1061,27 +1055,6 @@ class actions extends external_api {
      */
     public static function upload_file_returns() {
         return self::default_returns();
-    }
-
-    /**
-     * Get upload extensions supported by enabled Flexbook drag-and-drop content types.
-     *
-     * @return array
-     */
-    protected static function get_allowed_upload_extensions(): array {
-        $extensions = [];
-        foreach (util::get_all_activitytypes() as $contenttype) {
-            if (empty($contenttype['dndextensions']) || !is_array($contenttype['dndextensions'])) {
-                continue;
-            }
-            foreach ($contenttype['dndextensions'] as $extension) {
-                $extension = strtolower(trim((string) $extension, ". \t\n\r\0\x0B"));
-                if ($extension !== '') {
-                    $extensions[$extension] = true;
-                }
-            }
-        }
-        return array_keys($extensions);
     }
 
     /**

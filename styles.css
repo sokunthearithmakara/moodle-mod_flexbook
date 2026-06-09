@@ -574,8 +574,8 @@
 .path-mod-flexbook #message #title.hide-header {
     position: absolute;
     top: 0;
-    right: 0;
-    left: auto;
+    inset-inline-end: 0;
+    inset-inline-start: auto;
     width: auto;
     height: auto !important;
     min-height: 0 !important;
@@ -1974,6 +1974,11 @@
     margin-top: 0 !important;
 }
 
+#page-mod-flexbook-report #annotation-modal #instructions-toggle,
+#page-mod-flexbook-report #annotation-modal .fb-instructions-toggle {
+    display: none !important;
+}
+
 .path-mod-interactivevideo.path-mod-flexbook:not(.embed-mode) #interactivevideo-container:has([data-ratio]) {
     height: calc(var(--ivdvh) - 70px);
     align-content: center;
@@ -2034,8 +2039,8 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0.75rem 1rem;
-    min-height: 70px;
+    padding: 0.5rem 1rem;
+    min-height: 50px;
     background-color: #f8f9fa !important;
     color: #212529 !important;
     border-bottom: 1px solid rgba(0, 0, 0, 0.125) !important;
@@ -2072,14 +2077,21 @@
     opacity: 1;
 }
 
-.path-mod-flexbook #video-wrapper.fb #message #title,
-.path-mod-flexbook #annotation-modal #message #title,
-.path-mod-flexbook #message #title {
+/* Let the title dropdown escape #message { overflow: hidden } from IV; #content keeps scrolling. */
+.path-mod-interactivevideo.path-mod-flexbook #video-wrapper.fb #message,
+.path-mod-interactivevideo.path-mod-flexbook #annotation-content #message,
+.path-mod-flexbook #video-wrapper.fb #message,
+.path-mod-flexbook #annotation-modal #message {
     overflow: visible;
 }
 
 .path-mod-flexbook #message #title .btns {
     flex-shrink: 0;
+}
+
+.path-mod-flexbook #message #title,
+.path-mod-flexbook #annotation-modal #message #title {
+    overflow: visible;
 }
 
 .path-mod-flexbook #message #title .fb-header-actions {
@@ -2093,6 +2105,22 @@
     display: inline-flex;
     justify-content: center;
     min-width: 2rem;
+}
+
+/* Menu-end alignment via logical inset — works in LTR and RTL without JS positioning. */
+.path-mod-flexbook .fb-header-actions > .fb-header-actions-menu {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: auto;
+    right: auto;
+    inset-inline-end: 0;
+    inset-inline-start: auto;
+    margin: 0;
+}
+
+.path-mod-flexbook .fb-header-actions > .fb-header-actions-menu.fb-header-actions-menu--dropup {
+    top: auto;
+    bottom: calc(100% + 4px);
 }
 
 /* Header actions menu — always light, isolated from dark #title chrome. */
@@ -2124,12 +2152,6 @@
 .path-mod-flexbook #annotation-modal #message #title .fb-header-actions
 .fb-header-actions-menu.fb-header-actions-menu--dropup.show {
     animation: fb-header-actions-dropup-in 0.16s ease-out;
-}
-
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions .fb-header-actions-menu.fb-header-actions-menu--fixed,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions .fb-header-actions-menu.fb-header-actions-menu--fixed {
-    position: fixed;
-    margin: 0;
 }
 
 .path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-item,
@@ -2197,8 +2219,8 @@
 }
 
 /* Block interaction content clicks while the header actions menu is open. */
-.path-mod-flexbook #message:has(.fb-header-actions-menu.show) #content,
-.path-mod-flexbook #annotation-modal #message:has(.fb-header-actions-menu.show) #content {
+.path-mod-flexbook #message.fb-header-actions-menu-open #content,
+.path-mod-flexbook #annotation-modal #message.fb-header-actions-menu-open #content {
     pointer-events: none;
 }
 
@@ -2461,4 +2483,8 @@ body.fb-embed-interaction {
 .fb-embed-interaction #wrapper:fullscreen > #message[data-placement="inline"],
 .fb-embed-interaction #wrapper.fullscreen > #message[data-placement="inline"] {
     height: 100%;
+}
+
+#page-mod-flexbook-view #video-wrapper.fb > #background-loading {
+    background: #fff !important;
 }

@@ -189,7 +189,9 @@ export const render = async(annotation) => {
     });
 
     if (!state.config?.isEditMode) {
-        openPanel();
+        if ((annotation.hascompletion == 1 && !annotation.completed) || annotation.hascompletion == 0) {
+            openPanel();
+        }
     }
 };
 

@@ -47,13 +47,15 @@ Example context (json):
                 <div class="control-right d-flex align-items-center">
                     <div class="btn-group btn-rounded" id="anno-nav">
                         <button id="prevanno" class="btn btn-dark btn-sm btn-rounded iv-font-weight-bold" title="{{#str}}previousanno, mod_flexbook{{/str}}">
-                            <i class="bi bi-chevron-left"></i>
+                            <i class="bi bi-chevron-left dir-rtl-hide"></i>
+                            <i class="bi bi-chevron-right dir-ltr-hide"></i>
                         </button>
                         <button id="currentanno" class="btn btn-dark btn-sm iv-font-weight-bold no-pointer px-2">
                             <span id="thisanno">0</span>/<span id="totalannos">0</span>
                         </button>
                         <button id="nextanno" class="btn btn-dark btn-sm btn-rounded iv-font-weight-bold" title="{{#str}}nextanno, mod_flexbook{{/str}}">
-                            <i class="bi bi-chevron-right"></i>
+                            <i class="bi bi-chevron-right dir-rtl-hide"></i>
+                            <i class="bi bi-chevron-left dir-ltr-hide"></i>
                         </button>
                     </div>
                 </div>

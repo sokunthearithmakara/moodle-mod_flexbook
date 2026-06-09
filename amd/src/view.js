@@ -38,6 +38,8 @@ const $body = $('body');
 
 let $wrapper = $('#wrapper');
 let $videowrapper = $('#video-wrapper');
+let annotationBarRenderToken = 0;
+let pendingNavigation = null;
 let $startscreen = $('#start-screen');
 let uprogress = null;
 let annotations; // Array of annotations.
@@ -48,6 +50,7 @@ let sequence; // Sequence of annotations.
 
 const $controlBar = $('#controller');
 const $annotationbar = $controlBar.find('.top-bar');
+const $loader = $videowrapper.find('#background-loading');
 
 /**
  * Whether a keyboard shortcut should be ignored (typing in form fields or with modifiers).
@@ -58,6 +61,18 @@ const $annotationbar = $controlBar.find('.top-bar');
 const shouldIgnoreKeyboardShortcut = (e) => {
     const tag = document.activeElement?.tagName;
     return ['INPUT', 'TEXTAREA'].includes(tag) || e.altKey || e.ctrlKey || e.metaKey;
+};
+
+/**
+ * Whether the page is in RTL mode.
+ *
+ * @returns {boolean}
+ */
+const isRtl = () => {
+    if (document.documentElement.getAttribute('dir') === 'rtl' || $body.hasClass('dir-rtl')) {
+        return true;
+    }
+    return window.getComputedStyle(document.documentElement).direction === 'rtl';
 };
 
 const init = async config => {
@@ -462,6 +477,9 @@ const init = async config => {
     };
 
     const renderAnnotationItems = async annos => {
+        const renderToken = ++annotationBarRenderToken;
+        const isStale = () => renderToken !== annotationBarRenderToken;
+
         annotations = annos;
         const visibleAnnos = getVisibleAnnotations(annos);
 
@@ -495,27 +513,46 @@ const init = async config => {
 
         // Make sure annotations are unique.
         const uniqueAnnos = visibleAnnos.filter((x, i) => visibleAnnos.findIndex(y => y.id == x.id) == i);
+        const displayIds = new Set(displayAnnos.map(x => String(x.id)));
 
-        // Map annotations with show key = true if it is in the displayAnnos.
         annotations = annotations.map(x => {
-            x.show = displayAnnos.includes(x);
+            x.show = displayIds.has(String(x.id));
             return x;
         });
 
-        await Promise.all(
-            uniqueAnnos.map(async item => {
-                try {
-                    item.locked = ctRenderer[item.type].renderNavItem(
-                        uniqueAnnos,
-                        item,
-                        $annotationbar
-                    );
-                } catch (error) {
-                    item.locked = false;
-                }
-                return item;
-            })
-        );
+        const navOptions = {isStale, renderToken};
+
+        // Resolve locked state for all visible items (chapter panel uses this).
+        for (const item of uniqueAnnos) {
+            if (isStale()) {
+                return;
+            }
+            try {
+                item.locked = await ctRenderer[item.type].islocked(item, uniqueAnnos);
+            } catch (error) {
+                item.locked = false;
+            }
+        }
+
+        // Render only the windowed indicators (max 5), sequentially to avoid duplicate appends.
+        for (const item of displayAnnos) {
+            if (isStale()) {
+                return;
+            }
+            try {
+                await ctRenderer[item.type].renderNavItem(uniqueAnnos, item, $annotationbar, navOptions);
+            } catch (error) {
+                item.locked = false;
+            }
+            if (isStale()) {
+                $annotationbar.find(`.annotation-item[data-render-token="${renderToken}"]`).remove();
+                return;
+            }
+        }
+
+        if (isStale()) {
+            return;
+        }
 
         // Activate tooltips for the newly rendered items.
         $annotationbar.find(`[data${bsAffix}-toggle="tooltip"]`).tooltip({
@@ -659,52 +696,62 @@ const init = async config => {
         return true;
     };
 
-    const animateOutCurrent = (annotation, force = false) => {
+    const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+    const showBackgroundLoader = () => {
+        $loader.stop(true, true).fadeIn(300);
+    };
+
+    const hideBackgroundLoader = () => {
+        $loader.stop(true, true).fadeOut(300);
+    };
+
+    const animateOutCurrent = async(annotation, force = false, previousAnnotation = state.currentanno) => {
         const direction =
-            annotation.order > (state.currentanno ? state.currentanno.order : 0)
+            annotation.order > (previousAnnotation ? previousAnnotation.order : 0)
                 ? 'start'
                 : 'end';
         const $activeMessage = $wrapper.find('#message[data-id].active');
-        let current = annotations.find(x => x.id == state.currentanno?.id);
+        let current = annotations.find(x => x.id == previousAnnotation?.id);
 
         if ($activeMessage.length) {
             const isSame = $activeMessage.attr('data-id') == annotation.id;
             if (isSame && force) {
                 // If it is the same annotation and we're forcing a refresh, just remove it and animate in the new one.
                 $activeMessage.remove();
-                animateInNew(annotation, force);
+                await animateInNew(annotation, force);
                 return;
             }
 
             dispatchEvent('interactionclose', {annotation: current});
             $activeMessage.addClass('slide-out-' + direction);
 
-            // We're getting the currentanno again here in case the setTimeout function replaces the currentanno with the new one.
-            setTimeout(() => {
-                animateInNew(annotation, force);
+            await wait(500);
+            await animateInNew(annotation, force);
 
-                $activeMessage.removeClass('active show slide-out-start slide-out-end');
-                let rerun = false;
-                const advanced = safeParse(current.advanced, {});
-                if (
-                    advanced.rerunbeforecompleted == 1 &&
-                    (current.hascompletion == 0 || current.completed == false)
-                ) {
-                    rerun = true;
-                } else if (
-                    advanced.rerunaftercompleted == 1 &&
-                    current.hascompletion == 1 &&
-                    current.completed == true
-                ) {
-                    rerun = true;
-                }
-                if (rerun) {
-                    // Remove the current annotation.
-                    $activeMessage.remove();
-                }
-            }, 500);
+            $activeMessage.removeClass('active show slide-out-start slide-out-end');
+            let rerun = false;
+            const advanced = safeParse(current?.advanced, {});
+            if (
+                current &&
+                advanced.rerunbeforecompleted == 1 &&
+                (current.hascompletion == 0 || current.completed == false)
+            ) {
+                rerun = true;
+            } else if (
+                current &&
+                advanced.rerunaftercompleted == 1 &&
+                current.hascompletion == 1 &&
+                current.completed == true
+            ) {
+                rerun = true;
+            }
+            if (rerun) {
+                // Remove the current annotation.
+                $activeMessage.remove();
+            }
         } else {
-            animateInNew(annotation, force);
+            await animateInNew(annotation, force);
         }
     };
 
@@ -712,6 +759,7 @@ const init = async config => {
         const id = annotation.id;
         if (id == 'endscreen') {
             $('#end-screen').removeClass('d-none').addClass('active show');
+            hideBackgroundLoader();
             setTimeout(() => {
                 $videowrapper.removeClass('bg-white');
             }, 1000);
@@ -724,15 +772,21 @@ const init = async config => {
             } else {
                 // Show it.
                 $existingMessage.addClass('active show');
+                hideBackgroundLoader();
                 setTimeout(() => {
                     $videowrapper.removeClass('bg-white');
                 }, 1000);
                 return;
             }
         }
+        showBackgroundLoader();
         await ctRenderer[annotation.type].runInteraction(annotation, $wrapper);
         state.direction = 'next';
-        $wrapper.find(`#message[data-id='${id}']`).addClass('active show');
+        const $newMessage = $wrapper.find(`#message[data-id='${id}']`);
+        $newMessage.addClass('active show');
+        if ($newMessage.length || !pendingNavigation) {
+            hideBackgroundLoader();
+        }
         setTimeout(() => {
             $videowrapper.removeClass('bg-white');
         }, 1000);
@@ -744,122 +798,137 @@ const init = async config => {
             return;
         }
 
-        // 1. Resolve special identifiers.
-        let resolvedId = id;
-        if (id === 'endscreen') {
-            resolvedId = 'endscreen';
-        } else if (id === 'firstpage') {
-            resolvedId = state.sequence[0];
-            direction = 'next';
-        } else if (id === 'previousinteraction') {
-            const index = state.currentanno ? state.sequence.indexOf(state.currentanno.id.toString()) : 0;
-            resolvedId = index > 0 ? state.sequence[index - 1] : state.sequence[0];
-            direction = 'prev';
-        } else if (id === 'nextinteraction') {
-            const index = state.currentanno ? state.sequence.indexOf(state.currentanno.id.toString()) : -1;
-            resolvedId = (index < state.sequence.length - 1) ? state.sequence[index + 1] : 'endscreen';
-            direction = 'next';
+        if (state.isTransitioning) {
+            pendingNavigation = {id, force, direction};
+            return;
         }
 
-        // 2. Normalize numeric ID.
-        if (typeof resolvedId === 'string' && resolvedId.startsWith('@@ANNOID#')) {
-            resolvedId = resolvedId.replace('@@ANNOID#', '');
-        }
+        state.isTransitioning = true;
+        try {
+            // 1. Resolve special identifiers.
+            let resolvedId = id;
+            if (id === 'endscreen') {
+                resolvedId = 'endscreen';
+            } else if (id === 'firstpage') {
+                resolvedId = state.sequence[0];
+                direction = 'next';
+            } else if (id === 'previousinteraction') {
+                const index = state.currentanno ? state.sequence.indexOf(state.currentanno.id.toString()) : 0;
+                resolvedId = index > 0 ? state.sequence[index - 1] : state.sequence[0];
+                direction = 'prev';
+            } else if (id === 'nextinteraction') {
+                const index = state.currentanno ? state.sequence.indexOf(state.currentanno.id.toString()) : -1;
+                resolvedId = (index < state.sequence.length - 1) ? state.sequence[index + 1] : 'endscreen';
+                direction = 'next';
+            }
 
-        // 3. Handle non-existent or hidden annotations with directional search.
-        if (resolvedId != 'endscreen') {
-            const visibleAnnos = getVisibleAnnotations(annotations);
-            if (!visibleAnnos.find(x => x.id == resolvedId)) {
-                // The target is either deleted or hidden. Find the next/prev available in sequence.
-                const seqIndex = state.sequence.indexOf(resolvedId.toString());
-                if (seqIndex !== -1) {
-                    let foundId = null;
-                    if (direction === 'next') {
-                        for (let i = seqIndex; i < state.sequence.length; i++) {
-                            if (visibleAnnos.find(x => x.id == state.sequence[i])) {
-                                foundId = state.sequence[i];
-                                break;
+            // 2. Normalize numeric ID.
+            if (typeof resolvedId === 'string' && resolvedId.startsWith('@@ANNOID#')) {
+                resolvedId = resolvedId.replace('@@ANNOID#', '');
+            }
+
+            // 3. Handle non-existent or hidden annotations with directional search.
+            if (resolvedId != 'endscreen') {
+                const visibleAnnos = getVisibleAnnotations(annotations);
+                if (!visibleAnnos.find(x => x.id == resolvedId)) {
+                    // The target is either deleted or hidden. Find the next/prev available in sequence.
+                    const seqIndex = state.sequence.indexOf(resolvedId.toString());
+                    if (seqIndex !== -1) {
+                        let foundId = null;
+                        if (direction === 'next') {
+                            for (let i = seqIndex; i < state.sequence.length; i++) {
+                                if (visibleAnnos.find(x => x.id == state.sequence[i])) {
+                                    foundId = state.sequence[i];
+                                    break;
+                                }
                             }
-                        }
-                        resolvedId = foundId || 'endscreen';
-                    } else { // Prev
-                        for (let i = seqIndex; i >= 0; i--) {
-                            if (visibleAnnos.find(x => x.id == state.sequence[i])) {
-                                foundId = state.sequence[i];
-                                break;
+                            resolvedId = foundId || 'endscreen';
+                        } else { // Prev
+                            for (let i = seqIndex; i >= 0; i--) {
+                                if (visibleAnnos.find(x => x.id == state.sequence[i])) {
+                                    foundId = state.sequence[i];
+                                    break;
+                                }
                             }
+                            resolvedId = foundId || state.sequence[0];
                         }
-                        resolvedId = foundId || state.sequence[0];
+                    } else {
+                        // If ID is not in sequence at all, we can't do directional search.
+                        // Just fallback to first available or endscreen.
+                        resolvedId = visibleAnnos.length > 0 ? visibleAnnos[0].id : 'endscreen';
                     }
-                } else {
-                    // If ID is not in sequence at all, we can't do directional search.
-                    // Just fallback to first available or endscreen.
-                    resolvedId = visibleAnnos.length > 0 ? visibleAnnos[0].id : 'endscreen';
                 }
             }
-        }
 
-        // 4. Actual navigation logic.
-        if (resolvedId == 'endscreen') {
+            // 4. Actual navigation logic.
+            if (resolvedId == 'endscreen') {
+                if (state.currentanno && state.currentanno.id == 'endscreen') {
+                    return;
+                }
+
+                if (!(await validateAnnotationAccess({id: 'endscreen', order: annotations.length + 1}))) {
+                    return;
+                }
+
+                const url = new URL(window.location);
+                if (url.searchParams.get('aid') != resolvedId) {
+                    url.searchParams.set('aid', resolvedId);
+                    window.history.pushState({aid: resolvedId}, '', url);
+                }
+
+                const previousAnnotation = state.currentanno;
+                state.currentanno = {id: 'endscreen', order: annotations.length + 1};
+                await renderAnnotationItems(annotations);
+                await animateOutCurrent(state.currentanno, force, previousAnnotation);
+                $videowrapper.addClass('bg-white');
+
+                $controlBar.find('#thisanno').text(annotations.length);
+                dispatchEvent('fb:ended');
+                return;
+            }
+
+            // Hide endscreen if coming back from it.
             if (state.currentanno && state.currentanno.id == 'endscreen') {
+                $('#end-screen').removeClass('active show').addClass('d-none');
+            }
+
+            if (state.currentanno && state.currentanno.id == resolvedId && !force) {
                 return;
             }
 
-            if (!(await validateAnnotationAccess({id: 'endscreen', order: annotations.length + 1}))) {
+            const annotation = annotations.find(x => x.id == resolvedId);
+            if (!annotation) {
                 return;
             }
 
+            if (!(await validateAnnotationAccess(annotation))) {
+                return;
+            }
+
+            // Now we're good to go.
             const url = new URL(window.location);
             if (url.searchParams.get('aid') != resolvedId) {
                 url.searchParams.set('aid', resolvedId);
                 window.history.pushState({aid: resolvedId}, '', url);
             }
 
-            animateOutCurrent({id: 'endscreen', order: annotations.length + 1});
-
-            state.currentanno = {id: 'endscreen', order: annotations.length + 1};
+            const previousAnnotation = state.currentanno;
+            state.currentanno = annotation;
             await renderAnnotationItems(annotations);
+            await animateOutCurrent(annotation, force, previousAnnotation);
             $videowrapper.addClass('bg-white');
 
-            $controlBar.find('#thisanno').text(annotations.length);
-            dispatchEvent('fb:ended');
-            return;
+            $controlBar.find('#thisanno').text(annotation.order);
+
+            dispatchEvent('interactionrun', {annotation: annotation});
+        } finally {
+            state.isTransitioning = false;
+            const queued = pendingNavigation;
+            pendingNavigation = null;
+            if (queued) {
+                await navigateToInteraction(queued.id, queued.force, queued.direction);
+            }
         }
-
-        // Hide endscreen if coming back from it.
-        if (state.currentanno && state.currentanno.id == 'endscreen') {
-            $('#end-screen').removeClass('active show').addClass('d-none');
-        }
-
-        if (state.currentanno && state.currentanno.id == resolvedId && !force) {
-            return;
-        }
-
-        const annotation = annotations.find(x => x.id == resolvedId);
-        if (!annotation) {
-            return;
-        }
-
-        if (!(await validateAnnotationAccess(annotation))) {
-            return;
-        }
-
-        // Now we're good to go.
-        const url = new URL(window.location);
-        if (url.searchParams.get('aid') != resolvedId) {
-            url.searchParams.set('aid', resolvedId);
-            window.history.pushState({aid: resolvedId}, '', url);
-        }
-
-        animateOutCurrent(annotation, force);
-
-        state.currentanno = annotation;
-        await renderAnnotationItems(annotations);
-        $videowrapper.addClass('bg-white');
-
-        $controlBar.find('#thisanno').text(annotation.order);
-
-        dispatchEvent('interactionrun', {annotation: annotation});
     };
 
     const navigateToAnnotation = async(id, force = false) => {
@@ -926,65 +995,30 @@ const init = async config => {
         await prevAnnotation();
     });
 
-    const positionHeaderActionsMenu = ($btn, $menu) => {
-        const rect = $btn[0].getBoundingClientRect();
-        const menuWidth = $menu.outerWidth() || 184;
-        const menuHeight = $menu.outerHeight() || 0;
-        const margin = 8;
-        const gap = 4;
-        const isBottomHeader = $btn.closest('#title').hasClass('bottom-header');
-        const spaceBelow = window.innerHeight - rect.bottom - margin;
-        const spaceAbove = rect.top - margin;
-        const openUpward = isBottomHeader
-            || (menuHeight > 0 && spaceBelow < menuHeight + gap && spaceAbove > spaceBelow);
-
-        let left = rect.right - menuWidth;
-        left = Math.max(margin, Math.min(left, window.innerWidth - menuWidth - margin));
-
-        let top;
-        if (openUpward) {
-            top = Math.round(rect.top - menuHeight - gap);
-            if (menuHeight > 0) {
-                top = Math.max(margin, Math.min(top, window.innerHeight - menuHeight - margin));
-            }
-            $menu.addClass('fb-header-actions-menu--dropup');
-        } else {
-            top = Math.round(rect.bottom + gap);
-            $menu.removeClass('fb-header-actions-menu--dropup');
-        }
-
-        $menu
-            .addClass('fb-header-actions-menu--fixed')
-            .css({
-                top: top,
-                left: Math.round(left),
-                right: 'auto',
-            });
-    };
-
     const closeHeaderActionsMenus = () => {
-        $('.fb-header-actions .fb-header-actions-menu.show').each(function() {
-            $(this)
-                .removeClass('show fb-header-actions-menu--fixed fb-header-actions-menu--dropup')
-                .css({top: '', left: '', right: ''});
-        });
+        $('.fb-header-actions-menu.show').removeClass('show fb-header-actions-menu--dropup');
         $('.fb-header-actions-toggle').attr('aria-expanded', 'false');
+        $('#message.fb-header-actions-menu-open, #annotation-modal #message.fb-header-actions-menu-open')
+            .removeClass('fb-header-actions-menu-open');
     };
 
-    // Header actions dropdown (manual toggle — templates are rendered client-side without Bootstrap auto-init).
+    // Header actions dropdown (manual toggle — positioned with CSS, stays inside #message).
     $(document).on('click', '.fb-header-actions-toggle', function(e) {
         e.preventDefault();
         e.stopPropagation();
         const $btn = $(this);
-        const $menu = $btn.closest('.fb-header-actions').find('.fb-header-actions-menu');
+        const $menu = $btn.siblings('.fb-header-actions-menu');
         const wasOpen = $menu.hasClass('show');
 
         closeHeaderActionsMenus();
 
         if (!wasOpen) {
+            if ($btn.closest('#title').hasClass('bottom-header')) {
+                $menu.addClass('fb-header-actions-menu--dropup');
+            }
             $menu.addClass('show');
             $btn.attr('aria-expanded', 'true');
-            positionHeaderActionsMenu($btn, $menu);
+            $btn.closest('#message').addClass('fb-header-actions-menu-open');
             setTimeout(() => {
                 $(document).one('click.fb-header-actions', (ev) => {
                     if (!$(ev.target).closest('.fb-header-actions-menu, .fb-header-actions-toggle').length) {
@@ -995,8 +1029,10 @@ const init = async config => {
         }
     });
 
-    $(document).on('click', '.fb-header-actions .fb-header-action-item', () => {
-        closeHeaderActionsMenus();
+    $(document).on('click', '.fb-header-actions .fb-header-action-item', function() {
+        if ($(this).data('action') !== 'refresh') {
+            closeHeaderActionsMenus();
+        }
     });
 
     // Handle the refresh button:: allowing user to refresh the content
@@ -1184,9 +1220,9 @@ const init = async config => {
     });
 
     // Update UI on completion.
-    $(document).on('requireuiupdate', function(e) {
+    $(document).on('requireuiupdate', async function(e) {
         annotations = e.originalEvent.detail.annotations;
-        renderAnnotationItems(annotations);
+        await renderAnnotationItems(annotations);
     });
 
     $(document).on('fb:refresh_interaction', async function(e) {
@@ -1200,11 +1236,19 @@ const init = async config => {
         switch (e.key) {
             case 'ArrowLeft':
                 e.preventDefault();
-                await prevAnnotation();
+                if (isRtl()) {
+                    await nextAnnotation();
+                } else {
+                    await prevAnnotation();
+                }
                 break;
             case 'ArrowRight':
                 e.preventDefault();
-                await nextAnnotation();
+                if (isRtl()) {
+                    await prevAnnotation();
+                } else {
+                    await nextAnnotation();
+                }
                 break;
             case 's':
             case 'S':
@@ -1319,11 +1363,10 @@ const init = async config => {
                     return;
                 }
 
-                if (dx < 0) {
-                    // Swiped left → go to next annotation.
+                const swipedLeft = dx < 0;
+                if (isRtl() ? !swipedLeft : swipedLeft) {
                     nextAnnotation();
                 } else {
-                    // Swiped right → go to previous annotation.
                     prevAnnotation();
                 }
             },

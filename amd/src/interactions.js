@@ -82,6 +82,7 @@ const init = async(
     const $listitem = $('#annotation-template').clone();
     $('#annotation-template').remove();
     const $moreactionsmenu = $('.more-actions-menu');
+    const $loader = $('#video-wrapper #background-loading');
     let sequence = $('#sequence').text().split(',');
 
     let ctRenderer = {};
@@ -112,6 +113,7 @@ const init = async(
     });
 
     let activeid = null; // Current active annotation id. Mainly used when editing to relaunch the interaction afte editing.
+    let previewRenderToken = 0;
     const url = new URL(window.location);
     let aid = url.searchParams.get('aid');
     if (aid) {
@@ -128,6 +130,8 @@ const init = async(
         if (!annotation) {
             return;
         }
+        const renderToken = ++previewRenderToken;
+        $loader.stop(true, true).fadeIn(300);
         if (activeid && String(activeid) !== String(annotation.id)) {
             const previous = annotations.find((item) => String(item.id) === String(activeid));
             if (previous) {
@@ -168,6 +172,10 @@ const init = async(
             $fab.removeClass('d-none').data('id', annotation.id).data('type', annotation.type);
         } catch (e) {
             window.console.error("Preview failed:", e, annotation);
+        } finally {
+            if (renderToken === previewRenderToken) {
+                $loader.stop(true, true).fadeOut(300);
+            }
         }
     };
 

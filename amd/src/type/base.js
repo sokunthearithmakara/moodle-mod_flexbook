@@ -1321,11 +1321,14 @@ export default class Base {
         return this.options.isEditMode;
     }
 
-    async renderNavItem(annotations, annotation, $annotationbar) {
+    async renderNavItem(annotations, annotation, $annotationbar, options = {}) {
         let self = this;
         let locked = false;
         if (await this.islocked(annotation, annotations) == true) {
             locked = true;
+        }
+        if (typeof options.isStale === 'function' && options.isStale()) {
+            return locked;
         }
         annotation.locked = locked;
         let classes = annotation.type + ' annotation ';
@@ -1373,6 +1376,14 @@ export default class Base {
         $item.attr(`data${bs}-placement`, 'top');
         $item.attr(`data${bs}-html`, 'true');
         $item.attr('title', `<div class="d-flex align-items-center">${iconHtml}<span>${title}</span></div>`);
+
+        if (options.renderToken !== undefined) {
+            $item.attr('data-render-token', options.renderToken);
+        }
+
+        if (typeof options.isStale === 'function' && options.isStale()) {
+            return locked;
+        }
 
         $annotationbar.append($item);
         return locked;

@@ -127,13 +127,13 @@ class util extends \interactivevideo_util {
         $record = $DB->get_record('flexbook_items', ['id' => $id]);
         $record->title = $record->title . ' (' . get_string('copynoun', 'mod_interactivevideo') . ')';
         $record->id = $DB->insert_record('flexbook_items', $record);
-        // Handle related files in content, text1, text2, text3.
+        // Handle related files in item fileareas.
         require_once($CFG->libdir . '/filelib.php');
         $fs = get_file_storage();
         $contentfiles = $fs->get_area_files($contextid, 'mod_flexbook', 'content', $id, 'id ASC', false);
-        $text1files = $fs->get_area_files($contextid, 'mod_flexbook', 'text1', $id, 'id ASC', false);
-        $text2files = $fs->get_area_files($contextid, 'mod_flexbook', 'text2', $id, 'id ASC', false);
-        $text3files = $fs->get_area_files($contextid, 'mod_flexbook', 'text3', $id, 'id ASC', false);
+        $text1files = $fs->get_area_files($contextid, 'mod_flexbook', 'itext1', $id, 'id ASC', false);
+        $text2files = $fs->get_area_files($contextid, 'mod_flexbook', 'itext2', $id, 'id ASC', false);
+        $text3files = $fs->get_area_files($contextid, 'mod_flexbook', 'itext3', $id, 'id ASC', false);
 
         // Merge the files.
         $files = array_merge($contentfiles, $text1files, $text2files, $text3files);
@@ -225,6 +225,9 @@ class util extends \interactivevideo_util {
         // Delete files.
         $fs->delete_area_files($contextid, 'mod_flexbook', 'content', $id);
         $fs->delete_area_files($contextid, 'mod_flexbook', 'public', $id);
+        $fs->delete_area_files($contextid, 'mod_flexbook', 'itext1', $id);
+        $fs->delete_area_files($contextid, 'mod_flexbook', 'itext2', $id);
+        $fs->delete_area_files($contextid, 'mod_flexbook', 'itext3', $id);
         $fs->delete_area_files($contextid, 'mod_flexbook', 'asset', $id);
         // Delete logs files & logs.
         if ($logs) {

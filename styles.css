@@ -28,45 +28,6 @@
     margin: 0 auto;
 }
 
-.path-mod-flexbook #controller.fb .annotation-item {
-    height: 8px;
-    width: 8px;
-    background: rgba(255, 255, 255, 0.4);
-    margin: 4px;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all ease-in-out 300ms;
-}
-
-.path-mod-flexbook:not(.darkmode) #controller.fb .annotation-item {
-    background: rgba(0, 0, 0, 0.4);
-}
-
-.path-mod-flexbook #controller.fb .annotation-item:hover,
-.path-mod-flexbook #controller.fb .annotation-item.active {
-    opacity: 1;
-    transform: scale(1.2);
-    transition: all ease-in-out 300ms;
-}
-
-.path-mod-flexbook #controller.fb .annotation-item.active {
-    width: 10px;
-    height: 10px;
-    background: #fff;
-}
-
-.path-mod-flexbook:not(.darkmode) #controller.fb .annotation-item.active {
-    background: #000;
-}
-
-.path-mod-flexbook #controller.fb .annotation-item.completed {
-    background-color: greenyellow;
-}
-
-.path-mod-flexbook #controller.fb .annotation-item.no-completion {
-    background-color: var(--ivgray);
-}
-
 #page-mod-flexbook-interactions #separator {
     cursor: col-resize;
 }
@@ -250,24 +211,6 @@
     border-left: 4px solid #328cdb;
 }
 
-/* Indicators in editor */
-.page-interactions #editor-controlbar .annotation-item {
-    height: 8px;
-    width: 8px;
-    background: rgba(255, 255, 255, 0.4);
-    margin: 4px;
-    border-radius: 50%;
-    cursor: pointer;
-    transition: all ease-in-out 300ms;
-}
-
-.page-interactions #editor-controlbar .annotation-item.active {
-    background: #fff;
-    transform: scale(1.2);
-    width: 10px;
-    height: 10px;
-}
-
 @media (max-width: 991.98px) {
     .page-interactions .editor-layout {
         flex-direction: column;
@@ -327,16 +270,34 @@
     background-color: var(--ivlight) !important;
 }
 
-.path-mod-flexbook #controller.fb .annotation-item.chapter {
-    width: 8px !important;
-    height: 8px !important;
-    border: 1px solid rgba(255, 255, 255, 0.5) !important;
-    background-color: var(--ivblack) !important;
-    border-radius: 50% !important;
-}
-
 .path-mod-flexbook #annotation-content-wrapper #message.hasiframe > #content {
     height: calc(100% - 65px);
+}
+
+.path-mod-interactivevideo.path-mod-flexbook #annotation-modal #message.modal-xl.hasiframe > #content {
+    padding: 0 !important;
+    overflow: hidden;
+    min-height: calc(var(--ivdvh, 100vh) - 8rem);
+    height: calc(var(--ivdvh, 100vh) - 8rem);
+    position: relative;
+}
+
+.path-mod-interactivevideo.path-mod-flexbook #annotation-modal #message.hasiframe .preview-iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    padding-bottom: 0 !important;
+}
+
+.path-mod-interactivevideo.path-mod-flexbook #annotation-modal #message.hasiframe .preview-iframe iframe {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
 }
 
 #page-mod-flexbook-view #wrapper {
@@ -359,14 +320,11 @@
 
 .path-mod-interactivevideo.embed-mode #video-wrapper.fb {
     max-width: unset;
+    height: calc(var(--ivdvh) - 55px);
 }
 
 .path-mod-flexbook #video-wrapper.fb #background-loading {
     background: rgba(0, 0, 0, 0.3);
-}
-
-.path-mod-interactivevideo.embed-mode #video-wrapper.fb {
-    height: calc(var(--ivdvh) - 55px);
 }
 
 .path-mod-interactivevideo.embed-mode:has(#controller.d-none) #video-wrapper.fb {
@@ -379,12 +337,8 @@
 
 .path-mod-interactivevideo.path-mod-flexbook #video-info #play {
     top: 50%;
-    left: 50%;
-    transform: translate(-50%);
-}
-
-[dir="rtl"] .path-mod-interactivevideo.path-mod-flexbook #video-info #play {
-    transform: translate(50%);
+    inset-inline-start: 50%;
+    transform: translateX(-50%);
 }
 
 .path-mod-flexbook #message {
@@ -427,16 +381,6 @@
     margin: 0;
 }
 
-#wrapper:fullscreen #controller.fb .annotation-item,
-#wrapper.fullscreen #controller.fb .annotation-item {
-    background: rgba(255, 255, 255, 0.4) !important;
-}
-
-#wrapper:fullscreen #controller.fb .annotation-item.active,
-#wrapper.fullscreen #controller.fb .annotation-item.active {
-    background: #fff !important;
-}
-
 .path-mod-flexbook #video-wrapper #message:not(.show) {
     display: none !important;
 }
@@ -459,23 +403,23 @@
     .path-mod-interactivevideo.embed-mode #interactivevideo-container.chapter-open #controller.fb {
         width: calc(100% - 2rem);
     }
+
+    .path-mod-flexbook.distraction-free:not(.embed-mode):has(#interactivevideo-container.chapter-open)
+    .navbar.fixed-top > .d-flex:first-child {
+        margin-inline-start: 400px;
+    }
+
+    /* Default flexbook: chapter panel is fixed; keep the player full width. */
+    .path-mod-interactivevideo:has(#video-wrapper.fb).default-mode #interactivevideo-container.chapter-open,
+    .path-mod-interactivevideo.default-mode #interactivevideo-container.chapter-open #controller.fb {
+        left: unset;
+        width: unset;
+        transition: left ease 300ms, width ease 300ms;
+    }
 }
 
 .path-mod-flexbook.distraction-free:not(.embed-mode) .navbar.fixed-top > .d-flex:first-child {
     transition: margin 300ms ease-in-out;
-}
-
-@media (min-width: 1199.98px) {
-    .path-mod-flexbook.distraction-free:not(.embed-mode):has(#interactivevideo-container.chapter-open)
-    .navbar.fixed-top > .d-flex:first-child {
-        margin-left: 400px;
-    }
-
-    [dir="rtl"] .path-mod-flexbook.distraction-free:not(.embed-mode):has(#interactivevideo-container.chapter-open)
-    .navbar.fixed-top > .d-flex:first-child {
-        margin-right: 400px;
-        margin-left: 0;
-    }
 }
 
 .path-mod-interactivevideo #chapter-container-left.fb {
@@ -545,10 +489,7 @@
     border: 0;
 }
 
-.path-mod-flexbook.darkmode #video-wrapper.fb #message #title:not(.hide-header) .modal-title i,
-.path-mod-flexbook.darkmode #video-wrapper.fb #message #title:not(.hide-header) .btns > .fb-title-action i,
-.path-mod-flexbook.darkmode #video-wrapper.fb #message #title:not(.hide-header) .btns > .fb-instructions-toggle i,
-.path-mod-flexbook.darkmode #video-wrapper.fb #message #title:not(.hide-header) .btns > .fb-header-actions > .fb-title-action i {
+.path-mod-flexbook.darkmode #video-wrapper.fb #message #title:not(.hide-header) :is(.modal-title i, .btns > .fb-title-action i, .btns > .fb-instructions-toggle i, .btns > .fb-header-actions > .fb-title-action i) {
     color: #fff;
 }
 
@@ -566,11 +507,6 @@
     color: var(--bs-danger, #dc3545);
 }
 
-.path-mod-interactivevideo.path-mod-flexbook #video-wrapper #message #title.hide-header,
-.path-mod-interactivevideo.path-mod-flexbook #annotation-content #message #title.hide-header,
-.path-mod-flexbook #video-wrapper.fb #message #title.hide-header,
-.path-mod-flexbook #annotation-content #message #title.hide-header,
-.path-mod-flexbook #annotation-modal #message #title.hide-header,
 .path-mod-flexbook #message #title.hide-header {
     position: absolute;
     top: 0;
@@ -586,10 +522,6 @@
 }
 
 /* IV platform styles reserve a 50px title band — reclaim it when header is hidden. */
-.path-mod-interactivevideo.path-mod-flexbook #video-wrapper #message.header-hidden #content,
-.path-mod-interactivevideo.path-mod-flexbook #annotation-content #message.header-hidden #content,
-.path-mod-flexbook #video-wrapper.fb #message.header-hidden #content,
-.path-mod-flexbook #annotation-content #message.header-hidden #content,
 .path-mod-flexbook #annotation-modal #message.header-hidden #content,
 .path-mod-flexbook #annotation-modal #message.header-hidden .modal-body {
     height: 100% !important;
@@ -618,11 +550,7 @@
     display: none !important;
 }
 
-.path-mod-flexbook #message #title.hide-header .btns > .fb-title-action,
-.path-mod-flexbook #message #title.hide-header .btns > .fb-instructions-toggle,
-.path-mod-flexbook #message #title.hide-header .btns > .fb-header-actions > .fb-title-action,
-.path-mod-flexbook #message #title.hide-header .btns > #completiontoggle,
-.path-mod-flexbook #message #title.hide-header .btns > i.info {
+.path-mod-flexbook #message #title.hide-header .btns > :is(.fb-title-action, .fb-instructions-toggle, .fb-header-actions > .fb-title-action, #completiontoggle, i.info) {
     align-items: center;
     background-color: rgba(0, 0, 0, .55) !important;
     border: 0 !important;
@@ -640,18 +568,13 @@
     width: 35px !important;
 }
 
-.path-mod-flexbook #message #title.hide-header .btns > .fb-title-action i,
-.path-mod-flexbook #message #title.hide-header .btns > .fb-instructions-toggle i,
-.path-mod-flexbook #message #title.hide-header .btns > .fb-header-actions > .fb-title-action i,
-.path-mod-flexbook #message #title.hide-header .btns > #completiontoggle i,
-.path-mod-flexbook #message #title.hide-header .btns > i.info::before {
+.path-mod-flexbook #message #title.hide-header .btns > :is(.fb-title-action i, .fb-instructions-toggle i, .fb-header-actions > .fb-title-action i, #completiontoggle i, i.info::before) {
     color: #fff !important;
     font-size: 16px !important;
     line-height: 1;
 }
 
-.path-mod-flexbook #message #title.hide-header .btns > #completiontoggle.btn-secondary,
-.path-mod-flexbook #message #title.hide-header .btns > #completiontoggle.mark-done.btn-secondary {
+.path-mod-flexbook #message #title.hide-header .btns > #completiontoggle.btn-secondary {
     background-color: rgba(0, 0, 0, .55) !important;
     border-color: transparent !important;
     box-shadow: none !important;
@@ -661,10 +584,7 @@
     background-color: rgba(21, 128, 61, .9) !important;
 }
 
-.path-mod-flexbook #message #title.hide-header .btns > .fb-title-action:hover,
-.path-mod-flexbook #message #title.hide-header .btns > .fb-instructions-toggle:hover,
-.path-mod-flexbook #message #title.hide-header .btns > .fb-header-actions > .fb-title-action:hover,
-.path-mod-flexbook #message #title.hide-header .btns > i.info:hover,
+.path-mod-flexbook #message #title.hide-header .btns > :is(.fb-title-action, .fb-instructions-toggle, .fb-header-actions > .fb-title-action, i.info):hover,
 .path-mod-flexbook #message #title.hide-header .btns > #completiontoggle:hover:not(.disabled) {
     background-color: rgba(0, 0, 0, .85) !important;
 }
@@ -729,18 +649,14 @@
         padding: 0.25rem !important;
     }
 
-    .path-mod-flexbook #message #title.hide-header .btns > .fb-title-action,
-    .path-mod-flexbook #message #title.hide-header .btns > #completiontoggle,
-    .path-mod-flexbook #message #title.hide-header .btns > i.info {
+    .path-mod-flexbook #message #title.hide-header .btns > :is(.fb-title-action, #completiontoggle, i.info) {
         height: 26px !important;
         min-height: 26px !important;
         min-width: 26px !important;
         width: 26px !important;
     }
 
-    .path-mod-flexbook #message #title.hide-header .btns > .fb-title-action i,
-    .path-mod-flexbook #message #title.hide-header .btns > #completiontoggle i,
-    .path-mod-flexbook #message #title.hide-header .btns > i.info::before {
+    .path-mod-flexbook #message #title.hide-header .btns > :is(.fb-title-action i, #completiontoggle i, i.info::before) {
         font-size: 13px !important;
     }
 
@@ -758,6 +674,19 @@
 }
 
 /* Kid Theme Styles */
+.path-mod-flexbook.kidtheme {
+    --fb-kid-navy: #07111f;
+    --fb-kid-green: #58cc02;
+    --fb-kid-blue: #1cb0f6;
+    --fb-kid-surface: #e5e5e5;
+    --fb-kid-text: #4b4b4b;
+}
+
+.path-mod-flexbook.kidtheme.darkmode {
+    --fb-kid-dark-bg: #131f24;
+    --fb-kid-dark-edge: #3c4d54;
+}
+
 .path-mod-flexbook.kidtheme .btn {
     border-radius: 12px !important;
     border-bottom: 4px solid rgba(0, 0, 0, 0.2) !important;
@@ -793,13 +722,13 @@
 }
 
 .path-mod-flexbook.kidtheme .btn-success {
-    background-color: #58cc02 !important;
+    background-color: var(--fb-kid-green) !important;
     border-bottom-color: #46a302 !important;
     color: #fff !important;
 }
 
 .path-mod-flexbook.kidtheme .btn-primary {
-    background-color: #1cb0f6 !important;
+    background-color: var(--fb-kid-blue) !important;
     border-bottom-color: #1899d6 !important;
     color: #fff !important;
 }
@@ -807,12 +736,12 @@
 .path-mod-flexbook.kidtheme .btn-dark:not(#chapterbutton),
 .path-mod-flexbook.kidtheme #controller.fb .btn-dark:not(#chapterbutton) {
     background-color: #f7f7f7 !important;
-    border-bottom-color: #e5e5e5 !important;
-    color: #4b4b4b !important;
+    border-bottom-color: var(--fb-kid-surface) !important;
+    color: var(--fb-kid-text) !important;
 }
 
 .path-mod-flexbook.kidtheme .btn-dark:hover:not(#chapterbutton) {
-    background-color: #e5e5e5 !important;
+    background-color: var(--fb-kid-surface) !important;
     border-bottom-color: #d1d1d1 !important;
 }
 
@@ -829,11 +758,11 @@
 }
 
 .path-mod-flexbook.kidtheme .toast.fb {
-    border: 2px solid #e5e5e5 !important;
-    border-bottom: 4px solid #e5e5e5 !important;
+    border: 2px solid var(--fb-kid-surface) !important;
+    border-bottom: 4px solid var(--fb-kid-surface) !important;
     border-radius: 16px !important;
     background: #fff !important;
-    color: #4b4b4b !important;
+    color: var(--fb-kid-text) !important;
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
 }
 
@@ -845,44 +774,40 @@
 }
 
 .path-mod-flexbook.kidtheme .toast.fb.toast-success {
-    background-color: #58cc02 !important;
-    border-color: #46a302 !important;
-    border-bottom-color: #46a302 !important;
-    color: #fff !important;
+    --fb-toast-bg: #58cc02;
+    --fb-toast-edge: #46a302;
 }
 
 .path-mod-flexbook.kidtheme .toast.fb.toast-danger {
-    background-color: #ff4b4b !important;
-    border-color: #d33131 !important;
-    border-bottom-color: #d33131 !important;
-    color: #fff !important;
+    --fb-toast-bg: #ff4b4b;
+    --fb-toast-edge: #d33131;
 }
 
 .path-mod-flexbook.kidtheme .toast.fb.toast-warning {
-    background-color: #ffb020 !important;
-    border-color: #e69a00 !important;
-    border-bottom-color: #e69a00 !important;
-    color: #fff !important;
+    --fb-toast-bg: #ffb020;
+    --fb-toast-edge: #e69a00;
 }
 
 .path-mod-flexbook.kidtheme .toast.fb.toast-info {
-    background-color: #1cb0f6 !important;
-    border-color: #1899d6 !important;
-    border-bottom-color: #1899d6 !important;
+    --fb-toast-bg: #1cb0f6;
+    --fb-toast-edge: #1899d6;
+}
+
+.path-mod-flexbook.kidtheme .toast.fb:is(.toast-success, .toast-danger, .toast-warning, .toast-info) {
+    background-color: var(--fb-toast-bg) !important;
+    border-color: var(--fb-toast-edge) !important;
+    border-bottom-color: var(--fb-toast-edge) !important;
     color: #fff !important;
 }
 
-.path-mod-flexbook.kidtheme .toast.fb.toast-success .toast-emoji,
-.path-mod-flexbook.kidtheme .toast.fb.toast-danger .toast-emoji,
-.path-mod-flexbook.kidtheme .toast.fb.toast-warning .toast-emoji,
-.path-mod-flexbook.kidtheme .toast.fb.toast-info .toast-emoji {
+.path-mod-flexbook.kidtheme .toast.fb:is(.toast-success, .toast-danger, .toast-warning, .toast-info) .toast-emoji {
     background-color: rgba(255, 255, 255, 0.25) !important;
     border-color: rgba(255, 255, 255, 0.4) !important;
 }
 
 .path-mod-flexbook.kidtheme .toast.fb .toast-emoji {
     background: #f7f7f7 !important;
-    border: 2px solid #e5e5e5;
+    border: 2px solid var(--fb-kid-surface);
 }
 
 /* Animations */
@@ -934,37 +859,21 @@
     top: 70px !important;
 }
 
-.path-mod-flexbook.kidtheme #controller.fb {
-    border-top: 0 !important;
-    background-color: transparent !important;
-}
-
+.path-mod-flexbook.kidtheme #controller.fb,
 .path-mod-flexbook.kidtheme.darkmode #controller.fb {
-    background-color: transparent !important;
     border-top: 0 !important;
-}
-
-.path-mod-flexbook.kidtheme .annotation-item {
-    background: #e5e5e5 !important;
-}
-
-.path-mod-flexbook.kidtheme .annotation-item.active {
-    background: #1cb0f6 !important;
-}
-
-.path-mod-flexbook.kidtheme .annotation-item.completed {
-    background: #58cc02 !important;
+    background-color: transparent !important;
 }
 
 .path-mod-flexbook.kidtheme #chapter-container-left.fb [data-region="chapterwrapper"] {
     width: 100%;
     max-width: 400px;
-    background: #07111f;
+    background: var(--fb-kid-navy);
     color: #fff;
     box-shadow: 8px 0 0 rgba(8, 17, 31, 0.5) !important;
     overflow-y: auto;
     scrollbar-width: thin;
-    scrollbar-color: #58cc02 #07111f;
+    scrollbar-color: var(--fb-kid-green) var(--fb-kid-navy);
 }
 
 .path-mod-flexbook.kidtheme #chapter-container-left.fb .chapter-panel-heading {
@@ -973,7 +882,7 @@
     flex-shrink: 0;
     justify-content: flex-end;
     overflow: hidden;
-    background: #07111f;
+    background: var(--fb-kid-navy);
     border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
@@ -1033,7 +942,7 @@
     flex-direction: column;
     gap: 0.85rem;
     padding: 1rem;
-    background: #07111f;
+    background: var(--fb-kid-navy);
     border: 0;
 }
 
@@ -1078,7 +987,7 @@
     justify-content: center;
     padding: 0.3rem 0.55rem;
     color: #fff;
-    background: #07111f;
+    background: var(--fb-kid-navy);
     border-radius: 999px;
     font-size: 0.82rem;
     font-weight: 900;
@@ -1095,14 +1004,14 @@
     left: 1rem;
     height: 8px;
     overflow: hidden;
-    background: #07111f;
+    background: var(--fb-kid-navy);
     border-radius: 999px;
 }
 
 .path-mod-flexbook.kidtheme #chapter-container-left.fb .chapter-progressbar span {
     display: block;
     height: 100%;
-    background: #58cc02;
+    background: var(--fb-kid-green);
     border-radius: inherit;
 }
 
@@ -1128,7 +1037,7 @@
 
 .path-mod-flexbook.kidtheme #chapter-container-left.fb li.anno.active {
     min-height: 64px;
-    background: #1cb0f6;
+    background: var(--fb-kid-blue);
     box-shadow: 0 5px 0 #127fb4;
     transform: translateY(-2px);
 }
@@ -1228,7 +1137,7 @@
 }
 
 .path-mod-flexbook.kidtheme #wrapper {
-    background-image: radial-gradient(#e5e5e5 2px, transparent 2px);
+    background-image: radial-gradient(var(--fb-kid-surface) 2px, transparent 2px);
     background-size: 24px 24px;
 }
 
@@ -1237,9 +1146,9 @@
 }
 
 .path-mod-flexbook.kidtheme #video-wrapper.fb {
-    outline: 4px solid #e5e5e5;
+    outline: 4px solid var(--fb-kid-surface);
     border-radius: 2rem !important;
-    box-shadow: 0 8px 0 #e5e5e5;
+    box-shadow: 0 8px 0 var(--fb-kid-surface);
     overflow: hidden;
     background: #fff;
     transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
@@ -1247,8 +1156,8 @@
 }
 
 .path-mod-flexbook.kidtheme.darkmode #video-wrapper.fb {
-    outline-color: #3c4d54;
-    box-shadow: 0 8px 0 #3c4d54;
+    outline-color: var(--fb-kid-dark-edge);
+    box-shadow: 0 8px 0 var(--fb-kid-dark-edge);
     background: #000;
 }
 
@@ -1269,7 +1178,7 @@
 .path-mod-flexbook.kidtheme .navbar.fixed-top a[title*="course"],
 .path-mod-flexbook.kidtheme .navbar.fixed-top a[data-original-title*="course"],
 .path-mod-flexbook.kidtheme .navbar.fixed-top a[data-bs-original-title*="course"] {
-    background-color: #1cb0f6 !important;
+    background-color: var(--fb-kid-blue) !important;
     border-bottom-color: #1899d6 !important;
     color: #fff !important;
 }
@@ -1291,7 +1200,7 @@
 /* Navbar user menu — Duolingo green pill (kidtheme btn-success). */
 .path-mod-flexbook.kidtheme .navbar.fixed-top .usermenu #user-menu-toggle {
     align-items: center;
-    background-color: #58cc02 !important;
+    background-color: var(--fb-kid-green) !important;
     border-bottom: 4px solid #46a302 !important;
     border-radius: 999px !important;
     color: #fff !important;
@@ -1592,27 +1501,13 @@
 }
 
 /* Flap only during jump/happy animations */
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-jump .mascot-wing-left,
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-happy .mascot-wing-left,
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-celebrate .mascot-wing-left {
+.path-mod-flexbook.kidtheme #fb-mascot:is(.mascot-duo, .mascot-parrot):is(.anim-jump, .anim-happy, .anim-celebrate)
+.mascot-wing-left {
     animation: mascot-wing-flap-out-left 0.3s ease-in-out infinite;
 }
 
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-jump .mascot-wing-left,
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-happy .mascot-wing-left,
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-celebrate .mascot-wing-left {
-    animation: mascot-wing-flap-out-left 0.3s ease-in-out infinite;
-}
-
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-jump .mascot-wing-right,
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-happy .mascot-wing-right,
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-duo.anim-celebrate .mascot-wing-right {
-    animation: mascot-wing-flap-out-right 0.3s ease-in-out infinite;
-}
-
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-jump .mascot-wing-right,
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-happy .mascot-wing-right,
-.path-mod-flexbook.kidtheme #fb-mascot.mascot-parrot.anim-celebrate .mascot-wing-right {
+.path-mod-flexbook.kidtheme #fb-mascot:is(.mascot-duo, .mascot-parrot):is(.anim-jump, .anim-happy, .anim-celebrate)
+.mascot-wing-right {
     animation: mascot-wing-flap-out-right 0.3s ease-in-out infinite;
 }
 
@@ -1773,15 +1668,15 @@
     bottom: 110%;
     right: 0;
     background: white;
-    border: 3px solid #e5e5e5;
+    border: 3px solid var(--fb-kid-surface);
     border-radius: 1rem;
     padding: 20px 30px;
     min-width: 160px;
     max-width: 350px;
     width: max-content;
     font-weight: bold;
-    color: #4b4b4b;
-    box-shadow: 0 6px 0 #e5e5e5;
+    color: var(--fb-kid-text);
+    box-shadow: 0 6px 0 var(--fb-kid-surface);
     opacity: 0;
     transform: translateY(10px);
     transition: all 0.3s ease;
@@ -1805,7 +1700,7 @@
     top: 100%;
     right: 27px;
     border: 13px solid transparent;
-    border-top-color: #e5e5e5;
+    border-top-color: var(--fb-kid-surface);
     margin-top: 3px;
 }
 
@@ -1816,18 +1711,18 @@
 }
 
 .path-mod-flexbook.darkmode #fb-mascot-bubble {
-    background: #131f24;
-    border-color: #3c4d54;
+    background: var(--fb-kid-dark-bg);
+    border-color: var(--fb-kid-dark-edge);
     color: #fff;
-    box-shadow: 0 5px 0 #3c4d54;
+    box-shadow: 0 5px 0 var(--fb-kid-dark-edge);
 }
 
 .path-mod-flexbook.darkmode #fb-mascot-bubble::after {
-    border-top-color: #131f24;
+    border-top-color: var(--fb-kid-dark-bg);
 }
 
 .path-mod-flexbook.darkmode #fb-mascot-bubble::before {
-    border-top-color: #3c4d54;
+    border-top-color: var(--fb-kid-dark-edge);
 }
 
 /* Custom Duolingo Tooltips (Matches Mascot Bubble) */
@@ -1838,21 +1733,21 @@
 
 .path-mod-flexbook.kidtheme .tooltip-inner {
     background-color: #fff;
-    color: #4b4b4b;
-    border: 3px solid #e5e5e5;
+    color: var(--fb-kid-text);
+    border: 3px solid var(--fb-kid-surface);
     border-radius: 0.75rem;
     padding: 10px 20px;
     font-weight: 700;
-    box-shadow: 0 5px 0 #e5e5e5;
+    box-shadow: 0 5px 0 var(--fb-kid-surface);
     max-width: 300px;
 }
 
 /* Dark mode tooltips */
 .path-mod-flexbook.kidtheme.darkmode .tooltip-inner {
-    background-color: #131f24;
+    background-color: var(--fb-kid-dark-bg);
     color: #fff;
-    border-color: #3c4d54;
-    box-shadow: 0 5px 0 #3c4d54;
+    border-color: var(--fb-kid-dark-edge);
+    box-shadow: 0 5px 0 var(--fb-kid-dark-edge);
 }
 
 /* Tooltip Arrows (Double border effect) */
@@ -1867,7 +1762,7 @@
 /* Top Placement */
 .path-mod-flexbook.kidtheme .bs-tooltip-top .arrow::before,
 .path-mod-flexbook.kidtheme .bs-tooltip-auto[x-placement^="top"] .arrow::before {
-    border-top-color: #e5e5e5;
+    border-top-color: var(--fb-kid-surface);
     border-width: 13px 13px 0;
     bottom: -13px;
     margin-left: -13px;
@@ -1884,18 +1779,18 @@
 /* Dark Mode Top */
 .path-mod-flexbook.kidtheme.darkmode .bs-tooltip-top .arrow::before,
 .path-mod-flexbook.kidtheme.darkmode .bs-tooltip-auto[x-placement^="top"] .arrow::before {
-    border-top-color: #3c4d54;
+    border-top-color: var(--fb-kid-dark-edge);
 }
 
 .path-mod-flexbook.kidtheme.darkmode .bs-tooltip-top .arrow::after,
 .path-mod-flexbook.kidtheme.darkmode .bs-tooltip-auto[x-placement^="top"] .arrow::after {
-    border-top-color: #131f24;
+    border-top-color: var(--fb-kid-dark-bg);
 }
 
 /* Bottom Placement */
 .path-mod-flexbook.kidtheme .bs-tooltip-bottom .arrow::before,
 .path-mod-flexbook .bs-tooltip-auto[x-placement^="bottom"] .arrow::before {
-    border-bottom-color: #e5e5e5;
+    border-bottom-color: var(--fb-kid-surface);
     border-width: 0 13px 13px;
     top: -13px;
     margin-left: -13px;
@@ -1912,12 +1807,12 @@
 /* Dark Mode Bottom */
 .path-mod-flexbook.kidtheme.darkmode .bs-tooltip-bottom .arrow::before,
 .path-mod-flexbook.kidtheme.darkmode .bs-tooltip-auto[x-placement^="bottom"] .arrow::before {
-    border-bottom-color: #3c4d54;
+    border-bottom-color: var(--fb-kid-dark-edge);
 }
 
 .path-mod-flexbook.kidtheme.darkmode .bs-tooltip-bottom .arrow::after,
 .path-mod-flexbook.kidtheme.darkmode .bs-tooltip-auto[x-placement^="bottom"] .arrow::after {
-    border-bottom-color: #131f24;
+    border-bottom-color: var(--fb-kid-dark-bg);
 }
 
 #page-mod-flexbook-report th.rotate {
@@ -1974,8 +1869,7 @@
     margin-top: 0 !important;
 }
 
-#page-mod-flexbook-report #annotation-modal #instructions-toggle,
-#page-mod-flexbook-report #annotation-modal .fb-instructions-toggle {
+#page-mod-flexbook-report #annotation-modal :is(#instructions-toggle, .fb-instructions-toggle) {
     display: none !important;
 }
 
@@ -2025,9 +1919,7 @@
 }
 
 /* Instructions sidebar — flex column so the body scrolls (IV side-placement pattern). */
-.path-mod-flexbook #instructions-sidebar.iv-sidebar,
-.path-mod-interactivevideo #instructions-sidebar.iv-sidebar,
-.page-interactions #instructions-sidebar.iv-sidebar {
+:is(.path-mod-flexbook, .path-mod-interactivevideo, .page-interactions) #instructions-sidebar.iv-sidebar {
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -2054,9 +1946,7 @@
     color: #212529 !important;
 }
 
-.path-mod-flexbook .fb-instructions-body,
-.path-mod-interactivevideo #instructions-sidebar .fb-instructions-body,
-.page-interactions #instructions-sidebar .fb-instructions-body {
+:is(.path-mod-flexbook .fb-instructions-body, .path-mod-interactivevideo #instructions-sidebar .fb-instructions-body, .page-interactions #instructions-sidebar .fb-instructions-body) {
     flex: 1 1 auto;
     min-height: 0;
     overflow-x: hidden;
@@ -2124,8 +2014,7 @@
 }
 
 /* Header actions menu — always light, isolated from dark #title chrome. */
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions .fb-header-actions-menu,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions .fb-header-actions-menu {
+.path-mod-flexbook #message #title .fb-header-actions .fb-header-actions-menu {
     --bs-dropdown-link-color: #212529;
     --bs-dropdown-link-hover-color: #212529;
     --bs-dropdown-link-hover-bg: #f1f3f5;
@@ -2141,21 +2030,17 @@
         0 12px 28px rgba(0, 0, 0, 0.14);
 }
 
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions .fb-header-actions-menu.show,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions .fb-header-actions-menu.show {
+.path-mod-flexbook #message #title .fb-header-actions .fb-header-actions-menu.show {
     display: block;
     animation: fb-header-actions-in 0.16s ease-out;
 }
 
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions
-.fb-header-actions-menu.fb-header-actions-menu--dropup.show,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions
+.path-mod-flexbook #message #title .fb-header-actions
 .fb-header-actions-menu.fb-header-actions-menu--dropup.show {
     animation: fb-header-actions-dropup-in 0.16s ease-out;
 }
 
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-item,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions-menu .fb-header-action-item {
+.path-mod-flexbook #message #title .fb-header-actions-menu .fb-header-action-item {
     display: flex;
     align-items: center;
     gap: 0.625rem;
@@ -2172,42 +2057,30 @@
     transition: background-color 0.15s ease;
 }
 
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-item:hover,
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-item:focus,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions-menu .fb-header-action-item:hover,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions-menu .fb-header-action-item:focus {
+.path-mod-flexbook #message #title .fb-header-actions-menu .fb-header-action-item:hover,
+.path-mod-flexbook #message #title .fb-header-actions-menu .fb-header-action-item:focus {
     background-color: #f1f3f5 !important;
-    color: #212529 !important;
 }
 
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-item i,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions-menu .fb-header-action-item i,
-.path-mod-flexbook.darkmode #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-item i,
-.path-mod-flexbook.darkmode #annotation-modal #message #title .fb-header-actions-menu .fb-header-action-item i {
+.path-mod-flexbook #message #title .fb-header-actions-menu .fb-header-action-item i {
     flex-shrink: 0;
     width: 1.125rem;
     font-size: 1rem;
     text-align: center;
-    color: #495057 !important;
 }
 
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-item--danger,
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-item--danger i,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions-menu .fb-header-action-item--danger,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions-menu .fb-header-action-item--danger i {
+.path-mod-flexbook #message #title .fb-header-actions-menu .fb-header-action-item--danger,
+.path-mod-flexbook #message #title .fb-header-actions-menu .fb-header-action-item--danger i {
     color: var(--bs-danger, #dc3545) !important;
 }
 
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-item--danger:hover,
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-item--danger:focus,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions-menu .fb-header-action-item--danger:hover,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions-menu .fb-header-action-item--danger:focus {
+.path-mod-flexbook #message #title .fb-header-actions-menu .fb-header-action-item--danger:hover,
+.path-mod-flexbook #message #title .fb-header-actions-menu .fb-header-action-item--danger:focus {
     background-color: rgba(220, 53, 69, 0.08) !important;
     color: var(--bs-danger, #dc3545) !important;
 }
 
-.path-mod-flexbook #video-wrapper.fb #message #title .fb-header-actions-menu .fb-header-action-divider,
-.path-mod-flexbook #annotation-modal #message #title .fb-header-actions-menu .fb-header-action-divider {
+.path-mod-flexbook #message #title .fb-header-actions-menu .fb-header-action-divider {
     height: 0;
     margin: 0.375rem 0;
     border-top: 1px solid rgba(0, 0, 0, 0.08);
@@ -2219,8 +2092,7 @@
 }
 
 /* Block interaction content clicks while the header actions menu is open. */
-.path-mod-flexbook #message.fb-header-actions-menu-open #content,
-.path-mod-flexbook #annotation-modal #message.fb-header-actions-menu-open #content {
+.path-mod-flexbook #message.fb-header-actions-menu-open #content {
     pointer-events: none;
 }
 
@@ -2346,16 +2218,6 @@
 
 .path-mod-flexbook.darkmode #video-wrapper.fb #message #title:not(.hide-header) .btn-secondary i {
     color: #000;
-}
-
-@media (min-width: 1199.98px) {
-    /* Default flexbook: chapter panel is fixed; keep the player full width. */
-    .path-mod-interactivevideo:has(#video-wrapper.fb).default-mode #interactivevideo-container.chapter-open,
-    .path-mod-interactivevideo.default-mode #interactivevideo-container.chapter-open #controller.fb {
-        left: unset;
-        width: unset;
-        transition: left ease 300ms, width ease 300ms;
-    }
 }
 
 .path-mod-flexbook.distraction-free:not(.embed-mode):has(#controller.fb.d-none) #video-wrapper.fb {
@@ -2487,4 +2349,8 @@ body.fb-embed-interaction {
 
 #page-mod-flexbook-view #video-wrapper.fb > #background-loading {
     background: #fff !important;
+}
+
+#page-mod-flexbook-view:is(.embed, .embed-mode) .fb-header-action-item[data-action="edit"] {
+    display: none !important;
 }

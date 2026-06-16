@@ -1145,7 +1145,6 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
         // Controls before completion.
         $controls = [
             ['controlbar', 'mod_flexbook'],
-            ['interactionbar', 'mod_flexbook'],
             ['chaptertoggle', 'mod_flexbook'],
             ['share', 'mod_flexbook'],
             ['fullscreen', 'mod_flexbook'],
@@ -1298,7 +1297,6 @@ function flexbook_default_appearance() {
     $defaultappearance = get_config('mod_flexbook', 'defaultappearance');
     $defaultappearance = !empty($defaultappearance) ? explode(',', $defaultappearance) : [
         'controlbar',
-        'interactionbar',
         'chaptertoggle',
         'share',
         'fullscreen',
@@ -1310,7 +1308,6 @@ function flexbook_default_appearance() {
 
     return [
         'controlbar' => in_array('controlbar', $defaultappearance) ? 1 : 0,
-        'interactionbar' => in_array('interactionbar', $defaultappearance) ? 1 : 0,
         'chaptertoggle' => in_array('chaptertoggle', $defaultappearance) ? 1 : 0,
         'share' => in_array('share', $defaultappearance) ? 1 : 0,
         'fullscreen' => in_array('fullscreen', $defaultappearance) ? 1 : 0,

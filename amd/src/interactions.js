@@ -95,10 +95,10 @@ const init = async(
     annotations = annotations.filter(x => contentTypes.find(y => y.name === x.type));
 
     if (annotations.length == 0) {
-        let html = `<button class="btn btn-primary btn-rounded" id="addinteractionbtn">
-        <i class="fa fa-plus" aria-hidden="true"></i> `;
-        html += await getString('add', 'mod_interactivevideo');
-        html += '</button>';
+        let html = `<button class="btn btn-rounded btn-primary btn-sm text-uppercase px-3" id="addinteractionbtn">
+            <i class="bi bi-plus-lg text-white iv-mr-2 p-0" aria-hidden="true"></i> `;
+            html += await getString('add', 'mod_interactivevideo');
+            html += '</button>';
         $annotationlist.html(html)
             .addClass("d-flex align-items-center justify-content-center");
     }
@@ -253,10 +253,27 @@ const init = async(
      * @param {Object} current
      */
     const updateControlBar = (current) => {
-        const index = annotations.findIndex(a => a.id == current.id);
-        $('#thisanno').text(index + 1);
-        $('#totalannos').text(annotations.length);
-
+        const countableAnnos = annotations.filter(item => {
+            if (item.type === 'chapter') {
+                return false;
+            }
+            const renderer = state.ctRenderer[item.type];
+            if (!renderer || typeof renderer.isVisible !== 'function') {
+                return true;
+            }
+            return renderer.isVisible(item);
+        });
+        const total = countableAnnos.length;
+        const index = countableAnnos.findIndex(a => String(a.id) === String(current.id));
+        const currentNum = index >= 0 ? index + 1 : 0;
+        const $counter = $('#currentanno');
+        if (total === 0 || currentNum === 0) {
+            $counter.addClass('d-none');
+        } else {
+            $counter.removeClass('d-none');
+            $('#thisanno').text(currentNum);
+            $('#totalannos').text(total);
+        }
 
         // XP
         let totalXp = annotations.reduce((acc, a) => acc + (Number(a.xp) || 0), 0);

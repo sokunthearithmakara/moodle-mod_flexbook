@@ -683,7 +683,7 @@ export default class Base {
                     const $message = root.find('#message');
                     $message.toggleClass('header-hidden', hideHeader);
                     const $title = root.find('.modal-header').attr('id', 'title');
-                    $title.removeClass('shadow-sm hide-header bottom-header btn-dark');
+                    $title.removeClass('shadow-sm hide-header bottom-header');
                     if (hideHeader) {
                         $title.addClass('hide-header');
                     } else {
@@ -691,9 +691,6 @@ export default class Base {
                     }
                     if (settings.bottomheader == 1) {
                         $title.addClass('bottom-header');
-                    }
-                    if (state.config.darkmode) {
-                        $title.addClass('btn-dark');
                     }
                     $title.html(await this.renderMessageTitle(annotation, playermode));
                 }
@@ -708,6 +705,100 @@ export default class Base {
         let root = await this.createModal(annotation);
         const $message = root.find(`#message[data-id="${annotation.id}"]`);
         await self.applyContent(annotation, $message, log);
+    }
+
+    /**
+     * Resolve a navigation id to a flexbook_items annotation for embed preview.
+     *
+     * @param {string|number} id Target id or navigation special.
+     * @return {Promise<Object|null>}
+     */
+    async resolveEmbedNavigationAnnotation(id) {
+        let resolvedId = id;
+        const sequence = state.sequence || [];
+        const annotations = this.annotations || state.annotations || [];
+        const currentId = state.currentanno?.id;
+
+        if (resolvedId === 'endscreen') {
+            return null;
+        }
+        if (resolvedId === 'firstpage' || resolvedId === 'first') {
+            resolvedId = sequence[0];
+        } else if (resolvedId === 'previousinteraction') {
+            const index = currentId ? sequence.indexOf(String(currentId)) : 0;
+            resolvedId = index > 0 ? sequence[index - 1] : sequence[0];
+        } else if (resolvedId === 'nextinteraction') {
+            const index = currentId ? sequence.indexOf(String(currentId)) : -1;
+            resolvedId = (index >= 0 && index < sequence.length - 1) ? sequence[index + 1] : null;
+        }
+
+        if (!resolvedId) {
+            return null;
+        }
+        if (typeof resolvedId === 'string' && resolvedId.startsWith('@@ANNOID#')) {
+            resolvedId = resolvedId.replace('@@ANNOID#', '');
+        }
+
+        return annotations.find((item) => String(item.id) === String(resolvedId)) || null;
+    }
+
+    /**
+     * Preview another interaction via embed.php inside the standard Flexbook modal shell.
+     *
+     * Used from edit mode (Ctrl+click) so the target runs in player/preview mode without
+     * mutating the current interaction's authoring UI.
+     *
+     * @param {string|number} id Target id or navigation special.
+     * @return {Promise<boolean>}
+     */
+    async previewEmbedInteraction(id) {
+        const annotation = await this.resolveEmbedNavigationAnnotation(id);
+        if (!annotation) {
+            return false;
+        }
+
+        if (this._embedPreviewCleanup) {
+            this._embedPreviewCleanup();
+            this._embedPreviewCleanup = null;
+        }
+
+        $('#annotation-modal').remove();
+
+        const previewAnno = Object.assign({}, annotation, {
+            formattedtitle: annotation.formattedtitle || annotation.title || '',
+        });
+
+        const root = await this.createModal(previewAnno, false);
+        const $message = root.find('#message');
+        $message.removeClass('modal-lg').addClass('modal-xl hasiframe');
+
+        const embedUrl = new URL(`${M.cfg.wwwroot}/mod/flexbook/embed.php`);
+        embedUrl.searchParams.set('id', String(annotation.id));
+        if (state.config.darkmode || $('body').hasClass('darkmode')) {
+            embedUrl.searchParams.set('dm', '1');
+        }
+
+        const iframeId = `fb-embed-preview-${annotation.id}`;
+        const iframeTitle = previewAnno.formattedtitle;
+        const $content = $message.find('.modal-body').attr('id', 'content').addClass('p-0');
+        $content.html(
+            '<div class="preview-iframe w-100">'
+            + `<iframe id="${iframeId}" src="${embedUrl}" title="${iframeTitle.replace(/"/g, '&quot;')}" `
+            + 'allowfullscreen></iframe>'
+            + '</div>'
+        );
+
+        const embedParent = (await import('mod_flexbook/embed_parent')).default;
+        this._embedPreviewCleanup = embedParent.init(`#${iframeId}`, {minHeight: 480});
+
+        root.on(ModalEvents.hidden, () => {
+            if (this._embedPreviewCleanup) {
+                this._embedPreviewCleanup();
+                this._embedPreviewCleanup = null;
+            }
+        });
+
+        return true;
     }
 
     async launchModalInteraction(annotation, log) {
@@ -1319,74 +1410,6 @@ export default class Base {
      */
     isEditMode() {
         return this.options.isEditMode;
-    }
-
-    async renderNavItem(annotations, annotation, $annotationbar, options = {}) {
-        let self = this;
-        let locked = false;
-        if (await this.islocked(annotation, annotations) == true) {
-            locked = true;
-        }
-        if (typeof options.isStale === 'function' && options.isStale()) {
-            return locked;
-        }
-        annotation.locked = locked;
-        let classes = annotation.type + ' annotation ';
-        if (!annotation.show) {
-            classes += ' d-none ';
-        }
-        if (annotation.completed) {
-            classes += ' completed ';
-        }
-        if (!this.isClickable(annotation)) {
-            classes += ' no-pointer-events ';
-        }
-        if (annotation.hascompletion == 0) {
-            classes += ' no-completion ';
-        }
-        if (annotation.locked) {
-            classes += ' lock ';
-        }
-        if (!this.isVisible(annotation)) {
-            classes += ' d-none ';
-        }
-        let title = annotation.formattedtitle;
-        title = title.replace(/'/g, '&apos;')
-            .replace(/"/g, '&quot;')
-            .replace(/</g, '&lt;')
-            .replace(/>/g, '&gt;')
-            .replace(/&/g, '&amp;');
-        let logourl = null;
-        if ($('body').hasClass('kidtheme') && this.prop.component) {
-            logourl = M.util.image_url('cicon', this.prop.component);
-        }
-
-        let iconHtml = `<i class="${annotation.locked ? 'bi bi-lock' : this.prop.icon} iv-mr-2"></i>`;
-        if (logourl && !annotation.locked) {
-            iconHtml = `<img src="${logourl}" class="iv-mr-2" height="24" loading="lazy" ` +
-                       `onerror="this.remove(); this.nextElementSibling.classList.remove('d-none');">` +
-                       `<i class="${this.prop.icon} iv-mr-2 d-none"></i>`;
-        }
-
-        const $item = $(`<span class="annotation-item ${classes}" data-id="${annotation.id}" tabindex="0"></span>`);
-        const bs = self.isBS5 ? '-bs' : '';
-        $item.attr(`data${bs}-toggle`, 'tooltip');
-        $item.attr(`data${bs}-container`, '#wrapper');
-        $item.attr(`data${bs}-trigger`, 'hover');
-        $item.attr(`data${bs}-placement`, 'top');
-        $item.attr(`data${bs}-html`, 'true');
-        $item.attr('title', `<div class="d-flex align-items-center">${iconHtml}<span>${title}</span></div>`);
-
-        if (options.renderToken !== undefined) {
-            $item.attr('data-render-token', options.renderToken);
-        }
-
-        if (typeof options.isStale === 'function' && options.isStale()) {
-            return locked;
-        }
-
-        $annotationbar.append($item);
-        return locked;
     }
 
     /**

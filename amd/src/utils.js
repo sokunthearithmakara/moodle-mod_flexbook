@@ -22,6 +22,7 @@
  */
 import $ from 'jquery';
 import Fragment from 'core/fragment';
+import Templates from 'core/templates';
 
 /** @type {number} Moodle FORMAT_MOODLE – preserves line breaks in plain text. */
 export const FORMAT_MOODLE = 0;
@@ -39,10 +40,17 @@ export const FORMAT_HTML = 1;
  * @returns {Promise<string>}
  */
 export const formatContent = async (text, contextid = null, format = FORMAT_HTML, itemid = 0) => {
-    return Fragment.loadFragment('mod_flexbook', 'format_text', contextid || M.cfg.contextid, {
-        text: text,
-        format: format,
-        itemid: itemid,
+    return new Promise((resolve, reject) => {
+        Fragment.loadFragment('mod_flexbook', 'format_text', contextid || M.cfg.contextid, {
+            text: text,
+            format: format,
+            itemid: itemid,
+        }).then((html, js) => {
+            if (js) {
+                Templates.runTemplateJS(js);
+            }
+            resolve(html);
+        }).fail(reject);
     });
 };
 
@@ -77,4 +85,3 @@ export const getMoodleVersion = () => {
     }
     return window.M.version;
 };
-

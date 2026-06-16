@@ -379,7 +379,6 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 'darkmode',
                 'courseindex',
                 'controlbar',
-                'interactionbar',
                 'chaptertoggle',
                 'openchapterpanel',
             ];

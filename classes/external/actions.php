@@ -1013,8 +1013,6 @@ class actions extends external_api {
             throw new \moodle_exception('uploadfiletoolarge', 'mod_flexbook', '', display_size($maxbytes));
         }
 
-        self::validate_upload_mimetype($filename, $decodedcontent);
-
         $itemid = $itemid > 0 ? $itemid : \file_get_unused_draft_itemid();
 
         // Handle duplicate filenames in the same draft area.
@@ -1055,42 +1053,5 @@ class actions extends external_api {
      */
     public static function upload_file_returns() {
         return self::default_returns();
-    }
-
-    /**
-     * Validate the uploaded file MIME type where content sniffing can make a reliable decision.
-     *
-     * @param string $filename
-     * @param string $content
-     * @return void
-     */
-    protected static function validate_upload_mimetype(string $filename, string $content): void {
-        if (!class_exists('\finfo')) {
-            return;
-        }
-
-        $expected = mimeinfo('type', $filename);
-        if (empty($expected) || $expected === 'document/unknown') {
-            return;
-        }
-
-        $finfo = new \finfo(FILEINFO_MIME_TYPE);
-        $detected = $finfo->buffer($content);
-        if (empty($detected) || in_array($detected, ['application/octet-stream', 'text/plain'], true)) {
-            return;
-        }
-
-        $containerformats = [
-            'application/zip',
-            'application/x-zip',
-            'application/x-zip-compressed',
-        ];
-        if (in_array($detected, $containerformats, true)) {
-            return;
-        }
-
-        if ($detected !== $expected) {
-            throw new \moodle_exception('invaliduploadmimetype', 'mod_flexbook', '', s($detected));
-        }
     }
 }

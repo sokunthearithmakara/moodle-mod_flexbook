@@ -38,7 +38,6 @@ const $body = $('body');
 
 let $wrapper = $('#wrapper');
 let $videowrapper = $('#video-wrapper');
-let annotationBarRenderToken = 0;
 let pendingNavigation = null;
 let $startscreen = $('#start-screen');
 let uprogress = null;
@@ -49,7 +48,6 @@ let completionid; // Id of the completion record.
 let sequence; // Sequence of annotations.
 
 const $controlBar = $('#controller');
-const $annotationbar = $controlBar.find('.top-bar');
 const $loader = $videowrapper.find('#background-loading');
 
 /**
@@ -192,22 +190,23 @@ const init = async config => {
     });
 
     let isSaving = false;
-    const saveInteractionData = (reachend = false) => {
-        if (isSaving && !reachend) {
+    const saveInteractionData = (reachend = false, force = false) => {
+        if (isSaving && !reachend && !force) {
             return;
         }
         pauseInteractionTimer(); // Flush without resetting trackingAnnotationId.
         const lastviewed = state.currentanno ? state.currentanno.id : 0;
+        const details = state.interactionData || interactionData;
         const args = {
             contextid: M.cfg.contextid,
             completionid: state.config.completionid || 0,
-            details: JSON.stringify(interactionData),
+            details: JSON.stringify(details),
             lastviewed,
             reachend,
         };
 
-        if (reachend) {
-            Ajax.call([{
+        if (reachend || force) {
+            return Ajax.call([{
                 methodname: 'mod_flexbook_save_interaction_data',
                 args
             }])[0].then(response => {
@@ -215,7 +214,9 @@ const init = async config => {
                 if (data.overallcomplete) {
                     state.config.isCompleted = true;
                 }
-                dispatchEvent('flexbook:reached_end');
+                if (reachend) {
+                    dispatchEvent('flexbook:reached_end');
+                }
                 return data;
             }).catch(e => window.console.error(e));
         } else {
@@ -229,6 +230,10 @@ const init = async config => {
                 isSaving = false;
             }, 1000);
         }
+    };
+
+    state.saveInteractionData = ({reachend = false, force = false} = {}) => {
+        return saveInteractionData(reachend, force);
     };
 
     document.addEventListener('visibilitychange', () => {
@@ -476,57 +481,66 @@ const init = async config => {
         });
     };
 
-    const renderAnnotationItems = async annos => {
-        const renderToken = ++annotationBarRenderToken;
-        const isStale = () => renderToken !== annotationBarRenderToken;
+    /**
+     * Interactions that count toward the nav counter: visible, non-chapter, and passing per-type visibility rules.
+     *
+     * @param {Array} annos
+     * @returns {Array}
+     */
+    const getNavCounterAnnotations = (annos) => {
+        return getVisibleAnnotations(annos).filter(item => {
+            if (item.type === 'chapter') {
+                return false;
+            }
+            const renderer = ctRenderer[item.type];
+            if (!renderer || typeof renderer.isVisible !== 'function') {
+                return true;
+            }
+            return renderer.isVisible(item);
+        });
+    };
 
-        annotations = annos;
-        const visibleAnnos = getVisibleAnnotations(annos);
-
-        // Hide existing tooltips before emptying the bar.
-        $annotationbar.find(`[data${bsAffix}-toggle="tooltip"]`).tooltip('hide');
-
-        $annotationbar.empty();
-        if (visibleAnnos.length == 0) {
+    /**
+     * Update the interaction counter in the control bar.
+     *
+     * @param {Array} countableAnnos
+     */
+    const updateInteractionCounter = (countableAnnos) => {
+        const $counter = $controlBar.find('#currentanno');
+        if (!$counter.length) {
             return;
         }
 
-        // Instagram style: max 5 items, current in middle.
-        let displayAnnos = visibleAnnos;
-        if (visibleAnnos.length > 5) {
-            const currentIndex = state.currentanno
-                ? visibleAnnos.findIndex(x => x.id == state.currentanno.id)
-                : 0;
-            let start = Math.max(0, currentIndex - 2);
-            let end = Math.min(visibleAnnos.length - 1, start + 4);
-
-            if (end - start < 4) {
-                start = Math.max(0, end - 4);
+        const total = countableAnnos.length;
+        let current = 0;
+        if (state.currentanno) {
+            if (state.currentanno.id === 'endscreen') {
+                current = total;
+            } else {
+                const index = countableAnnos.findIndex(x => String(x.id) === String(state.currentanno.id));
+                current = index >= 0 ? index + 1 : 0;
             }
-            displayAnnos = visibleAnnos.slice(start, end + 1);
         }
 
-        if (state.currentanno && state.currentanno.id == 'endscreen') {
-            // Get the last 5.
-            displayAnnos = visibleAnnos.slice(-5);
+        if (total === 0 || current === 0) {
+            $counter.addClass('d-none');
+            return;
         }
 
-        // Make sure annotations are unique.
+        $counter.removeClass('d-none');
+        $controlBar.find('#thisanno').text(current);
+        $controlBar.find('#totalannos').text(total);
+    };
+
+    const renderAnnotationItems = async annos => {
+        annotations = annos;
+        const visibleAnnos = getVisibleAnnotations(annos);
+        const countableAnnos = getNavCounterAnnotations(annos);
+
         const uniqueAnnos = visibleAnnos.filter((x, i) => visibleAnnos.findIndex(y => y.id == x.id) == i);
-        const displayIds = new Set(displayAnnos.map(x => String(x.id)));
 
-        annotations = annotations.map(x => {
-            x.show = displayIds.has(String(x.id));
-            return x;
-        });
-
-        const navOptions = {isStale, renderToken};
-
-        // Resolve locked state for all visible items (chapter panel uses this).
+        // Resolve locked state for chapter panel.
         for (const item of uniqueAnnos) {
-            if (isStale()) {
-                return;
-            }
             try {
                 item.locked = await ctRenderer[item.type].islocked(item, uniqueAnnos);
             } catch (error) {
@@ -534,40 +548,7 @@ const init = async config => {
             }
         }
 
-        // Render only the windowed indicators (max 5), sequentially to avoid duplicate appends.
-        for (const item of displayAnnos) {
-            if (isStale()) {
-                return;
-            }
-            try {
-                await ctRenderer[item.type].renderNavItem(uniqueAnnos, item, $annotationbar, navOptions);
-            } catch (error) {
-                item.locked = false;
-            }
-            if (isStale()) {
-                $annotationbar.find(`.annotation-item[data-render-token="${renderToken}"]`).remove();
-                return;
-            }
-        }
-
-        if (isStale()) {
-            return;
-        }
-
-        // Activate tooltips for the newly rendered items.
-        $annotationbar.find(`[data${bsAffix}-toggle="tooltip"]`).tooltip({
-            container: '#wrapper',
-            boundary: 'window'
-        });
-
         state.sequence = uniqueAnnos.map(x => x.id.toString());
-
-        // Select the active one.
-        if (state.currentanno) {
-            $annotationbar
-                .find(`.annotation-item[data-id='${state.currentanno.id}']`)
-                .addClass('active');
-        }
 
         // Update xpcounter in the control bar.
         let totalXp = annotations.reduce((sum, x) => sum + parseFloat(x.xp || 0), 0);
@@ -586,13 +567,7 @@ const init = async config => {
             $controlBar.find('#xpcounter').show();
         }
 
-        // Update the page counter.
-        if (state.currentanno && state.currentanno.id != 'endscreen') {
-            $controlBar
-                .find('#thisanno')
-                .text(state.currentanno.order);
-        }
-        $controlBar.find('#totalannos').text(annotations.length);
+        updateInteractionCounter(countableAnnos);
 
         dispatchEvent('annotationsrendered', {annotations});
     };
@@ -634,9 +609,10 @@ const init = async config => {
                 }
             );
             if (incomplete.id != (state.currentanno ? state.currentanno.id : null)) {
-                $annotationbar
-                    .find(`.annotation-item[data-id='${incomplete.id}']`)
-                    .trigger('click');
+                // Defer until the current navigation finishes (isTransitioning is still true).
+                setTimeout(() => {
+                    state.navigateToAnnotation(incomplete.id);
+                }, 0);
             }
             return false;
         }
@@ -877,12 +853,12 @@ const init = async config => {
                 }
 
                 const previousAnnotation = state.currentanno;
-                state.currentanno = {id: 'endscreen', order: annotations.length + 1};
+                const endscreenAnno = {id: 'endscreen', order: annotations.length + 1};
+                await animateOutCurrent(endscreenAnno, force, previousAnnotation);
+                state.currentanno = endscreenAnno;
                 await renderAnnotationItems(annotations);
-                await animateOutCurrent(state.currentanno, force, previousAnnotation);
                 $videowrapper.addClass('bg-white');
 
-                $controlBar.find('#thisanno').text(annotations.length);
                 dispatchEvent('fb:ended');
                 return;
             }
@@ -913,12 +889,10 @@ const init = async config => {
             }
 
             const previousAnnotation = state.currentanno;
+            await animateOutCurrent(annotation, force, previousAnnotation);
             state.currentanno = annotation;
             await renderAnnotationItems(annotations);
-            await animateOutCurrent(annotation, force, previousAnnotation);
             $videowrapper.addClass('bg-white');
-
-            $controlBar.find('#thisanno').text(annotation.order);
 
             dispatchEvent('interactionrun', {annotation: annotation});
         } finally {
@@ -937,11 +911,6 @@ const init = async config => {
 
     state.navigateToInteraction = navigateToInteraction;
     state.navigateToAnnotation = navigateToAnnotation;
-
-    $annotationbar.on('click', '.annotation-item', async function() {
-        const id = $(this).data('id');
-        await navigateToAnnotation(id);
-    });
 
     const nextAnnotation = async() => {
         state.direction = 'next';

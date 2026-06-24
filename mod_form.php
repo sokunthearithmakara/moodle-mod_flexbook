@@ -109,27 +109,8 @@ class mod_flexbook_mod_form extends moodleform_mod {
         $mform->setType('endscreentext', PARAM_RAW);
 
         // Primary content type – used to determine the activity icon.
-        $allplugins = explode(',', get_config('mod_flexbook', 'enablecontenttypes'));
-        $typeoptions = [];
-        foreach ($allplugins as $pluginname) {
-            $class = $pluginname . '\\main';
-            if (!class_exists($class)) {
-                continue;
-            }
-            $instance = new $class();
-            if (!method_exists($instance, 'get_property')) {
-                continue;
-            }
-            $prop = $instance->get_property();
-            if (empty($prop['flexbook'])) {
-                continue;
-            }
-            $typeoptions[$prop['name']] = $prop['title'];
-        }
-
-        if (count($typeoptions) >= 1) {
-            // Prepend a blank 'default' option — when selected the standard Flexbook icon is used.
-            $typeoptions = ['' => get_string('defaultflexbookicon', 'mod_flexbook')] + $typeoptions;
+        $typeoptions = flexbook_get_primary_content_type_options();
+        if (count($typeoptions) > 1) {
             $mform->addElement('select', 'type', get_string('primarycontenttype', 'mod_flexbook'), $typeoptions);
             $mform->setType('type', PARAM_TEXT);
             $mform->setDefault('type', '');
@@ -316,6 +297,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 'beforecompletionbehavior',
                 'aftercompletionbehavior',
                 'aspectratio',
+                'limitedwidth',
                 'kidtheme',
                 'openchapterpanel',
                 'character',
@@ -325,6 +307,10 @@ class mod_flexbook_mod_form extends moodleform_mod {
             }
             $defaultdisplayoptions = json_decode($defaultvalues['displayoptions'], true);
             foreach ($displayoptions as $option) {
+                if ($option === 'limitedwidth' && !array_key_exists('limitedwidth', $defaultdisplayoptions)) {
+                    $defaultvalues['limitedwidth'] = 1;
+                    continue;
+                }
                 $defaultvalues[$option] = !empty($defaultdisplayoptions[$option]) ? $defaultdisplayoptions[$option] : 0;
                 if ($option == 'theme' && empty($defaultvalues[$option])) {
                     $defaultvalues[$option] = '';
@@ -372,27 +358,89 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 }
             }
         } else {
-            // New instance, set defaults from site settings.
-            $defaultappearance = get_config('mod_flexbook', 'defaultappearance');
-            $defaultappearance = !empty($defaultappearance) ? explode(',', $defaultappearance) : [
-                'distractionfreemode',
-                'darkmode',
-                'courseindex',
-                'controlbar',
-                'chaptertoggle',
-                'openchapterpanel',
-            ];
+            $this->apply_course_settings($defaultvalues);
+        }
+    }
 
-            foreach ($defaultappearance as $option) {
-                $defaultvalues[$option] = 1;
+    /**
+     * Apply site defaults, optionally overlaid with course-level Flexbook settings.
+     *
+     * @param array $defaultvalues The form default values (modified in place).
+     * @return void
+     */
+    protected function apply_course_settings(&$defaultvalues) {
+        global $DB;
+
+        $sitedefaults = flexbook_get_site_default_form_values();
+        $skipkeys = [
+            'courseid', 'contextid', 'id', 'grade', 'gradepass', 'gradecat',
+            'completionview', 'completionusegrade',
+        ];
+        foreach ($sitedefaults as $key => $value) {
+            if (in_array($key, $skipkeys, true)) {
+                continue;
             }
+            $defaultvalues[$key] = $value;
+        }
+        flexbook_apply_grade_completion_form_defaults($defaultvalues, $sitedefaults);
 
-            $defaultbehavior = flexbook_default_behavior();
-            $defaultvalues['beforecompletionbehavior'] = $defaultbehavior;
-            $defaultvalues['aftercompletionbehavior'] = $defaultbehavior;
+        if (get_config('mod_flexbook', 'enablecoursesettings')) {
+            $courseid = $this->get_course()->id;
+            $cache = \cache::make('mod_flexbook', 'fb_settings');
+            $settings = $cache->get($courseid);
+            if (!$settings) {
+                $settings = $DB->get_record('flexbook_settings', ['courseid' => $courseid]);
+                if ($settings) {
+                    $cache->set($courseid, $settings);
+                }
+            }
+            if ($settings) {
+                $displayoptions = json_decode($settings->displayoptions ?? '', true) ?: [];
+                $scalars = [
+                    'theme', 'aspectratio', 'distractionfreemode', 'darkmode', 'kidtheme',
+                    'courseindex', 'openchapterpanel', 'limitedwidth', 'character', 'showdescriptiononheader', 'type',
+                ];
+                foreach ($scalars as $option) {
+                    if (array_key_exists($option, $displayoptions)) {
+                        $defaultvalues[$option] = $displayoptions[$option];
+                    }
+                }
+                foreach (['beforecompletion', 'aftercompletion', 'beforecompletionbehavior', 'aftercompletionbehavior'] as $group) {
+                    if (isset($displayoptions[$group]) && is_array($displayoptions[$group])) {
+                        $defaultvalues[$group] = $displayoptions[$group];
+                    }
+                }
 
-            $defaultvalues['theme'] = get_config('mod_flexbook', 'defaulttheme') ?? '';
-            $defaultvalues['aspectratio'] = get_config('mod_flexbook', 'defaultaspectratio') ?? '';
+                $defaultvalues['displayasstartscreen'] = $settings->displayasstartscreen;
+                if (!empty($settings->completionpercentage)) {
+                    $defaultvalues['completionpercentage'] = $settings->completionpercentage;
+                    $defaultvalues['completionpercentageenabled'] = 1;
+                }
+                $extendedcompletion = json_decode($settings->extendedcompletion ?? '', true);
+                if (!empty($extendedcompletion['reachend'])) {
+                    $defaultvalues['reachend'] = 1;
+                }
+                if (!empty($settings->endscreentext)) {
+                    $defaultvalues['endscreentext'] = [
+                        'text' => $settings->endscreentext,
+                        'format' => FORMAT_HTML,
+                        'itemid' => 0,
+                    ];
+                }
+                if (array_key_exists('type', $displayoptions)) {
+                    $defaultvalues['type'] = $displayoptions['type'];
+                }
+                flexbook_apply_grade_completion_form_defaults($defaultvalues, $displayoptions);
+            }
+        }
+
+        if (
+            !empty($defaultvalues['completionview'])
+            || !empty($defaultvalues['completionusegrade'])
+            || !empty($defaultvalues['reachend'])
+            || !empty($defaultvalues['completionpercentageenabled'])
+        ) {
+            $defaultvalues['completion'] = COMPLETION_TRACKING_AUTOMATIC;
         }
     }
 

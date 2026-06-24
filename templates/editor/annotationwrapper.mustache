@@ -24,14 +24,17 @@
     }
 }}
 
-<div id="annotationwrapper" class="bg-white iv-scrollbar-0">
-    <table class="table table-sm w-100 table-hover small table-borderless">
-        <tbody id="annotation-list" class="overflow-hidden position-relative">
-            <tr>
-                <td>
-                    <div class="loader w-100 mt-6"></div>
-                </td>
-            </tr>
-        </tbody>
-    </table>
+<div id="annotationwrapper" class="bg-white iv-scrollbar-0 d-flex flex-column h-100 min-h-0">
+    <div id="annotation-list-scroll" class="flex-grow-1 overflow-auto min-h-0">
+        <table class="table table-sm w-100 table-hover small table-borderless mb-0">
+            <tbody id="annotation-list" class="overflow-hidden position-relative">
+                <tr>
+                    <td>
+                        <div class="loader w-100 mt-6"></div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {{> mod_flexbook/editor/annotationlistfooter }}
 </div>

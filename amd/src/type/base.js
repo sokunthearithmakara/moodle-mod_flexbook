@@ -33,6 +33,8 @@ import Ajax from 'core/ajax';
 import Templates from 'core/templates';
 import state from '../state';
 import {safeParse, getMoodleVersion, formatContent as formatFlexbookContent} from '../utils';
+import {patchReportViewXp} from 'mod_interactivevideo/report_view';
+import {isGlobalInteraction} from '../interaction-utils';
 import {shouldShowInstructions} from '../instructions';
 import {notifyFilterContentUpdated as notifyFilter} from 'core_filters/events';
 
@@ -281,6 +283,11 @@ export default class Base {
             listItem.find('.btn.copy').remove();
             listItem.find('.title').addClass('text-dark no-pointer').removeClass('text-primary text-secondary cursor-pointer');
         }
+        if (isGlobalInteraction(item)) {
+            // Global interactions are pinned to the top and cannot be reordered.
+            listItem.addClass('global-interaction');
+            listItem.find('.handle').remove();
+        }
         listItem.appendTo('#annotation-list');
         return listItem;
     }
@@ -298,7 +305,9 @@ export default class Base {
 
         const data = {
             id: 0,
-            timestamp: 0,
+            // Global (singleton) types store -1 so they sort/pin to the top and
+            // are excluded from the learner navigation sequence.
+            timestamp: self.prop.allowmultiple ? 0 : -1,
             title: self.prop.title,
             contextid: M.cfg.contextid,
             type: self.prop.name,
@@ -788,8 +797,13 @@ export default class Base {
             + '</div>'
         );
 
-        const embedParent = (await import('mod_flexbook/embed_parent')).default;
-        this._embedPreviewCleanup = embedParent.init(`#${iframeId}`, {minHeight: 480});
+        const embedModule = await import('mod_flexbook/embed_parent');
+        const initEmbedParent = embedModule.init || embedModule.default?.init;
+        if (typeof initEmbedParent !== 'function') {
+            window.console.warn('mod_flexbook: embed_parent init unavailable');
+            return false;
+        }
+        this._embedPreviewCleanup = initEmbedParent(`#${iframeId}`, {minHeight: 480});
 
         root.on(ModalEvents.hidden, () => {
             if (this._embedPreviewCleanup) {
@@ -802,6 +816,11 @@ export default class Base {
     }
 
     async launchModalInteraction(annotation, log) {
+        const targetRenderer = annotation?.type ? state.ctRenderer?.[annotation.type] : null;
+        if (targetRenderer && targetRenderer !== this && typeof targetRenderer.launchModalInteraction === 'function') {
+            return targetRenderer.launchModalInteraction(annotation, log);
+        }
+
         let self = this;
 
         // 1. Backup background state
@@ -1412,6 +1431,74 @@ export default class Base {
         return this.options.isEditMode;
     }
 
+    async renderNavItem(annotations, annotation, $annotationbar, options = {}) {
+        let self = this;
+        let locked = false;
+        if (await this.islocked(annotation, annotations) == true) {
+            locked = true;
+        }
+        if (typeof options.isStale === 'function' && options.isStale()) {
+            return locked;
+        }
+        annotation.locked = locked;
+        let classes = annotation.type + ' annotation ';
+        if (!annotation.show) {
+            classes += ' d-none ';
+        }
+        if (annotation.completed) {
+            classes += ' completed ';
+        }
+        if (!this.isClickable(annotation)) {
+            classes += ' no-pointer-events ';
+        }
+        if (annotation.hascompletion == 0) {
+            classes += ' no-completion ';
+        }
+        if (annotation.locked) {
+            classes += ' lock ';
+        }
+        if (!this.isVisible(annotation)) {
+            classes += ' d-none ';
+        }
+        let title = annotation.formattedtitle;
+        title = title.replace(/'/g, '&apos;')
+            .replace(/"/g, '&quot;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/&/g, '&amp;');
+        let logourl = null;
+        if ($('body').hasClass('kidtheme') && this.prop.component) {
+            logourl = M.util.image_url('cicon', this.prop.component);
+        }
+
+        let iconHtml = `<i class="${annotation.locked ? 'bi bi-lock' : this.prop.icon} iv-mr-2"></i>`;
+        if (logourl && !annotation.locked) {
+            iconHtml = `<img src="${logourl}" class="iv-mr-2" height="24" loading="lazy" ` +
+                       `onerror="this.remove(); this.nextElementSibling.classList.remove('d-none');">` +
+                       `<i class="${this.prop.icon} iv-mr-2 d-none"></i>`;
+        }
+
+        const $item = $(`<span class="annotation-item ${classes}" data-id="${annotation.id}" tabindex="0"></span>`);
+        const bs = self.isBS5 ? '-bs' : '';
+        $item.attr(`data${bs}-toggle`, 'tooltip');
+        $item.attr(`data${bs}-container`, '#wrapper');
+        $item.attr(`data${bs}-trigger`, 'hover');
+        $item.attr(`data${bs}-placement`, 'top');
+        $item.attr(`data${bs}-html`, 'true');
+        $item.attr('title', `<div class="d-flex align-items-center">${iconHtml}<span>${title}</span></div>`);
+
+        if (options.renderToken !== undefined) {
+            $item.attr('data-render-token', options.renderToken);
+        }
+
+        if (typeof options.isStale === 'function' && options.isStale()) {
+            return locked;
+        }
+
+        $annotationbar.append($item);
+        return locked;
+    }
+
     /**
      * Check if the page is in preview mode
      * @returns {boolean}
@@ -1491,9 +1578,14 @@ export default class Base {
                        `<i class="fs-unset ${prop.icon || this.prop.icon} iv-mr-2 d-none"></i>`;
         }
 
+        let earned = Number(annotation.earned || 0);
+        if (earned % 1 !== 0) {
+            earned = Math.round(earned * 100) / 100;
+        }
+        const xpLabel = `${earned}/${Number(annotation.xp)}`;
         const xpHtml = annotation.xp > 0
             ? `<span class="text-nowrap xp-pill">
-                     ${annotation.xp}<i class="bi bi-star iv-ml-1 fs-unset"></i></span>`
+                     ${xpLabel}<i class="bi bi-star iv-ml-1 fs-unset"></i></span>`
             : '';
         let html = `<li class="anno d-flex align-items-center justify-content-between small
                      p-2 ${annotation.completed ? "completed" : ""} ${classes}" data-id="${annotation.id}">
@@ -1505,6 +1597,26 @@ export default class Base {
                      <span class="flex-grow-1 text-truncate">${annotation.formattedtitle}</span>
                      ${annotation.hascompletion == 0 ? '' : xpHtml}</li>`;
         return html;
+    }
+
+    /**
+     * Patch completion detail for an XP override (reportView + xp + percent).
+     *
+     * @param {Object|null} detail Completion detail object.
+     * @param {number} newXp Overridden earned XP.
+     * @param {number} maxXp Interaction max XP.
+     * @returns {Object|null}
+     */
+    static patchReportViewForXp(detail, newXp, maxXp = 0) {
+        if (!detail) {
+            return detail;
+        }
+        const updated = {...detail, xp: newXp};
+        if (updated.reportView) {
+            updated.reportView = patchReportViewXp(updated.reportView, newXp);
+        }
+        updated.percent = maxXp > 0 ? newXp / maxXp : 0;
+        return updated;
     }
 
     renderReportView(annotation, details, data) {

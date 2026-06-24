@@ -122,6 +122,7 @@ function flexbook_display_options($moduleinstance) {
         'kidtheme' => in_array('kidtheme', $defaultappearance) ? 1 : 0,
         'openchapterpanel' => in_array('openchapterpanel', $defaultappearance) ? 1 : 0,
         'character' => 'none',
+        'limitedwidth' => (empty($defaultappearanceraw) || in_array('limitedwidth', $defaultappearance)) ? 1 : 0,
     ];
 
     foreach ($fields as $field => $default) {
@@ -458,6 +459,28 @@ function flexbook_extend_settings_navigation($settingsnav, $interactivevideonode
             new pix_icon('i/report', '')
         );
     }
+}
+
+/**
+ * Add a "Manage Flexbook" link to the course navigation for users who can manage Flexbooks.
+ *
+ * @param \navigation_node $navigation The navigation node to extend.
+ * @param \stdClass $course The course object.
+ * @param \context $context The context of the course.
+ */
+function flexbook_extend_navigation_course(\navigation_node $navigation, \stdClass $course, \context $context) {
+    if (!has_capability('mod/flexbook:manage', $context)) {
+        return;
+    }
+    $url = new moodle_url('/mod/flexbook/manage.php', ['courseid' => $course->id]);
+    $navigation->add(
+        get_string('managetitle', 'mod_flexbook'),
+        $url,
+        navigation_node::TYPE_SETTING,
+        null,
+        null,
+        new pix_icon('i/report', '')
+    );
 }
 
 /**
@@ -1125,7 +1148,18 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
             [0, 1]
         );
 
+        $group[] = $mform->createElement(
+            'advcheckbox',
+            'limitedwidth',
+            '',
+            get_string('limitedwidth', 'mod_flexbook'),
+            ['group' => 1],
+            [0, 1]
+        );
+
         $mform->addGroup($group, 'appearancegroup', '', '', false);
+        $mform->setDefault('limitedwidth', 1);
+        $mform->hideIf('limitedwidth', 'aspectratio', 'neq', '');
 
         $characters = [
             'none' => get_string('none'),
@@ -1335,6 +1369,111 @@ function flexbook_default_behavior() {
 }
 
 /**
+ * Options for the primary content type selector (activity icon).
+ *
+ * @return array Option value => label.
+ */
+function flexbook_get_primary_content_type_options() {
+    $allplugins = explode(',', get_config('mod_flexbook', 'enablecontenttypes'));
+    $typeoptions = [];
+    foreach ($allplugins as $pluginname) {
+        $class = $pluginname . '\\main';
+        if (!class_exists($class)) {
+            continue;
+        }
+        $instance = new $class();
+        if (!method_exists($instance, 'get_property')) {
+            continue;
+        }
+        $prop = $instance->get_property();
+        if (empty($prop['flexbook'])) {
+            continue;
+        }
+        $typeoptions[$prop['name']] = $prop['title'];
+    }
+
+    if (count($typeoptions) >= 1) {
+        return ['' => get_string('defaultflexbookicon', 'mod_flexbook')] + $typeoptions;
+    }
+
+    return ['' => get_string('defaultflexbookicon', 'mod_flexbook')];
+}
+
+/**
+ * Build form default values from site-level Flexbook admin settings.
+ *
+ * Used by the course settings form and activity mod_form when no course overrides exist.
+ *
+ * @param int $courseid The course ID (optional).
+ * @param int $contextid The course context ID (optional).
+ * @return array Form field values keyed by element name.
+ */
+function flexbook_get_site_default_form_values($courseid = 0, $contextid = 0) {
+    global $CFG;
+    $values = flexbook_display_options(new \stdClass());
+    $values['courseid'] = $courseid;
+    $values['contextid'] = $contextid;
+    $values['id'] = 0;
+    $values['displayasstartscreen'] = 0;
+    $values['completionpercentage'] = 0;
+    $values['reachend'] = 0;
+    $values['type'] = '';
+    $values['grade'] = $CFG->gradepointdefault ?? 100;
+    $values['gradepass'] = '';
+    $values['gradecat'] = 0;
+    $values['completionview'] = 0;
+    $values['completionusegrade'] = 0;
+    $values['endscreentext'] = [
+        'text' => '',
+        'format' => FORMAT_HTML,
+        'itemid' => file_get_submitted_draft_itemid('endscreentext'),
+    ];
+    return $values;
+}
+
+/**
+ * Apply grade and completion defaults to a Flexbook activity mod_form data array.
+ *
+ * @param array $defaultvalues Form default values (modified in place).
+ * @param array $options Grade/completion options (typically from displayoptions JSON).
+ * @return void
+ */
+function flexbook_apply_grade_completion_form_defaults(array &$defaultvalues, array $options) {
+    global $CFG;
+    require_once($CFG->libdir . '/gradelib.php');
+
+    $gradefieldname = \core_grades\component_gradeitems::get_field_name_for_itemnumber('mod_flexbook', 0, 'grade');
+    $gradecatfieldname = \core_grades\component_gradeitems::get_field_name_for_itemnumber('mod_flexbook', 0, 'gradecat');
+    $gradepassfieldname = \core_grades\component_gradeitems::get_field_name_for_itemnumber('mod_flexbook', 0, 'gradepass');
+
+    if (array_key_exists('grade', $options) && $options['grade'] !== '' && $options['grade'] !== null) {
+        $grade = $options['grade'];
+        if (is_array($grade)) {
+            // Modgrade expects a scalar default on the group element, not a subelement array.
+            if (isset($grade['modgrade_point']) && $grade['modgrade_point'] !== '') {
+                $defaultvalues[$gradefieldname] = $grade['modgrade_point'];
+            }
+        } else {
+            $defaultvalues[$gradefieldname] = $grade;
+        }
+    }
+    if (array_key_exists('gradepass', $options) && $options['gradepass'] !== '' && $options['gradepass'] !== null) {
+        $defaultvalues[$gradepassfieldname] = $options['gradepass'];
+    }
+    if (array_key_exists('gradecat', $options)) {
+        $defaultvalues[$gradecatfieldname] = $options['gradecat'];
+    }
+    if (!empty($options['completionview'])) {
+        $defaultvalues['completionview'] = 1;
+        $defaultvalues['completion'] = COMPLETION_TRACKING_AUTOMATIC;
+    }
+    if (!empty($options['completionusegrade'])) {
+        $defaultvalues['completionusegrade'] = 1;
+        $defaultvalues['completion'] = COMPLETION_TRACKING_AUTOMATIC;
+    }
+}
+
+/**
  * Format text fragment.
  *
  * @param array $args
@@ -1377,9 +1516,6 @@ function flexbook_build_embed_options(?int $dmode, ?int $kid): array {
 function flexbook_apply_embed_page_display(array $embedoptions, ?string $forcetheme = null): void {
     global $PAGE;
 
-    if (!empty($embedoptions['darkmode'])) {
-        $PAGE->add_body_class('darkmode bg-dark');
-    }
     if (!empty($embedoptions['kidtheme'])) {
         $PAGE->add_body_class('kidtheme');
     }

@@ -96,6 +96,13 @@ $gsettings->add(new admin_setting_configmulticheckbox(
     $contenttypes,
 ));
 
+$gsettings->add(new admin_setting_configcheckbox(
+    'mod_flexbook/enablecoursesettings',
+    get_string('enablecoursesettings', 'mod_interactivevideo'),
+    get_string('enablecoursesettings_desc', 'mod_interactivevideo'),
+    0,
+));
+
 $ADMIN->add('modfbfolder', $gsettings);
 
 // Default appearance settings page.
@@ -143,6 +150,7 @@ $asettings->add(new admin_setting_configmulticheckbox(
         'interactioncounter' => 1,
         'interactionnavigation' => 1,
         'kidtheme' => 0,
+        'limitedwidth' => 1,
     ],
     [
         'distractionfreemode' => get_string('distractionfreemode', 'mod_flexbook'),
@@ -158,6 +166,7 @@ $asettings->add(new admin_setting_configmulticheckbox(
         'interactioncounter' => get_string('interactioncounter', 'mod_flexbook'),
         'interactionnavigation' => get_string('interactionnavigation', 'mod_flexbook'),
         'kidtheme' => get_string('kidtheme', 'mod_flexbook'),
+        'limitedwidth' => get_string('limitedwidth', 'mod_flexbook'),
     ],
 ));
 

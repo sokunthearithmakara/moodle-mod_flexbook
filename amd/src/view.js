@@ -30,6 +30,7 @@ import Notification from 'core/notification';
 import 'mod_interactivevideo/libraries/jquery-ui';
 import state from './state';
 import {safeParse} from './utils';
+import {isGlobalInteraction, buildNavigationSequence} from './interaction-utils';
 import {init as initInstructions} from './instructions';
 
 const isBS5 = $('body').hasClass('bs-5');
@@ -270,10 +271,11 @@ const init = async config => {
     const resizeVideoWrapper = () => {
         const aspectRatio = doptions.aspectratio;
         if (!aspectRatio || aspectRatio === '') {
+            const limited = doptions.limitedwidth != 0;
             $videowrapper.css({
                 width: '',
                 height: '',
-                maxWidth: '',
+                maxWidth: limited ? '' : 'unset',
                 maxHeight: '',
                 margin: '',
                 marginTop: doptions.kidtheme == 1 ? 5 : '',
@@ -353,8 +355,11 @@ const init = async config => {
     annotations = annotations.filter(x => x); // Remove null values.
     const completedItems = safeParse(uprogress.completeditems, []);
     const completiondetails = safeParse(uprogress.completiondetails, {});
-    annotations = annotations.map((x, i) => {
-        x.order = i + 1;
+    // Order counts sequential items only; global interactions are out of the
+    // navigation sequence and get order 0.
+    let sequentialOrder = 0;
+    annotations = annotations.map((x) => {
+        x.order = isGlobalInteraction(x) ? 0 : ++sequentialOrder;
         x.prop = JSON.stringify(contentTypes.find(y => y.name === x.type));
         x.completed = completedItems.includes(x.id);
         x.earned = 0;
@@ -384,8 +389,8 @@ const init = async config => {
 
     state.annotations = annotations;
 
-    // Update the sequence.
-    state.sequence = annotations.map(x => x.id.toString());
+    // Update the sequence (sequential items only; globals are excluded from nav).
+    state.sequence = buildNavigationSequence(annotations);
 
     // Filter content types that are being used.
     contentTypes = contentTypes.filter(x =>
@@ -489,7 +494,7 @@ const init = async config => {
      */
     const getNavCounterAnnotations = (annos) => {
         return getVisibleAnnotations(annos).filter(item => {
-            if (item.type === 'chapter') {
+            if (item.type === 'chapter' || isGlobalInteraction(item)) {
                 return false;
             }
             const renderer = ctRenderer[item.type];
@@ -548,11 +553,13 @@ const init = async config => {
             }
         }
 
-        state.sequence = uniqueAnnos.map(x => x.id.toString());
+        state.sequence = buildNavigationSequence(uniqueAnnos);
 
-        // Update xpcounter in the control bar.
-        let totalXp = annotations.reduce((sum, x) => sum + parseFloat(x.xp || 0), 0);
-        let earnedXp = annotations.reduce((sum, x) => sum + parseFloat(x.earned || 0), 0);
+        // Update xpcounter in the control bar. Count gradable items only (incl.
+        // global interactions with completion), matching toggleCompletion().
+        const gradable = annotations.filter(x => x.hascompletion == 1);
+        let totalXp = gradable.reduce((sum, x) => sum + parseFloat(x.xp || 0), 0);
+        let earnedXp = gradable.reduce((sum, x) => sum + parseFloat(x.earned || 0), 0);
         if (totalXp % 1 !== 0) {
             totalXp = Math.round(totalXp * 100) / 100;
         }
@@ -592,9 +599,11 @@ const init = async config => {
         }
 
         // Check if there are incomplete annotations with "preventskip" enabled before this annotation.
+        // Global interactions are out of the sequence, so they never gate navigation.
         const globalPreventskipping = doptions.preventskipping == 1;
         const incomplete = annotations.find(
             x =>
+                !isGlobalInteraction(x) &&
                 x.hascompletion == 1 &&
                 x.completed == false &&
                 (globalPreventskipping || safeParse(x.advanced, {}).preventskip == 1) &&
@@ -1050,16 +1059,18 @@ const init = async config => {
 
         const url = new URL(window.location);
         const aid = url.searchParams.get('aid');
-        let annotation = annotations.find(x => x.order == 1) || annotations[0];
+        // Globals are out of the sequence and never the start/resume target.
+        let annotation = annotations.find(x => x.order == 1)
+            || annotations.find(x => !isGlobalInteraction(x)) || annotations[0];
         if (aid && aid != 'endscreen' && aid != '0') {
             const found = annotations.find(x => x.id == aid);
-            if (found) {
+            if (found && !isGlobalInteraction(found)) {
                 annotation = found;
             }
         } else if (uprogress.lastviewed && uprogress.lastviewed != 'endscreen' && uprogress.lastviewed != '0') {
             // Resume from last viewed annotation if no aid in URL.
             const found = annotations.find(x => x.id == uprogress.lastviewed);
-            if (found) {
+            if (found && !isGlobalInteraction(found)) {
                 annotation = found;
             }
         }
@@ -1074,7 +1085,8 @@ const init = async config => {
     $(document).on('click', '#restart', async function(e) {
         e.preventDefault();
         dispatchEvent('fb:restarted');
-        const first = annotations.find(x => x.order == 1) || annotations[0];
+        const first = annotations.find(x => x.order == 1)
+            || annotations.find(x => !isGlobalInteraction(x)) || annotations[0];
         await navigateToAnnotation(first.id);
     });
 

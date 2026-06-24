@@ -29,7 +29,7 @@
     <div class="d-flex align-items-center bg-dark text-white iv-rounded-pill shadow-lg py-2 px-3">
 
         <!-- Selection State -->
-        <div class="d-flex align-items-center iv-px-3 iv-border-right iv-mr-2" style="border-color: rgba(255,255,255,0.1) !important;">
+        <div id="bulk-selection-state" class="d-flex align-items-center iv-px-3 iv-border-right iv-mr-2" style="border-color: rgba(255,255,255,0.1) !important;">
             <div class="bg-info text-dark d-flex align-items-center justify-content-center iv-rounded-circle iv-mr-2 shadow-sm"
                  style="width: 24px; height: 24px;">
                 <i class="bi bi-check2"></i>
@@ -39,6 +39,22 @@
 
         <!-- Action Group -->
         <div class="d-flex align-items-center iv-px-2" style="gap: 8px;">
+            <button id="bulk-copy-btn"
+                    class="btn btn-light btn-sm iv-rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                    type="button"
+                    title="{{#str}}copy, mod_flexbook{{/str}}"
+                    data-toggle="tooltip"
+                    style="width: 36px; height: 36px; padding: 0;">
+                <i class="bi bi-clipboard"></i>
+            </button>
+            <button id="bulk-download-btn"
+                    class="btn btn-light btn-sm iv-rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                    type="button"
+                    title="{{#str}}export, mod_flexbook{{/str}}"
+                    data-toggle="tooltip"
+                    style="width: 36px; height: 36px; padding: 0;">
+                <i class="bi bi-download"></i>
+            </button>
             <button id="bulk-clone-btn"
                     class="btn btn-primary btn-sm iv-rounded-circle d-flex align-items-center justify-content-center shadow-sm"
                     type="button"
@@ -46,6 +62,14 @@
                     data-toggle="tooltip"
                     style="width: 36px; height: 36px; padding: 0;">
                 <i class="bi bi-copy"></i>
+            </button>
+            <button id="bulk-setdefault-btn"
+                    class="btn btn-light btn-sm iv-rounded-circle d-flex align-items-center justify-content-center shadow-sm"
+                    type="button"
+                    title="{{#str}}setasdefault, mod_flexbook{{/str}}"
+                    data-toggle="tooltip"
+                    style="width: 36px; height: 36px; padding: 0;">
+                <i class="bi bi-ui-checks"></i>
             </button>
             <button id="bulk-delete-btn"
                     class="btn btn-danger btn-sm iv-rounded-circle d-flex align-items-center justify-content-center shadow-sm"

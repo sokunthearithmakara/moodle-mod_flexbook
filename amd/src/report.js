@@ -39,6 +39,7 @@ import {get_string as getString} from 'core/str';
 import state from 'mod_flexbook/state';
 import {getMoodleVersion, safeParse} from 'mod_flexbook/utils';
 import ReportBase from 'mod_interactivevideo/report_base';
+import Base from 'mod_flexbook/type/base';
 
 /**
  * Resolve the interaction type icon class from annotation prop JSON.
@@ -376,6 +377,12 @@ const init = async(config) => {
                                   title="${M.util.get_string('delete', 'mod_interactivevideo')}"></i>`;
                         }
                     }
+                    if (details.xpOverridden && res.includes('completion-detail')) {
+                        res = res.replace(
+                            'class="completion-detail',
+                            'class="completion-detail completion-detail--xp-overridden'
+                        );
+                    }
                     return res;
                 } else {
                     return '-';
@@ -681,25 +688,75 @@ const init = async(config) => {
         modal.show();
     });
 
-    $(document).on('click', 'td .completion-detail', function() {
-        let id = $(this).closest('td').data('item');
-        let userid = $(this).closest('tr').attr('id');
-        let type = $(this).closest('td').data('type');
+    const openCompletion = (id, userid, type) => {
         let theAnnotation = itemsdata.find(x => x.id == id);
         let module = relContentTypeAmd[type];
         if (module) {
-            module.getCompletionData(theAnnotation, userid);
-            return;
+            return module.getCompletionData(theAnnotation, userid);
         }
         let matchingContentTypes = contentTypes.find(x => x.name === type);
         let amdmodule = matchingContentTypes.fbamdmodule;
         if (!amdmodule) {
-            return;
+            return Promise.resolve();
         }
         // Get column header with the item id.
-        require([amdmodule], function(Module) {
-            new Module(itemsdata, matchingContentTypes).getCompletionData(theAnnotation, userid);
+        return new Promise((resolve, reject) => {
+            require([amdmodule], function(Module) {
+                Promise.resolve(new Module(itemsdata, matchingContentTypes).getCompletionData(theAnnotation, userid))
+                .then(resolve)
+                .catch(reject);
+            });
         });
+    };
+
+    ReportBase.registerCompletionDetailHandler({
+        tabledata,
+        openCompletion,
+        stringComponent: 'mod_flexbook',
+        canedit: access.canedit == 1,
+        getInteractionMeta: (itemId) => {
+            const annotation = itemsdata.find((item) => item.id == itemId);
+            return {
+                maxXp: annotation?.xp ?? 0,
+            };
+        },
+        saveXpOverride: async(ctx, newXp, reportview = '') => {
+            const res = await Ajax.call([{
+                methodname: 'mod_flexbook_override_completion_xp',
+                args: {
+                    contextid: M.cfg.contextid,
+                    id: ctx.completionid,
+                    itemid: ctx.itemId,
+                    userid: ctx.userid,
+                    xp: newXp,
+                    courseid: courseid,
+                    reportview: reportview,
+                }
+            }])[0];
+            if (res.status !== 'success') {
+                let err = res.data || 'error';
+                if (typeof err === 'string') {
+                    try {
+                        const parsed = JSON.parse(err);
+                        if (parsed && parsed.error) {
+                            err = parsed.error;
+                        }
+                    } catch (e) {
+                        // Keep raw message.
+                    }
+                }
+                return {error: err};
+            }
+            return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+        },
+        patchReportViewForXp: (type, detail, newXp, maxXp) => {
+            const module = relContentTypeAmd[type];
+            const Mod = module?.constructor;
+            if (Mod?.patchReportViewForXp) {
+                return Mod.patchReportViewForXp(detail, newXp, maxXp);
+            }
+            return Base.patchReportViewForXp(detail, newXp, maxXp);
+        },
     });
 };
 

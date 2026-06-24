@@ -87,6 +87,28 @@ class base_form extends \core_form\dynamic_form {
             $data->requiremintime = 0;
         }
         $advancedsettings = json_decode($this->optional_param('advanced', null, PARAM_RAW));
+
+        // Load course-level defaults for this interaction type when adding a new item.
+        if ($data->id == 0) {
+            global $DB;
+            $defaults = $DB->get_record('flexbook_defaults', [
+                'courseid' => $data->courseid,
+                'type' => $data->type,
+            ], '*', IGNORE_MISSING);
+            if ($defaults) {
+                foreach ($defaults as $key => $value) {
+                    $data->{$key} = $value;
+                }
+                $data->id = 0; // Keep the new item id at 0.
+                $advancedsettings = json_decode($defaults->advanced ?? '{}');
+                if ($defaults->completiontracking == 'view') {
+                    $data->requiremintimeview = $defaults->requiremintime;
+                    $data->requiremintime = 0;
+                }
+                unset($data->advanced);
+            }
+        }
+
         $data->timestamp = $this->optional_param('timestamp', 0, PARAM_FLOAT);
         $data->title = $this->optional_param('title', get_string('defaulttitle', 'mod_interactivevideo'), PARAM_TEXT);
 
@@ -393,6 +415,10 @@ class base_form extends \core_form\dynamic_form {
 
         $mform->addElement('hidden', 'hascompletion', null);
         $mform->setType('hascompletion', PARAM_INT);
+
+        // Carries the global-interaction sentinel (-1) so it survives form save.
+        $mform->addElement('hidden', 'timestamp', 0);
+        $mform->setType('timestamp', PARAM_FLOAT);
 
         if ($section) {
             $mform->addElement('header', 'general', get_string('general', 'form'));

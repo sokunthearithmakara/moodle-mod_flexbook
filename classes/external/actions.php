@@ -81,6 +81,27 @@ class actions extends external_api {
     }
 
     /**
+     * Validate manage permission
+     *
+     * @param int $contextid The context ID.
+     * @return void
+     */
+    public static function validate_manage_context($contextid) {
+        if (empty($contextid)) {
+            throw new \moodle_exception('invalidcontext', 'error');
+        }
+        $context = \context::instance_by_id($contextid, IGNORE_MISSING);
+        if (!$context) {
+            throw new \moodle_exception('invalidcontext', 'error');
+        }
+        self::validate_context($context);
+
+        if (!has_capability('mod/flexbook:manage', $context)) {
+            throw new \moodle_exception('nopermission', 'error', '', $context->id);
+        }
+    }
+
+    /**
      * Validate view permission
      *
      * @param int $contextid The context ID.
@@ -219,14 +240,29 @@ class actions extends external_api {
         if (!empty($ids)) {
             [$insql, $inparams] = $DB->get_in_or_equal($ids, SQL_PARAMS_NAMED);
             $inparams['cmid'] = get_coursemodule_from_instance('flexbook', $instanceid)->id;
-            $count = $DB->count_records_select(
+            $records = $DB->get_records_select(
                 'flexbook_items',
                 "id $insql AND cmid = :cmid",
-                $inparams
+                $inparams,
+                '',
+                'id, timestamp'
             );
-            if ($count !== count($ids)) {
+            if (count($records) !== count($ids)) {
                 throw new \moodle_exception('invalidsequence', 'mod_flexbook');
             }
+
+            // Global interactions (timestamp < 0) are always pinned to the top,
+            // preserving their submitted relative order; sequential items follow.
+            $globalids = [];
+            $sequentialids = [];
+            foreach ($ids as $id) {
+                if (util::is_global_item($records[$id])) {
+                    $globalids[] = $id;
+                } else {
+                    $sequentialids[] = $id;
+                }
+            }
+            $ids = array_merge($globalids, $sequentialids);
         }
 
         $sequence = implode(',', $ids);
@@ -748,6 +784,73 @@ class actions extends external_api {
     }
 
     /**
+     * Override completion XP parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function override_completion_xp_parameters() {
+        return new external_function_parameters([
+            'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
+            'id' => new external_value(PARAM_INT, 'The ID of the completion record', VALUE_REQUIRED),
+            'itemid' => new external_value(PARAM_INT, 'The ID of the interaction', VALUE_REQUIRED),
+            'userid' => new external_value(PARAM_INT, 'The ID of the user', VALUE_REQUIRED),
+            'xp' => new external_value(PARAM_FLOAT, 'The overridden earned XP', VALUE_REQUIRED),
+            'courseid' => new external_value(PARAM_INT, 'The course ID', VALUE_DEFAULT, 0),
+            'reportview' => new external_value(PARAM_RAW, 'Client-built reportView string', VALUE_DEFAULT, ''),
+        ]);
+    }
+
+    /**
+     * Override the earned XP of a completed interaction.
+     *
+     * @param int $contextid The context ID.
+     * @param int $id The completion ID.
+     * @param int $itemid The item ID.
+     * @param int $userid The user ID.
+     * @param float $xp The overridden earned XP.
+     * @param int $courseid The course ID.
+     * @param string $reportview Client-built reportView string.
+     * @return array
+     */
+    public static function override_completion_xp($contextid, $id, $itemid, $userid, $xp, $courseid = 0, $reportview = '') {
+        self::validate_parameters(self::override_completion_xp_parameters(), [
+            'contextid' => $contextid,
+            'id' => $id,
+            'itemid' => $itemid,
+            'userid' => $userid,
+            'xp' => $xp,
+            'courseid' => $courseid,
+            'reportview' => $reportview,
+        ]);
+
+        $context = \context::instance_by_id($contextid);
+        self::validate_context($context);
+        if (!has_capability('mod/flexbook:editreport', $context)) {
+            throw new \moodle_exception('nopermission', 'error', '', $context->id);
+        }
+
+        $result = util::override_completion_xp($id, $itemid, $userid, $contextid, $xp, $courseid, $reportview);
+        $resdecode = json_decode($result);
+        if (isset($resdecode->error)) {
+            return ['status' => 'error', 'data' => $result];
+        }
+
+        return ['status' => 'success', 'data' => $result];
+    }
+
+    /**
+     * Override completion XP returns
+     *
+     * @return \external_description
+     */
+    public static function override_completion_xp_returns() {
+        return new external_single_structure([
+            'status' => new external_value(PARAM_TEXT, 'The status'),
+            'data' => new external_value(PARAM_RAW, 'The data as JSON string'),
+        ]);
+    }
+
+    /**
      * Get logs parameters
      *
      * @return external_function_parameters
@@ -922,6 +1025,17 @@ class actions extends external_api {
 
         self::validate_edit_context($contextid);
 
+        // Global (singleton) types use -1 so they pin to the top and stay out of
+        // the learner navigation sequence; regular pages use 0.
+        $allowmultiple = true;
+        $types = util::get_all_activitytypes();
+        foreach ($types as $typeinfo) {
+            if (($typeinfo['name'] ?? '') === $type) {
+                $allowmultiple = !empty($typeinfo['allowmultiple']);
+                break;
+            }
+        }
+
         $data = [
             'contextid' => $contextid,
             'courseid' => $courseid,
@@ -932,7 +1046,7 @@ class actions extends external_api {
             'content' => $content,
             'draftitemid' => $draftitemid,
             'anchorid' => $anchorid,
-            'timestamp' => 0, // Flexbook items don't use timestamp by default.
+            'timestamp' => $allowmultiple ? 0 : -1,
             'hascompletion' => 0,
             'xp' => 0,
             'timecreated' => time(),
@@ -955,6 +1069,170 @@ class actions extends external_api {
      * @return \external_description
      */
     public static function create_interaction_returns() {
+        return self::default_returns();
+    }
+
+    /**
+     * Import items parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function import_items_parameters() {
+        return new external_function_parameters([
+            'contextid' => new external_value(PARAM_INT, 'The destination context ID', VALUE_REQUIRED),
+            'fromcourse' => new external_value(PARAM_INT, 'The source course ID', VALUE_REQUIRED),
+            'tocourse' => new external_value(PARAM_INT, 'The destination course ID', VALUE_REQUIRED),
+            'fromcm' => new external_value(PARAM_INT, 'The source course module ID', VALUE_DEFAULT, 0),
+            'tocm' => new external_value(PARAM_INT, 'The destination flexbook instance ID', VALUE_REQUIRED),
+            'module' => new external_value(PARAM_INT, 'The destination course module ID', VALUE_REQUIRED),
+            'items' => new external_value(PARAM_RAW, 'JSON encoded array of item records', VALUE_REQUIRED),
+            'afterid' => new external_value(PARAM_INT, 'Insert after this item ID, or 0 to append', VALUE_DEFAULT, 0),
+        ]);
+    }
+
+    /**
+     * Import items into a flexbook instance (clipboard paste / cross-activity).
+     *
+     * @param int $contextid The destination context ID.
+     * @param int $fromcourse The source course ID.
+     * @param int $tocourse The destination course ID.
+     * @param int $fromcm The source course module ID.
+     * @param int $tocm The destination flexbook instance ID.
+     * @param int $module The destination course module ID.
+     * @param string $items JSON encoded array of item records.
+     * @param int $afterid Insert after this item ID, or 0 to append.
+     * @return array The result of the import.
+     */
+    public static function import_items($contextid, $fromcourse, $tocourse, $fromcm, $tocm, $module, $items, $afterid = 0) {
+        self::validate_parameters(self::import_items_parameters(), [
+            'contextid' => $contextid,
+            'fromcourse' => $fromcourse,
+            'tocourse' => $tocourse,
+            'fromcm' => $fromcm,
+            'tocm' => $tocm,
+            'module' => $module,
+            'items' => $items,
+            'afterid' => $afterid,
+        ]);
+
+        self::validate_edit_context($contextid);
+
+        $decoded = json_decode($items, true);
+        if (!is_array($decoded)) {
+            $decoded = [];
+        }
+
+        $copied = util::import_items($fromcourse, $tocourse, $module, $fromcm, $tocm, $decoded, $contextid, $afterid);
+
+        return ['status' => 'success', 'data' => json_encode($copied)];
+    }
+
+    /**
+     * Import items return fields
+     *
+     * @return \external_description
+     */
+    public static function import_items_returns() {
+        return self::default_returns();
+    }
+
+    /**
+     * Import pack parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function import_pack_parameters() {
+        return new external_function_parameters([
+            'contextid' => new external_value(PARAM_INT, 'The destination context ID', VALUE_REQUIRED),
+            'instanceid' => new external_value(PARAM_INT, 'The destination flexbook instance ID', VALUE_REQUIRED),
+            'module' => new external_value(PARAM_INT, 'The destination course module ID', VALUE_REQUIRED),
+            'courseid' => new external_value(PARAM_INT, 'The destination course ID', VALUE_REQUIRED),
+            'draftitemid' => new external_value(PARAM_INT, 'The user draft item ID holding the .fbz file', VALUE_REQUIRED),
+            'afterid' => new external_value(PARAM_INT, 'Insert after this item ID, or 0 to append', VALUE_DEFAULT, 0),
+        ]);
+    }
+
+    /**
+     * Import items from an uploaded .fbz pack.
+     *
+     * @param int $contextid The destination context ID.
+     * @param int $instanceid The destination flexbook instance ID.
+     * @param int $module The destination course module ID.
+     * @param int $courseid The destination course ID.
+     * @param int $draftitemid The user draft item ID holding the .fbz file.
+     * @param int $afterid Insert after this item ID, or 0 to append.
+     * @return array The result of the import.
+     */
+    public static function import_pack($contextid, $instanceid, $module, $courseid, $draftitemid, $afterid = 0) {
+        self::validate_parameters(self::import_pack_parameters(), [
+            'contextid' => $contextid,
+            'instanceid' => $instanceid,
+            'module' => $module,
+            'courseid' => $courseid,
+            'draftitemid' => $draftitemid,
+            'afterid' => $afterid,
+        ]);
+
+        self::validate_edit_context($contextid);
+
+        $result = util::import_pack_from_draft($contextid, $instanceid, $module, $courseid, $draftitemid, $afterid);
+
+        return ['status' => 'success', 'data' => json_encode($result)];
+    }
+
+    /**
+     * Import pack return fields
+     *
+     * @return \external_description
+     */
+    public static function import_pack_returns() {
+        return self::default_returns();
+    }
+
+    /**
+     * Download items parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function download_items_parameters() {
+        return new external_function_parameters([
+            'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
+            'cmid' => new external_value(PARAM_INT, 'The course module ID', VALUE_REQUIRED),
+            'courseid' => new external_value(PARAM_INT, 'The course ID', VALUE_REQUIRED),
+            'items' => new external_value(PARAM_RAW, 'JSON encoded array of item records', VALUE_REQUIRED),
+        ]);
+    }
+
+    /**
+     * Package selected items into a downloadable .fbz file.
+     *
+     * @param int $contextid The context ID.
+     * @param int $cmid The course module ID.
+     * @param int $courseid The course ID.
+     * @param string $items JSON encoded array of item records.
+     * @return array The result containing the download URL.
+     */
+    public static function download_items($contextid, $cmid, $courseid, $items) {
+        self::validate_parameters(self::download_items_parameters(), [
+            'contextid' => $contextid,
+            'cmid' => $cmid,
+            'courseid' => $courseid,
+            'items' => $items,
+        ]);
+
+        self::validate_edit_context($contextid);
+
+        $url = util::download_items($items, $cmid, $courseid, $contextid);
+
+        return ['status' => 'success', 'data' => $url];
+    }
+
+    /**
+     * Download items return fields
+     *
+     * @return \external_description
+     */
+    public static function download_items_returns() {
         return self::default_returns();
     }
     /**
@@ -1052,6 +1330,103 @@ class actions extends external_api {
      * @return \external_description
      */
     public static function upload_file_returns() {
+        return self::default_returns();
+    }
+
+    /**
+     * Save defaults parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function save_defaults_parameters() {
+        return new external_function_parameters([
+            'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
+            'courseid' => new external_value(PARAM_INT, 'The course ID', VALUE_REQUIRED),
+            'defaults' => new external_value(PARAM_RAW, 'JSON encoded array of default records', VALUE_REQUIRED),
+        ]);
+    }
+
+    /**
+     * Save interaction-type course defaults.
+     *
+     * @param int $contextid The context ID.
+     * @param int $courseid The course ID.
+     * @param string $defaults JSON encoded array of default records.
+     * @return array The result of the save.
+     */
+    public static function save_defaults($contextid, $courseid, $defaults) {
+        self::validate_parameters(self::save_defaults_parameters(), [
+            'contextid' => $contextid,
+            'courseid' => $courseid,
+            'defaults' => $defaults,
+        ]);
+
+        self::validate_edit_context($contextid);
+
+        $records = json_decode($defaults, true);
+        if (!is_array($records)) {
+            throw new \moodle_exception('invaliddefaults', 'mod_flexbook');
+        }
+        foreach ($records as &$record) {
+            $record['courseid'] = $courseid;
+        }
+        unset($record);
+
+        $saved = util::save_defaults($records);
+
+        return ['status' => 'success', 'data' => json_encode($saved)];
+    }
+
+    /**
+     * Save defaults return fields
+     *
+     * @return \external_description
+     */
+    public static function save_defaults_returns() {
+        return self::default_returns();
+    }
+
+    /**
+     * Delete default parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function delete_default_parameters() {
+        return new external_function_parameters([
+            'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
+            'courseid' => new external_value(PARAM_INT, 'The course ID', VALUE_REQUIRED),
+            'type' => new external_value(PARAM_TEXT, 'The interaction type', VALUE_REQUIRED),
+        ]);
+    }
+
+    /**
+     * Delete an interaction-type course default.
+     *
+     * @param int $contextid The context ID.
+     * @param int $courseid The course ID.
+     * @param string $type The interaction type.
+     * @return array The result of the deletion.
+     */
+    public static function delete_default($contextid, $courseid, $type) {
+        self::validate_parameters(self::delete_default_parameters(), [
+            'contextid' => $contextid,
+            'courseid' => $courseid,
+            'type' => $type,
+        ]);
+
+        self::validate_manage_context($contextid);
+
+        util::delete_default($courseid, $type);
+
+        return ['status' => 'success', 'data' => $type];
+    }
+
+    /**
+     * Delete default return fields
+     *
+     * @return \external_description
+     */
+    public static function delete_default_returns() {
         return self::default_returns();
     }
 }

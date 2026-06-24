@@ -17,6 +17,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/mod/flexbook/backup/moodle2/backup_flexbook_stepslib.php');
+require_once($CFG->dirroot . '/mod/flexbook/backup/moodle2/backup_flexbook_course_settings.php');
 
 /**
  * Provides the steps to perform one complete backup of the Flexbook instance
@@ -36,7 +37,27 @@ class backup_flexbook_activity_task extends backup_activity_task {
      * Defines a backup step to store the instance data in the flexbook.xml file
      */
     protected function define_my_steps() {
+        global $DB;
         $this->add_step(new backup_flexbook_activity_structure_step('flexbook_structure', 'flexbook.xml'));
+
+        static $type = null;
+        static $processed = false;
+        if ($processed) {
+            return;
+        }
+
+        if ($type === null) {
+            $backupid = $this->get_backupid();
+            $type = $DB->get_field('backup_controllers', 'type', ['backupid' => $backupid]);
+        }
+        if ($type === 'course') {
+            // Course backup: also export course-level settings and interaction defaults.
+            $this->add_step(new backup_flexbook_course_settings(
+                'flexbooksettings_structure',
+                'flexbook_settings.xml'
+            ));
+            $processed = true;
+        }
     }
 
     /**

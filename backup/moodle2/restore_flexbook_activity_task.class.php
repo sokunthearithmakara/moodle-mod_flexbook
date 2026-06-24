@@ -17,6 +17,7 @@
 defined('MOODLE_INTERNAL') || die();
 
 require_once($CFG->dirroot . '/mod/flexbook/backup/moodle2/restore_flexbook_stepslib.php');
+require_once($CFG->dirroot . '/mod/flexbook/backup/moodle2/restore_flexbook_course_settings.php');
 
 /**
  * Restore task that provides all the settings and steps to perform one complete restore of the activity
@@ -37,7 +38,28 @@ class restore_flexbook_activity_task extends restore_activity_task {
      * Define (add) particular steps this activity can have
      */
     protected function define_my_steps() {
+        static $processed = false;
+
         $this->add_step(new restore_flexbook_activity_structure_step('flexbook_structure', 'flexbook.xml'));
+
+        if ($processed) {
+            return;
+        }
+        global $DB;
+        $restoreid = $this->get_restoreid();
+        $type = $DB->get_field('backup_controllers', 'type', ['backupid' => $restoreid]);
+        if ($type !== 'course') {
+            return;
+        }
+
+        $fullpath = $this->get_taskbasepath() . '/flexbook_settings.xml';
+        if (file_exists($fullpath)) {
+            $this->add_step(new restore_flexbook_course_settings(
+                'flexbooksettings_structure',
+                'flexbook_settings.xml'
+            ));
+            $processed = true;
+        }
     }
 
     /**

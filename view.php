@@ -77,6 +77,10 @@ if ($moduleinstance->displayoptions) {
     $moduleinstance->displayoptions = [];
 }
 
+if (!isset($moduleinstance->displayoptions['limitedwidth'])) {
+    $moduleinstance->displayoptions['limitedwidth'] = 1;
+}
+
 // Get display options from url parameters.
 // Dark mode.
 $dmode = optional_param('dm', null, PARAM_INT);
@@ -235,6 +239,11 @@ if ($moduleinstance->displayoptions['distractionfreemode'] == 1) {
 
 if (!empty($moduleinstance->displayoptions['kidtheme'])) {
     $PAGE->add_body_class('kidtheme');
+}
+
+$noratio = empty($moduleinstance->displayoptions['aspectratio']);
+if ($noratio && empty($moduleinstance->displayoptions['limitedwidth'])) {
+    $PAGE->add_body_class('fb-full-width');
 }
 
 

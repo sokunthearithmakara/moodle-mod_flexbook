@@ -32,6 +32,7 @@ import ModalEvents from 'core/modal_events';
 import 'mod_interactivevideo/libraries/jquery-ui';
 import Ajax from 'core/ajax';
 import {safeParse, getMoodleVersion} from './utils';
+import {isGlobalInteraction, sortForEditList, enforceGlobalPrefixInDom} from './interaction-utils';
 import state from './state';
 import {init as initInstructions} from './instructions';
 
@@ -41,6 +42,9 @@ const addNotification = (msg, type = "info") => {
     });
 };
 
+// localStorage key for cross-activity interaction copy/paste.
+const CLIPBOARD_KEY = 'copiedFlexbookItems';
+
 const init = async(
     cmid,
     flexbook,
@@ -48,6 +52,8 @@ const init = async(
     coursecontextid,
     userid,
     extendedcompletion = null,
+    contextid = 0,
+    uploadrepoid = 0,
 ) => {
 
     let doptions = safeParse($('#doptions').val() || $('#doptions').text(), {});
@@ -59,10 +65,19 @@ const init = async(
         flexbook,
         courseid,
         coursecontextid,
+        contextid: contextid || coursecontextid,
+        uploadrepoid,
         userid,
         extendedcompletion,
         isEditMode: true,
         darkmode: doptions.darkmode == 1
+    };
+
+    const uploadStrings = {
+        serverconnection: await getString('serverconnection', 'error'),
+        norepository: await getString('erroruploadnorepository', 'mod_flexbook'),
+        uploadlimit: 'The file exceeds the server upload limit.',
+        createfailed: await getString('errorcreatinginteraction', 'mod_flexbook'),
     };
 
     require(['theme_boost/bootstrap/modal']);
@@ -103,9 +118,10 @@ const init = async(
             .addClass("d-flex align-items-center justify-content-center");
     }
 
-    // Order the annotations by sequence.
+    // Order the annotations by sequence, then pin global interactions to the top.
     annotations = sequence.map(x => annotations.find(y => y.id == x));
     annotations = annotations.filter(x => x); // Remove null values.
+    annotations = sortForEditList(annotations, sequence);
 
     annotations = annotations.map(x => {
         x.prop = JSON.stringify(contentTypes.find(y => y.name === x.type));
@@ -203,9 +219,10 @@ const init = async(
         const aspectRatio = (doptions && doptions.aspectratio) ? doptions.aspectratio : null;
 
         if (!aspectRatio) {
+            const limited = !doptions || doptions.limitedwidth != 0;
             $videoWrapper.css({
                 width: 'calc(100% - 20px)',
-                maxWidth: '1250px',
+                maxWidth: limited ? '1250px' : 'unset',
                 height: Math.floor(availableHeight - 20) + 'px',
                 maxHeight: '100%'
             });
@@ -216,9 +233,10 @@ const init = async(
         const ratio = (ratioW && ratioH) ? (ratioW / ratioH) : null;
 
         if (!ratio) {
+            const limited = !doptions || doptions.limitedwidth != 0;
             $videoWrapper.css({
                 width: 'calc(100% - 20px)',
-                maxWidth: '1250px',
+                maxWidth: limited ? '1250px' : 'unset',
                 height: Math.floor(availableHeight - 20) + 'px',
                 maxHeight: '100%'
             });
@@ -396,16 +414,18 @@ const init = async(
     };
 
     // Sortable. Note that if the sorting item is b-active, we're moving all the b-active items.
+    // Global interactions are excluded: they cannot be dragged and are always pinned to the top.
     $('#annotation-list').sortable({
         handle: '.handle',
         cursor: 'move',
-        items: '.listItem',
+        items: '.listItem:not(.global-interaction)',
         placeholder: "ui-state-highlight",
         start: function(e, ui) {
             if (ui.item.hasClass('b-active')) {
                 // Hide sibling selected rows immediately so only the combined
                 // helper is visible — gives a smooth "moving all rows" feel.
-                ui.item.siblings('tr.b-active').css({opacity: '0', pointerEvents: 'none'});
+                // Global rows are never moved, so keep them visible and in place.
+                ui.item.siblings('tr.b-active').not('.global-interaction').css({opacity: '0', pointerEvents: 'none'});
             }
         },
         stop: function() {
@@ -418,7 +438,8 @@ const init = async(
             $('#savedraft').prop('disabled', false);
             const item = ui.item;
             if (item.hasClass('b-active')) { // If the item is b-active, we're moving all the b-active items.
-                const selecteditems = item.parent().find('tr.b-active');
+                // Only move non-global selected rows; globals stay pinned at the top.
+                const selecteditems = item.parent().find('tr.b-active').not('.global-interaction');
                 selecteditems.each(function() {
                     const $item = $(this);
                     $item.removeClass('b-active moving');
@@ -429,6 +450,8 @@ const init = async(
                     selecteditems.removeClass('active');
                 }, 1000);
             }
+            // Ensure globals remain at the top regardless of where the drag landed.
+            enforceGlobalPrefixInDom($annotationlist);
             // Sync the annotations array to the new DOM order so that a
             // subsequent renderAnnotationItems() call (e.g. after an add/clone)
             // does not rebuild the list from the old order and undo the drag.
@@ -450,7 +473,8 @@ const init = async(
                 return item;
             }
 
-            const selecteditems = item.parent().find('tr.b-active');
+            // Build the combined drag helper from non-global selected rows only.
+            const selecteditems = item.parent().find('tr.b-active').not('.global-interaction');
 
             const helper = $('<tr class="ui-sortable-helper"></tr>');
             selecteditems.each(function() {
@@ -476,7 +500,41 @@ const init = async(
         $bulkToolbar.css('bottom', '-80px');
     };
 
-    // Recompute and refresh the toolbar based on current selection.
+    // Whether the clipboard holds interactions that can be pasted into this activity.
+    const hasPasteableClipboard = () => {
+        const raw = window.localStorage.getItem(CLIPBOARD_KEY);
+        if (!raw) {
+            return false;
+        }
+        const copied = safeParse(raw, []);
+        if (!Array.isArray(copied) || copied.length === 0) {
+            return false;
+        }
+        // Only same-site Flexbook items, and never the activity they were copied from.
+        if (String(copied[0].cmid) === String(state.config.cmid)) {
+            return false;
+        }
+        return copied.every(x => x.source === 'flexbook' && x.wwwroot === M.cfg.wwwroot);
+    };
+
+    // Show or hide the list footer paste bar based on clipboard contents.
+    const syncPasteButton = () => {
+        const canPaste = hasPasteableClipboard();
+        const $footer = $('#annotation-list-footer');
+        const $btn = $('#annotation-list-paste');
+
+        if (!canPaste) {
+            $footer.addClass('d-none');
+            return;
+        }
+
+        $footer.removeClass('d-none');
+        $btn.prop('disabled', false);
+        $btn.addClass('btn-primary text-white').removeClass('btn-light');
+        $btn.find('i').removeClass('bi-clipboard').addClass('bi-clipboard-plus');
+    };
+
+    // Recompute and refresh the bulk toolbar based on the current selection.
     const syncBulkToolbar = () => {
         const count = $annotationlist.find('tr.b-active').length;
         if (count > 0) {
@@ -484,6 +542,44 @@ const init = async(
         } else {
             hideBulkToolbar();
         }
+    };
+
+    // Insert server-imported items into the local list (after an anchor, or at the end) and refresh.
+    const insertImportedItems = (imported, afterid = 0) => {
+        if (!Array.isArray(imported) || imported.length === 0) {
+            return [];
+        }
+        const items = imported
+            .filter(x => contentTypes.find(y => y.name === x.type))
+            .map(x => {
+                x.prop = JSON.stringify(contentTypes.find(y => y.name === x.type));
+                x.editMode = true;
+                return x;
+            });
+        if (items.length === 0) {
+            return [];
+        }
+        if (afterid) {
+            const idx = annotations.findIndex(a => String(a.id) === String(afterid));
+            if (idx !== -1) {
+                annotations.splice(idx + 1, 0, ...items);
+            } else {
+                annotations.push(...items);
+            }
+        } else {
+            annotations.push(...items);
+        }
+        // Keep global interactions pinned to the top regardless of insert position.
+        annotations = sortForEditList(annotations, annotations.filter(a => !isGlobalInteraction(a)).map(a => a.id));
+        renderAnnotationItems(annotations);
+        // Initialize single-instance renderers that react to being added.
+        items.forEach(int => {
+            const ct = contentTypes.find(y => y.name === int.type);
+            if (ct && !ct.allowmultiple && ctRenderer[int.type] && typeof ctRenderer[int.type].init === 'function') {
+                ctRenderer[int.type].init();
+            }
+        });
+        return items;
     };
     // ── End bulk-action toolbar ───────────────────────────────────────────────
 
@@ -637,6 +733,12 @@ const init = async(
         }
 
         const ctype = $(this).data('type');
+        const ct = contentTypes.find(x => x.name === ctype);
+        if (ct && !ct.allowmultiple && annotations.some(a => a.type === ctype)) {
+            addNotification(
+                await getString('thisinteractionalreadyexists', 'mod_interactivevideo', ct.title), 'danger');
+            return;
+        }
         ctRenderer[ctype].addAnnotation(annotations);
     });
 
@@ -657,6 +759,12 @@ const init = async(
 
         const $menu = $moreactionsmenu.clone();
 
+        // Global interactions cannot be cloned or inserted before (pinned to top).
+        // Insert after remains available so the first page can be added when only a global exists.
+        if ($(this).closest('tr.annotation').hasClass('global-interaction')) {
+            $menu.find('.copy, .insertbefore, .dropdown-divider').remove();
+        }
+
         $menu.removeClass('d-none').addClass('show');
         $wrapper.append($menu);
 
@@ -676,21 +784,25 @@ const init = async(
         const $selected = $annotationlist.find('tr.annotation.b-active');
         const anchorid = $selected.length ? $selected.last().data('id') : null;
 
-        if (!anchorid) {
+        const files = e.originalEvent.clipboardData.files;
+        if (files.length === 0) {
             return;
         }
 
-        const files = e.originalEvent.clipboardData.files;
-        if (files.length > 0) {
-            e.preventDefault();
-            await handleFileDrop(files, anchorid);
-            // Dismiss selection and toolbar.
-            $annotationlist.find('tr.b-active').removeClass('b-active');
-            hideBulkToolbar();
+        // Non-pack files need a selected anchor row; .fbz packs can be pasted anywhere.
+        const hasFbz = Array.from(files).some(f => f.name.toLowerCase().endsWith('.fbz'));
+        if (!anchorid && !hasFbz) {
+            return;
+        }
 
-            if (navigator.clipboard.writeText) {
-                await navigator.clipboard.writeText('');
-            }
+        e.preventDefault();
+        await handleFileDrop(files, anchorid);
+        // Dismiss selection and toolbar.
+        $annotationlist.find('tr.b-active').removeClass('b-active');
+        hideBulkToolbar();
+
+        if (navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText('');
         }
     });
 
@@ -918,6 +1030,11 @@ const init = async(
                 }
             }
 
+            // Keep global interactions pinned to the top after any insertion.
+            if (action == 'add' || action == 'clone') {
+                annotations = sortForEditList(annotations, annotations.filter(a => !isGlobalInteraction(a)).map(a => a.id));
+            }
+
             if (action == 'add') {
                 if (!isDnD) {
                     activeid = updated.id;
@@ -1002,6 +1119,8 @@ const init = async(
     });
 
     const saveDraft = async() => {
+        // Ensure global interactions are pinned to the top before snapshotting order.
+        enforceGlobalPrefixInDom($annotationlist);
         // Get the current sequence based on the tr data-id.
         // Exclude rows that are mid-deletion (.deleted) so the saved sequence
         // is never polluted with IDs that are about to be removed.
@@ -1042,7 +1161,8 @@ const init = async(
     $(document).on('click', function(e) {
         if (!$(e.target).closest('#editor-sidebar').length && !$(e.target).closest('.more-actions-menu').length) {
             $annotationlist.find('tr.b-active').removeClass('b-active');
-            hideBulkToolbar();
+            // Keep the toolbar visible if there is something to paste.
+            syncBulkToolbar();
         }
     });
 
@@ -1126,7 +1246,8 @@ const init = async(
 
     // Bulk toolbar: clone button.
     $(document).on('click', '#bulk-clone-btn', async function() {
-        const $selected = $annotationlist.find('tr.b-active');
+        // Global / single-instance interactions cannot be cloned.
+        const $selected = $annotationlist.find('tr.b-active').not('.global-interaction');
         const ids = $selected.map(function() {
             return $(this).data('id');
         }).get();
@@ -1181,6 +1302,181 @@ const init = async(
             hideBulkToolbar();
         }
     });
+
+    // Bulk toolbar: copy selected interactions to the clipboard (cross-activity).
+    $(document).on('click', '#bulk-copy-btn', async function() {
+        const ids = $annotationlist.find('tr.b-active').map(function() {
+            return String($(this).data('id'));
+        }).get();
+        if (!ids.length) {
+            addNotification(await getString('copynothingselected', 'mod_flexbook'), 'danger');
+            return;
+        }
+        // Preserve the on-screen order and tag the payload for safe pasting.
+        const selected = annotations
+            .filter(a => ids.includes(String(a.id)))
+            .map(a => {
+                const clean = {...a};
+                delete clean.editMode;
+                clean.source = 'flexbook';
+                clean.wwwroot = M.cfg.wwwroot;
+                return clean;
+            });
+        window.localStorage.setItem(CLIPBOARD_KEY, JSON.stringify(selected));
+        $annotationlist.find('tr.b-active').removeClass('b-active');
+        hideBulkToolbar();
+        addNotification(await getString('copysuccess', 'mod_flexbook', selected.length), 'success');
+    });
+
+    // List footer: paste interactions from the clipboard.
+    $(document).on('click', '#annotation-list-paste', async function() {
+        const raw = window.localStorage.getItem(CLIPBOARD_KEY);
+        if (!raw) {
+            return;
+        }
+        let copied = safeParse(raw, []);
+        if (!Array.isArray(copied) || copied.length === 0) {
+            return;
+        }
+        // Same-site Flexbook items only, and only enabled content types.
+        copied = copied.filter(x => x.source === 'flexbook' && x.wwwroot === M.cfg.wwwroot);
+        copied = copied.filter(x => contentTypes.find(y => y.name === x.type));
+        // Respect content types that may only appear once per activity.
+        copied = copied.filter(x => {
+            const ct = contentTypes.find(y => y.name === x.type);
+            return ct && (ct.allowmultiple || !annotations.find(a => a.type === x.type));
+        });
+        if (copied.length === 0) {
+            addNotification(await getString('pastefailed', 'mod_flexbook'), 'danger');
+            return;
+        }
+
+        const $selected = $annotationlist.find('tr.b-active');
+        const afterid = $selected.length ? $selected.last().data('id') : 0;
+
+        $('#annotation-list-paste').prop('disabled', true).addClass('loading');
+        try {
+            const result = await Ajax.call([{
+                methodname: 'mod_flexbook_import_items',
+                args: {
+                    contextid: M.cfg.contextid,
+                    fromcourse: copied[0].courseid,
+                    tocourse: state.config.courseid,
+                    fromcm: copied[0].cmid,
+                    tocm: state.config.flexbook,
+                    module: state.config.cmid,
+                    items: JSON.stringify(copied),
+                    afterid: afterid || 0,
+                }
+            }])[0];
+            insertImportedItems(safeParse(result.data, []), afterid);
+            await saveDraft();
+            addNotification(await getString('importsuccess', 'mod_flexbook', copied.length), 'success');
+        } catch (error) {
+            addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
+        } finally {
+            $('#annotation-list-paste').prop('disabled', false).removeClass('loading');
+            $annotationlist.find('tr.b-active').removeClass('b-active');
+            syncBulkToolbar();
+            syncPasteButton();
+        }
+    });
+
+    // Bulk toolbar: export selected interactions as a downloadable .fbz pack.
+    $(document).on('click', '#bulk-download-btn', async function() {
+        const ids = $annotationlist.find('tr.b-active').map(function() {
+            return String($(this).data('id'));
+        }).get();
+        if (!ids.length) {
+            addNotification(await getString('exportnothingselected', 'mod_flexbook'), 'danger');
+            return;
+        }
+        const selected = annotations
+            .filter(a => ids.includes(String(a.id)))
+            .map(a => {
+                const clean = {...a};
+                delete clean.editMode;
+                delete clean.prop;
+                return clean;
+            });
+        $('#bulk-download-btn').prop('disabled', true).addClass('loading');
+        try {
+            const result = await Ajax.call([{
+                methodname: 'mod_flexbook_download_items',
+                args: {
+                    contextid: M.cfg.contextid,
+                    cmid: state.config.cmid,
+                    courseid: state.config.courseid,
+                    items: JSON.stringify(selected).replace(/</g, '&lt;').replace(/>/g, '&gt;'),
+                }
+            }])[0];
+            if (result.status === 'success' && result.data) {
+                window.open(result.data, '_blank');
+            }
+        } catch (error) {
+            addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
+        } finally {
+            $('#bulk-download-btn').prop('disabled', false).removeClass('loading');
+            $annotationlist.find('tr.b-active').removeClass('b-active');
+            hideBulkToolbar();
+        }
+    });
+
+    // Bulk toolbar: save selected interactions as course defaults for their content type.
+    $(document).on('click', '#bulk-setdefault-btn', async function() {
+        const ids = $annotationlist.find('tr.b-active').map(function() {
+            return String($(this).data('id'));
+        }).get();
+        if (!ids.length) {
+            addNotification(await getString('setdefaultnothingselected', 'mod_flexbook'), 'danger');
+            return;
+        }
+        // One default per content type: keep the first selected item of each type.
+        const seen = {};
+        const selected = annotations
+            .filter(a => ids.includes(String(a.id)))
+            .filter(a => {
+                if (seen[a.type]) {
+                    return false;
+                }
+                seen[a.type] = true;
+                return true;
+            })
+            .map(a => {
+                const clean = {...a};
+                delete clean.editMode;
+                delete clean.prop;
+                return clean;
+            });
+        $('#bulk-setdefault-btn').prop('disabled', true).addClass('loading');
+        try {
+            await Ajax.call([{
+                methodname: 'mod_flexbook_save_defaults',
+                args: {
+                    contextid: M.cfg.contextid,
+                    courseid: state.config.courseid,
+                    defaults: JSON.stringify(selected),
+                }
+            }])[0];
+            addNotification(await getString('savedasdefaults', 'mod_flexbook'), 'success');
+        } catch (error) {
+            addNotification(await getString('anerroroccured', 'mod_flexbook'), 'danger');
+        } finally {
+            $('#bulk-setdefault-btn').prop('disabled', false).removeClass('loading');
+            $annotationlist.find('tr.b-active').removeClass('b-active');
+            hideBulkToolbar();
+        }
+    });
+
+    // Update the footer paste button when another tab copies interactions.
+    window.addEventListener('storage', function(e) {
+        if (e.key === CLIPBOARD_KEY) {
+            syncPasteButton();
+        }
+    });
+
+    // Surface the paste affordance on load if the clipboard already holds items.
+    syncPasteButton();
 
     // Warn before leaving the page if there are unsaved changes.
     window.addEventListener('beforeunload', (e) => {
@@ -1285,7 +1581,62 @@ const init = async(
         }
     };
 
+    // Import one or more uploaded .fbz packs using the existing draft-upload pipeline.
+    const importFbzPacks = async(packs, anchorid = null) => {
+        for (const pack of packs) {
+            addNotification(await getString('uploading', 'mod_flexbook', pack.name), 'info');
+            try {
+                const uploaded = await uploadFileToDraftArea(pack);
+                const result = await Ajax.call([{
+                    methodname: 'mod_flexbook_import_pack',
+                    args: {
+                        contextid: M.cfg.contextid,
+                        instanceid: state.config.flexbook,
+                        module: state.config.cmid,
+                        courseid: state.config.courseid,
+                        draftitemid: uploaded.itemid,
+                        afterid: anchorid || 0,
+                    }
+                }])[0];
+                const data = safeParse(result.data, {items: []});
+                const imported = insertImportedItems(data.items || [], anchorid || 0);
+                await saveDraft();
+                addNotification(await getString('importsuccess', 'mod_flexbook', imported.length), 'success');
+            } catch (error) {
+                const reason = formatUploadErrorMessage(error);
+                const msg = reason
+                    ? await getString('erroruploadingdetail', 'mod_flexbook', {file: pack.name, reason})
+                    : await getString('erroruploading', 'mod_flexbook', pack.name);
+                addNotification(msg, 'danger');
+            }
+        }
+    };
+
     const handleFileDrop = async(files, anchorid = null) => {
+        const fileArray = Array.from(files);
+        // Flexbook packs are imported directly, regardless of content-type plugins.
+        const fbzPacks = fileArray.filter(f => f.name.toLowerCase().endsWith('.fbz'));
+        if (fbzPacks.length > 0) {
+            await importFbzPacks(fbzPacks, anchorid);
+            return;
+        }
+        for (const ct of contentTypes) {
+            const renderer = ctRenderer[ct.name];
+            if (renderer && typeof renderer.handleFileDrop === 'function') {
+                const handled = await renderer.handleFileDrop(fileArray, anchorid, {
+                    addNotification,
+                    updateDnDProgress,
+                    renderAnnotationItems,
+                    saveDraft,
+                    annotations,
+                    state,
+                });
+                if (handled) {
+                    return;
+                }
+            }
+        }
+
         const queue = [];
         let globalSelectedPlugin = null;
         let applyToAll = false;
@@ -1375,8 +1726,8 @@ const init = async(
             addNotification(await getString('uploading', 'mod_flexbook', file.name), 'info');
         }
 
+        let response = null;
         try {
-            let response = null;
             const ext = file.name.split('.').pop().toLowerCase();
             if (plugin.name === 'richtext') {
                 const content = await file.text();
@@ -1390,7 +1741,19 @@ const init = async(
                 const data = await uploadFileToDraftArea(file);
                 response = {draftitemid: data.itemid, url: data.url};
             }
+        } catch (error) {
+            window.console.error("processFileUpload upload error:", error);
+            if (error.message !== 'cancelled') {
+                const reason = formatUploadErrorMessage(error);
+                const msg = reason
+                    ? await getString('erroruploadingdetail', 'mod_flexbook', {file: file.name, reason})
+                    : await getString('erroruploading', 'mod_flexbook', file.name);
+                addNotification(msg, 'danger');
+            }
+            throw error;
+        }
 
+        try {
             if (ctRenderer[plugin.name] && typeof ctRenderer[plugin.name].dnd === 'function') {
                 const dndResult = await ctRenderer[plugin.name].dnd(annotations, file, response, anchorid);
                 if (dndResult === false) {
@@ -1422,35 +1785,149 @@ const init = async(
                 });
             }
         } catch (error) {
-            window.console.error("processFileUpload error:", error);
+            window.console.error("processFileUpload create error:", error);
             if (error.message !== 'cancelled') {
-                addNotification(await getString('erroruploading', 'mod_flexbook', file.name), 'danger');
+                const reason = formatUploadErrorMessage(error);
+                const msg = reason
+                    ? await getString('erroruploadingdetail', 'mod_flexbook', {
+                        file: file.name,
+                        reason: reason || uploadStrings.createfailed,
+                    })
+                    : await getString('erroruploading', 'mod_flexbook', file.name);
+                addNotification(msg, 'danger');
             }
             throw error;
         }
     };
 
-    const uploadFileToDraftArea = async(file) => {
-        const reader = new FileReader();
+    /**
+     * Strip HTML from repository error payloads.
+     *
+     * @param {string} value
+     * @return {string}
+     */
+    const stripHtml = (value) => {
+        const node = document.createElement('div');
+        node.innerHTML = String(value || '');
+        return (node.textContent || node.innerText || '').trim();
+    };
+
+    /**
+     * Extract a draft item id from a Moodle draftfile.php URL.
+     *
+     * @param {string} url
+     * @return {number}
+     */
+    const extractDraftItemIdFromUrl = (url) => {
+        const match = String(url || '').match(/\/draftfile\.php\/\d+\/user\/draft\/(\d+)\//);
+        return match ? Number(match[1]) : 0;
+    };
+
+    /**
+     * Normalise a draft upload JSON payload.
+     *
+     * @param {Object} result
+     * @return {{itemid: number, url: string}}
+     */
+    const parseDraftUploadResult = (result) => {
+        if (result.error) {
+            throw new Error(stripHtml(result.error));
+        }
+
+        const url = result.url || '';
+        let itemid = Number(result.itemid || 0);
+        if (!itemid) {
+            itemid = extractDraftItemIdFromUrl(url);
+        }
+        if (!itemid) {
+            throw new Error(uploadStrings.serverconnection);
+        }
+
+        return {itemid, url};
+    };
+
+    /**
+     * Human-readable upload failure reason from an XHR response.
+     *
+     * @param {XMLHttpRequest} xhr
+     * @return {Error}
+     */
+    const draftUploadFailure = (xhr) => {
+        if (xhr.responseText) {
+            try {
+                const payload = JSON.parse(xhr.responseText);
+                if (payload.error) {
+                    return new Error(stripHtml(payload.error));
+                }
+            } catch (e) {
+                // Fall through to generic message below.
+            }
+        }
+        if (xhr.status === 413) {
+            return new Error(uploadStrings.uploadlimit);
+        }
+        const status = xhr.status || 0;
+        if (status > 0) {
+            return new Error(`${uploadStrings.serverconnection} (HTTP ${status})`);
+        }
+        return new Error(uploadStrings.serverconnection);
+    };
+
+    /**
+     * Extract a message from upload-related errors (XHR, Ajax, validation).
+     *
+     * @param {Error|Object} error
+     * @return {string}
+     */
+    const formatUploadErrorMessage = (error) => {
+        if (!error) {
+            return '';
+        }
+        if (typeof error.message === 'string' && error.message.trim() !== '') {
+            return error.message.trim();
+        }
+        if (typeof error.error === 'string') {
+            return stripHtml(error.error);
+        }
+        return '';
+    };
+
+    /**
+     * Upload a file into the user draft area (multipart, Flexbook endpoint).
+     *
+     * @param {File} file
+     * @return {Promise<{itemid: number, url: string}>}
+     */
+    const uploadFileToDraftArea = (file) => {
+        const contextId = Number(state.config.contextid) || M.cfg.contextid;
+
         return new Promise((resolve, reject) => {
-            reader.onload = async() => {
-                const base64Content = reader.result.split(',')[1];
+            const xhr = new XMLHttpRequest();
+            xhr.open('POST', `${M.cfg.wwwroot}/mod/flexbook/draftupload.php`, true);
+
+            xhr.onload = () => {
+                if (xhr.status !== 200) {
+                    reject(draftUploadFailure(xhr));
+                    return;
+                }
+
                 try {
-                    const result = await Ajax.call([{
-                        methodname: 'mod_flexbook_upload_file',
-                        args: {
-                            contextid: M.cfg.contextid,
-                            filename: file.name,
-                            filecontent: base64Content
-                        }
-                    }])[0];
-                    resolve(JSON.parse(result.data || '{}'));
+                    resolve(parseDraftUploadResult(JSON.parse(xhr.responseText)));
                 } catch (e) {
-                    reject(e);
+                    reject(e instanceof Error ? e : new Error(uploadStrings.serverconnection));
                 }
             };
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
+
+            xhr.onerror = () => {
+                reject(new Error(uploadStrings.serverconnection));
+            };
+
+            const formData = new FormData();
+            formData.append('file', file, file.name);
+            formData.append('sesskey', M.cfg.sesskey);
+            formData.append('contextid', String(contextId));
+
+            xhr.send(formData);
         });
     };
 

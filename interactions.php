@@ -46,6 +46,9 @@ if ($moduleinstance->displayoptions) {
 } else {
     $moduleinstance->displayoptions = [];
 }
+if (!isset($moduleinstance->displayoptions['limitedwidth'])) {
+    $moduleinstance->displayoptions['limitedwidth'] = 1;
+}
 if (isset($moduleinstance->displayoptions['theme']) && $moduleinstance->displayoptions['theme'] != '') {
     $PAGE->force_theme($moduleinstance->displayoptions['theme']);
 }
@@ -85,6 +88,11 @@ $PAGE->add_body_class('path-mod-interactivevideo page-interactions distraction-f
 // Toggle dark-mode.
 if ($moduleinstance->displayoptions['darkmode'] && $moduleinstance->displayoptions['distractionfreemode'] != 0) {
     $PAGE->add_body_class('darkmode bg-dark');
+}
+
+$noratio = empty($moduleinstance->displayoptions['aspectratio']);
+if ($noratio && empty($moduleinstance->displayoptions['limitedwidth'])) {
+    $PAGE->add_body_class('fb-full-width');
 }
 
 // Sort the content types by title.
@@ -208,6 +216,14 @@ unset(
 );
 
 
+require_once($CFG->dirroot . '/repository/lib.php');
+$uploadrepoid = 0;
+$uploadrepos = repository::get_instances(['type' => 'upload', 'currentcontext' => $modulecontext]);
+if (!empty($uploadrepos)) {
+    $uploadrepo = reset($uploadrepos);
+    $uploadrepoid = (int) $uploadrepo->id;
+}
+
 $PAGE->requires->js_call_amd(
     'mod_flexbook/interactions',
     'init',
@@ -218,6 +234,8 @@ $PAGE->requires->js_call_amd(
         $coursecontext->id, // Coursecontextid.
         $USER->id, // Userid.
         $moduleinstance->extendedcompletion, // Extended completion settings.
+        $modulecontext->id, // Module context id (draft uploads).
+        $uploadrepoid, // Upload repository instance id.
     ]
 );
 

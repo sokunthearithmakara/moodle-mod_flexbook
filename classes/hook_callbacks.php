@@ -25,6 +25,26 @@ namespace mod_flexbook;
  */
 class hook_callbacks {
     /**
+     * Load AMD for Flexbook admin settings pages.
+     *
+     * @param \core\hook\output\before_http_headers $hook
+     */
+    public static function init_plugin_admin_settings(\core\hook\output\before_http_headers $hook): void {
+        global $PAGE;
+
+        $allowedpagetypes = [
+            'admin-setting-modfbfolder',
+            'admin-setting-modsettingflexbook',
+            'admin-setting-upgradesettings',
+        ];
+        if (!in_array($PAGE->pagetype, $allowedpagetypes, true)) {
+            return;
+        }
+
+        $PAGE->requires->js_call_amd('mod_flexbook/settings', 'init');
+    }
+
+    /**
      * Add messaging widgets after the main region content.
      *
      * @param \core\hook\output\after_standard_main_region_html_generation $hook The hook instance.

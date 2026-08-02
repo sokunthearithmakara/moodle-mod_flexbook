@@ -26,6 +26,11 @@ defined('MOODLE_INTERNAL') || die();
 
 $callbacks = [
     [
+        'hook' => \core\hook\output\before_http_headers::class,
+        'callback' => \mod_flexbook\hook_callbacks::class . '::init_plugin_admin_settings',
+        'priority' => 0,
+    ],
+    [
         'hook' => \core\hook\output\after_standard_main_region_html_generation::class,
         'callback' => \mod_flexbook\hook_callbacks::class . '::launch_player_modal',
         'priority' => 0,

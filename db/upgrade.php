@@ -49,5 +49,14 @@ function xmldb_flexbook_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026042000, 'flexbook');
     }
 
+    if ($oldversion < 2026062404) {
+        upgrade_mod_savepoint(true, 2026062404, 'flexbook');
+    }
+
+    if ($oldversion < 2026062405) {
+        // Content types catalog uses mod_interactivevideo_get_plugins_catalog with target param.
+        upgrade_mod_savepoint(true, 2026062405, 'flexbook');
+    }
+
     return true;
 }

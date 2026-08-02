@@ -1,4 +1,3 @@
-<?php
 // This file is part of Moodle - http://moodle.org/
 //
 // Moodle is free software: you can redistribute it and/or modify
@@ -15,21 +14,24 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information for Flexbook
+ * Flexbook admin settings entry point for content types modal.
  *
- * @package    mod_flexbook
+ * @module     mod_flexbook/settings
  * @copyright  2026 Sokunthearith Makara <sokunthearithmakara@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+define(['mod_interactivevideo/contenttypes_settings'], function(ContentTypesSettings) {
+    const init = () => {
+        ContentTypesSettings.init({
+            textareaName: 's_mod_flexbook_enablecontenttypes',
+            installedNodeId: 'fb-installed-contenttypes',
+            wsMethod: 'mod_interactivevideo_get_plugins_catalog',
+            wsArgs: {target: 'mod_flexbook'},
+            modalTemplate: 'mod_interactivevideo/admin/enablecontenttypes_modal',
+            clickNamespace: 'fbenablecontenttypes',
+        });
+    };
 
-$plugin->component    = 'mod_flexbook';
-$plugin->release      = '1.2';
-$plugin->version      = 2026080100;
-$plugin->requires = 2021112800;
-$plugin->supported = [400, 502];
-$plugin->maturity = MATURITY_STABLE;
-$plugin->dependencies = [
-    'mod_interactivevideo' => 2026080103,
-];
+    return {init};
+});

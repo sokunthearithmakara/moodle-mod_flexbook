@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2] - 2026-08-02
+
+Requires **Interactive Video 1.9.3** or later.
+
+### Added
+- **Pro content type activation:** Establish a shared helper to activate/deactivate paid content types. You can use the paid plugins without activation until Interactive video 2.0 (September 2026).
+
+### Improved
+- **Content type manager:** A single modal to enable/disable installed content types and explore available content types.
+
 ## [1.1] - 2026-06-24
 
 Requires **Interactive Video 1.9** or later.

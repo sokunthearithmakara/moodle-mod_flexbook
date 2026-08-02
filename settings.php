@@ -57,50 +57,48 @@ $modfolder = new admin_category(
 $ADMIN->add('modsettings', $modfolder);
 
 $gsettings = new admin_settingpage('modsettingflexbook', get_string('generalsettings', 'mod_interactivevideo'));
-$contenttypes = [];
-$customs = get_plugins_with_function('fbplugin');
-foreach ($customs as $custom) {
-    foreach ($custom as $function) {
-        $function = str_replace('_fbplugin', '', $function);
-        $version = get_config($function);
-        if (!empty($version->version)) {
-            $version = $version->version;
-            $interaction = '<span class="ivname">' . get_string('pluginname', $function)
-                . '<span class="badge alert-primary mx-1">' . get_string('external', 'mod_interactivevideo')
-                . '</span></span><small class="text-muted">' . $version . '</small>';
-        } else {
-            $interaction = '<span class="ivname">' . get_string('pluginname', $function)
-                . '<span class="badge alert-primary mx-1">' . get_string('external', 'mod_interactivevideo')
-                . '</span></span>';
-        }
-        $contenttypes[$function] = $interaction;
-    }
+
+$enablecontenttypes = get_config('mod_flexbook', 'enablecontenttypes');
+if ($enablecontenttypes === false || $enablecontenttypes === '') {
+    $enablecontenttypes = \mod_flexbook\local\installed_contenttypes::get_default_enabled();
 }
 
-// Sort the content types by name a-z.
-asort($contenttypes);
+$installedtypes = \mod_flexbook\local\installed_contenttypes::get_all();
+$enabledcomponents = array_filter(array_map('trim', explode(',', (string) $enablecontenttypes)));
+$enabledcount = count($enabledcomponents);
+$totalcount = count($installedtypes);
+$summary = get_string('contenttypesenabledcount', 'mod_interactivevideo', (object) [
+    'enabled' => $enabledcount,
+    'total' => $totalcount,
+]);
 
-$defaultcontenttypes = array_intersect_key(array_fill_keys([
-    'ivplugin_chapter',
-    'ivplugin_contentbank',
-    'ivplugin_iframe',
-    'ivplugin_richtext',
-    'mod_interactivevideo',
-], 1), $contenttypes);
+$editbutton = '<button class="btn btn-secondary" type="button" name="enablecontenttypes" data-origin="settingspage">'
+    . '<i class="fa fa-cog fa-fw"></i> ' . get_string('manage', 'mod_interactivevideo') . '</button>';
 
-$gsettings->add(new admin_setting_configmulticheckbox(
+$gsettings->add(new admin_setting_configtextarea(
     'mod_flexbook/enablecontenttypes',
     get_string('enablecontenttypes', 'mod_interactivevideo'),
-    get_string('enablecontenttypes_desc', 'mod_interactivevideo'),
-    $defaultcontenttypes,
-    $contenttypes,
+    '<div class="d-flex align-items-center flex-wrap gap-2">'
+        . $editbutton
+        . '<span class="text-muted iv-enablecontenttypes-summary">' . $summary . '</span>'
+    . '</div>',
+    $enablecontenttypes,
+));
+
+$gsettings->add(new admin_setting_description(
+    'mod_flexbook/enablecontenttypeshelper',
+    '',
+    \mod_flexbook\util::render_moodle_version()
+        . '<script type="application/json" id="fb-installed-contenttypes">'
+        . json_encode($installedtypes, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP)
+        . '</script>'
 ));
 
 $gsettings->add(new admin_setting_configcheckbox(
     'mod_flexbook/enablecoursesettings',
     get_string('enablecoursesettings', 'mod_interactivevideo'),
     get_string('enablecoursesettings_desc', 'mod_interactivevideo'),
-    0,
+    1,
 ));
 
 $ADMIN->add('modfbfolder', $gsettings);

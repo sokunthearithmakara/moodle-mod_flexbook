@@ -593,6 +593,15 @@ function flexbook_cm_info_dynamic(cm_info $cm) {
     }
 }
 
+/**
+ * Load admin settings AMD on Moodle versions without hook support.
+ *
+ * Legacy callback for Moodle versions before core hooks (4.4). Not called when hooks are available.
+ */
+function flexbook_before_http_headers() {
+    \mod_flexbook\hook_callbacks::init_plugin_admin_settings();
+}
+
 if ($CFG->branch <= 403) {
     /**
      * Adds JavaScript before the footer is rendered.

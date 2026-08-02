@@ -111,17 +111,17 @@ class installed_contenttypes {
     /**
      * Build a single installed plugin row.
      *
-     * @param string $component
-     * @param bool $external
-     * @param string[] $enabledlist
-     * @param bool $hasenabledconfig
-     * @return array<string, mixed>|null
+     * @param string $component Plugin component name.
+     * @param bool $external True for local content type plugins.
+     * @param array $enabledlist Enabled component names from site config.
+     * @param bool $hasenabledconfig Whether enablecontenttypes has been configured.
+     * @return array|null Installed row data, or null when unsupported by Flexbook.
      */
     private static function build_row(
         string $component,
         bool $external,
         array $enabledlist,
-        bool $hasenabledconfig,
+        bool $hasenabledconfig
     ): ?array {
         if (!self::supports_flexbook($component)) {
             return null;
@@ -158,7 +158,7 @@ class installed_contenttypes {
         }
 
         $enabled = !$hasenabledconfig || in_array($component, $enabledlist, true);
-        $activation = self::resolve_activation_fields($component, $props);
+        $activation = self::resolve_activation_fields($component);
 
         return [
             'component' => $component,
@@ -176,12 +176,10 @@ class installed_contenttypes {
     /**
      * Resolve paid flag and activation status for an installed plugin row.
      *
-     * @param string $component Plugin component.
-     * @param array<string, mixed>|null $props get_property() result when available.
-     * @return array{paid: bool, activated: bool}
+     * @param string $component Plugin component name.
+     * @return array Array with paid and activated boolean flags.
      */
-    private static function resolve_activation_fields(string $component, ?array $props): array {
-        unset($props);
+    private static function resolve_activation_fields(string $component): array {
         if (!\mod_interactivevideo\local\plugins_catalog::is_paid_component($component)) {
             return ['paid' => false, 'activated' => false];
         }

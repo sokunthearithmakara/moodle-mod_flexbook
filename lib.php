@@ -830,11 +830,22 @@ function flexbook_reset_userdata($data) {
  * @return string The content.
  */
 function flexbook_output_fragment_getcontent($arg) {
-    $prop = json_decode($arg['prop']);
-    $class = $prop->class;
-    if (!class_exists($class)) {
+    if (!is_array($arg) || !isset($arg['prop'])) {
         return json_encode($arg);
     }
+
+    $prop = json_decode($arg['prop']);
+    $class = $prop->class ?? '';
+
+    // The class name arrives from the browser, so only a class one of this site's usable content
+    // types actually declares may be built. core_get_fragment, which is what reaches this
+    // callback, performs only validate_context(). Using the usable list rather than the authoring
+    // one also stops a deactivated content type being driven directly.
+    $allowed = array_column(\mod_flexbook\util::get_usable_activitytypes(), 'class');
+    if (!in_array($class, $allowed, true) || !class_exists($class)) {
+        return json_encode($arg);
+    }
+
     $arg['plugin'] = 'flexbook';
     $contenttype = new $class($arg);
     return $contenttype->get_content($arg);

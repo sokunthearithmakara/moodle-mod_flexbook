@@ -123,7 +123,9 @@ if (optional_param('mobileapp', 0, PARAM_INT)) {
 
 $PAGE->add_body_class('path-mod-interactivevideo');
 
-$contentoptions = \mod_flexbook\util::get_all_activitytypes();
+// Learner facing: content types that are not activated are dropped outright, so their
+// pages do not render and do not count.
+$contentoptions = \mod_flexbook\util::get_usable_activitytypes();
 $interactions = \mod_flexbook\util::get_items($cm->instance, $modulecontext->id);
 
 // Enable jQuery UI.

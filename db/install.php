@@ -15,21 +15,22 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information for Flexbook
+ * Install time hook for mod_flexbook.
  *
  * @package    mod_flexbook
  * @copyright  2026 Sokunthearith Makara <sokunthearithmakara@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
+/**
+ * Post install hook.
+ *
+ * Flexbook reuses interactive video's content types, so unlike a fresh interactive video install
+ * there may well be installed content types here already, and some of them may need activating.
+ */
+function xmldb_flexbook_install() {
+    global $CFG, $OUTPUT;
 
-$plugin->component    = 'mod_flexbook';
-$plugin->release      = '1.2.1';
-$plugin->version      = 2026082907;
-$plugin->requires = 2021112800;
-$plugin->supported = [400, 502];
-$plugin->maturity = MATURITY_STABLE;
-$plugin->dependencies = [
-    'mod_interactivevideo' => 2026080103,
-];
+    require_once($CFG->dirroot . '/mod/flexbook/db/upgrade.php');
+    flexbook_report_unactivated_contenttypes($OUTPUT);
+}

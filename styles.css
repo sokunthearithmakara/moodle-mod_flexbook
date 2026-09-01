@@ -2569,3 +2569,13 @@ body.fb-embed-interaction {
 .path-mod-flexbook:has(#start-screen:not(.slide-out-start)) #anno-nav {
     display: none;
 }
+/* An interaction whose content type is not activated: visible, but inert. */
+.iv-type-inactive .title,
+.iv-type-inactive .timestamp,
+.iv-type-inactive .xp {
+    opacity: .55;
+}
+
+.iv-type-inactive .type-icon {
+    color: var(--warning, #f0ad4e);
+}

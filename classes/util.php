@@ -34,7 +34,41 @@ class util extends \interactivevideo_util {
      * @return array[] The list of activity types.
      */
     public static function get_all_activitytypes($fromview = false) {
-        $subplugins = get_config('mod_flexbook', 'enablecontenttypes');
+        return self::build_activitytypes($fromview, true);
+    }
+
+    /**
+     * Which configuration names the enabled content types for this module.
+     *
+     * @return string
+     */
+    protected static function enabled_types_config() {
+        return (string) get_config('mod_flexbook', 'enablecontenttypes');
+    }
+
+    /**
+     * The same list with activation NOT enforced.
+     *
+     * Overridden as well as get_all_activitytypes(), because the parent's version calls a private
+     * builder that resolves in the parent's scope and would therefore return interactive video's
+     * content types rather than this module's.
+     *
+     * @param bool $fromview Whether called from view.php.
+     * @return array[] The list of activity types.
+     */
+    public static function get_all_activitytypes_unfiltered($fromview = false) {
+        return self::build_activitytypes($fromview, false);
+    }
+
+    /**
+     * Build the activity type list.
+     *
+     * @param bool $fromview Whether called from view.php.
+     * @param bool $enforceactivation Whether unactivated paid content types are enforced.
+     * @return array[] The list of activity types.
+     */
+    private static function build_activitytypes($fromview, $enforceactivation) {
+        $subplugins = self::enabled_types_config();
         $subplugins = explode(',', $subplugins);
         // If fromview, make sure to include ivplugin_chapter.
         if ($fromview && !in_array('ivplugin_chapter', $subplugins)) {
@@ -96,6 +130,20 @@ class util extends \interactivevideo_util {
                 if (!isset($properties['preloadstrings'])) {
                     $properties['preloadstrings'] = true;
                 }
+
+                if (
+                    $enforceactivation
+                    && !\mod_interactivevideo\local\contenttype_activation::is_usable($subplugin['name'])
+                ) {
+                    if ($fromview) {
+                        // Learners must not be served pages of a type the site may not use.
+                        continue;
+                    }
+                    // Authoring side: kept so a teacher can still see the page exists, but locked.
+                    $properties['inactive'] = true;
+                    $properties['hideonchooser'] = true;
+                }
+
                 if ($fromview) { // Remove unneeded properties.
                     unset($properties['form']);
                     unset($properties['description']);
@@ -127,7 +175,9 @@ class util extends \interactivevideo_util {
      */
     public static function copy_item($id, $contextid, $timestamp = 0): mixed {
         global $DB;
-        $record = $DB->get_record('flexbook_items', ['id' => $id]);
+        $record = $DB->get_record('flexbook_items', ['id' => $id], '*', MUST_EXIST);
+        // Copying creates a new interaction, so the same activation rule applies.
+        self::require_usable_type($record->type);
         $record->title = $record->title . ' (' . get_string('copynoun', 'mod_interactivevideo') . ')';
         $oldid = (int) $record->id;
         $record->id = $DB->insert_record('flexbook_items', $record);
@@ -215,6 +265,14 @@ class util extends \interactivevideo_util {
             return [];
         }
         $PAGE->set_context(\context::instance_by_id($contextid));
+        // A pack can carry interactions of a content type this site may not use. Skip those
+        // rather than failing the whole import.
+        $items = array_values(array_filter($items, function ($item) {
+            return self::type_is_usable(((object) $item)->type ?? '');
+        }));
+        if (empty($items)) {
+            return [];
+        }
         $first = (object) $items[0];
         $defaultoldcontext = !empty($first->contextid) ? (int) $first->contextid : $contextid;
 
@@ -313,6 +371,10 @@ class util extends \interactivevideo_util {
         $newids = [];
         foreach ($pack->items as $item) {
             $item = (object) $item;
+            // A pack can carry interactions of a content type this site may not use.
+            if (!self::type_is_usable($item->type ?? '')) {
+                continue;
+            }
             $packfiles = isset($item->files) && is_array($item->files) ? $item->files : [];
             unset($item->files);
             $oldid = (int) $item->id;
@@ -669,6 +731,8 @@ class util extends \interactivevideo_util {
      */
     public static function create_instance($type, $data) {
         global $DB;
+        // The chooser hides unactivated content types, but the type arrives from the browser.
+        self::require_usable_type($type);
         $subplugins = self::get_all_activitytypes();
         $plugininfo = array_filter($subplugins, fn($p) => $p['name'] === $type);
         $plugininfo = reset($plugininfo);
@@ -736,6 +800,8 @@ class util extends \interactivevideo_util {
      */
     public static function quick_edit($id, $field, $value, $contextid, $draftitemid = 0, $olddraftitemid = 0) {
         global $DB, $CFG;
+        // Locked in the editor UI as well; this is what actually refuses the write.
+        self::require_usable_type($DB->get_field('flexbook_items', 'type', ['id' => $id], MUST_EXIST));
         if ($field == 'content') {
             require_once($CFG->libdir . '/filelib.php');
             $context = \context::instance_by_id($contextid);

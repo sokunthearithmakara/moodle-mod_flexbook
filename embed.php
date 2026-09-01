@@ -48,7 +48,8 @@ $modulecontext = $resolved['context'];
 
 $jsonflags = JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
 
-$contentoptions = \mod_flexbook\util::get_all_activitytypes();
+// Learner facing, so an unactivated content type must not resolve to a renderer.
+$contentoptions = \mod_flexbook\util::get_usable_activitytypes();
 $contenttype = null;
 foreach ($contentoptions as $option) {
     if ($option['name'] === $item->type) {

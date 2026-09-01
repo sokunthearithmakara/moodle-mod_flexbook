@@ -32,7 +32,7 @@
  * @return bool True if successful.
  */
 function xmldb_flexbook_upgrade($oldversion) {
-    global $DB;
+    global $DB, $OUTPUT;
     $dbman = $DB->get_manager();
 
     if ($oldversion < 2026042000) {
@@ -58,5 +58,35 @@ function xmldb_flexbook_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026062405, 'flexbook');
     }
 
+    // Enforcement is otherwise silent: an unactivated content type simply stops appearing.
+    // Say so while the administrator is looking at the upgrade output.
+    flexbook_report_unactivated_contenttypes($OUTPUT);
+
     return true;
+}
+
+/**
+ * Print a warning naming content types that are installed but cannot be used.
+ *
+ * Shared by install and upgrade. Prints nothing when every installed paid content type is
+ * activated, so it does not become noise on a healthy site.
+ *
+ * @param \renderer_base $output The page renderer.
+ */
+function flexbook_report_unactivated_contenttypes($output) {
+    $message = \mod_interactivevideo\local\activation_notice::message(
+        \mod_interactivevideo\local\activation_notice::MODULE_FLEXBOOK
+    );
+
+    if ($message === null) {
+        return;
+    }
+
+    echo $output->notification(
+        $message,
+        \core\output\notification::NOTIFY_WARNING,
+        false,
+        get_string('activationnoticetitle', 'mod_interactivevideo'),
+        'i/warning'
+    );
 }

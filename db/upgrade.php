@@ -58,6 +58,13 @@ function xmldb_flexbook_upgrade($oldversion) {
         upgrade_mod_savepoint(true, 2026062405, 'flexbook');
     }
 
+    if ($oldversion < 2026090201) {
+        // Scale was offered in modgrade but never created a grade item; normalise legacy values.
+        $DB->execute('UPDATE {flexbook} SET grade = 0 WHERE grade < 0');
+
+        upgrade_mod_savepoint(true, 2026090201, 'flexbook');
+    }
+
     // Enforcement is otherwise silent: an unactivated content type simply stops appearing.
     // Say so while the administrator is looking at the upgrade output.
     flexbook_report_unactivated_contenttypes($OUTPUT);

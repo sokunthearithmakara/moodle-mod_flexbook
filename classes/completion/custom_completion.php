@@ -75,10 +75,7 @@ class custom_completion extends activity_custom_completion {
             $cm = $this->cm;
             $completionpercentage = $cm->customdata['customcompletionrules']['completionpercentage'];
 
-            $items = $DB->get_records(
-                'flexbook_items',
-                ['annotationid' => $cm->instance, 'hascompletion' => 1]
-            );
+            $items = \mod_flexbook\util::get_items($cm->id, $cm->context->id, true);
 
             // Fallback to prevent marking complete when no items are configured.
             if (empty($items)) {
@@ -86,7 +83,8 @@ class custom_completion extends activity_custom_completion {
             }
 
             $relevantitems = array_map(function ($item) {
-                return $item->id;
+                $item = (array) $item;
+                return $item['id'];
             }, $items);
 
             $usercompletion = $DB->get_field(

@@ -142,6 +142,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
 
         // Other standard elements that are displayed in their own fieldsets.
         $this->standard_grading_coursemodule_elements();
+        flexbook_remove_scale_grade_option($this->_form);
         $this->standard_coursemodule_elements();
 
         $this->add_action_buttons();
@@ -252,6 +253,11 @@ class mod_flexbook_mod_form extends moodleform_mod {
      * @return void
      */
     public function data_preprocessing(&$defaultvalues) {
+        $gradefieldname = \core_grades\component_gradeitems::get_field_name_for_itemnumber('mod_flexbook', 0, 'grade');
+        if (isset($defaultvalues[$gradefieldname]) && (int) $defaultvalues[$gradefieldname] < 0) {
+            $defaultvalues[$gradefieldname] = 0;
+        }
+
         if ($this->current->instance) {
             $suffix = '';
             if (method_exists($this, 'get_suffix')) {

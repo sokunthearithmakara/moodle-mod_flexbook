@@ -173,7 +173,7 @@ class util extends \interactivevideo_util {
      * @param float $timestamp
      * @return mixed|null
      */
-    public static function copy_item($id, $contextid, $timestamp = 0): mixed {
+    public static function copy_item($id, $contextid, $timestamp = 0) {
         global $DB;
         $record = $DB->get_record('flexbook_items', ['id' => $id], '*', MUST_EXIST);
         // Copying creates a new interaction, so the same activation rule applies.

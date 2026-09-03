@@ -81,6 +81,12 @@ function xmldb_flexbook_upgrade($oldversion) {
  * @param \renderer_base $output The page renderer.
  */
 function flexbook_report_unactivated_contenttypes($output) {
+    // Interactive video is a hard dependency, but the class can still be absent when the
+    // dependency has not been installed, e.g. a plugin-only CI install. Fail quietly there.
+    if (!class_exists('\mod_interactivevideo\local\activation_notice')) {
+        return;
+    }
+
     $message = \mod_interactivevideo\local\activation_notice::message(
         \mod_interactivevideo\local\activation_notice::MODULE_FLEXBOOK
     );

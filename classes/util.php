@@ -1521,10 +1521,14 @@ class util extends \interactivevideo_util {
         $cm = get_coursemodule_from_id('flexbook', $cmid, 0, false, MUST_EXIST);
         $instanceid = $cm->instance;
         $grade = null;
+        // Item number 0 is the activity's own grade item. Without it an activity
+        // with outcomes attached matches their grade items too, and fetch()
+        // throws on more than one match.
         $gradeitem = \grade_item::fetch([
             'iteminstance' => $instanceid,
             'itemtype' => 'mod',
             'itemmodule' => 'flexbook',
+            'itemnumber' => 0,
             'courseid' => $courseid,
         ]);
         if ($gradeitem) {

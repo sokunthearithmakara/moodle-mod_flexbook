@@ -720,24 +720,28 @@ function flexbook_update_grades($moduleinstance, $userid = 0) {
 function flexbook_get_user_grades($moduleinstance, $userid = 0) {
     global $CFG, $DB;
     require_once($CFG->libdir . '/gradelib.php');
-    // Get user grades from the grade_grades table with key as userid.
-    $grades = [];
+
+    // Restrict to the activity's own grade item. Outcomes attached to this
+    // activity get their own grade_items rows (itemtype 'mod', same
+    // iteminstance, itemnumber from 1000 up), so without this a graded user
+    // matches several rows, they collide on the userid key, and whichever row
+    // happens to win is fed back into the module grade by grade_update().
+    $sql = "SELECT g.userid AS userid, g.rawgrade AS rawgrade, g.usermodified AS usermodified
+              FROM {grade_grades} g
+              JOIN {grade_items} gi ON gi.id = g.itemid
+             WHERE gi.itemmodule = :itemmodule
+               AND gi.iteminstance = :iteminstance
+               AND gi.itemtype = 'mod'
+               AND gi.itemnumber = 0";
+    $params = ['itemmodule' => 'flexbook', 'iteminstance' => $moduleinstance->id];
+
     if ($userid) {
-        $sql = "SELECT g.userid AS userid, g.rawgrade AS rawgrade, g.usermodified AS usermodified
-                FROM {grade_grades} g
-                LEFT JOIN {grade_items} gi ON g.itemid = gi.id
-                WHERE gi.iteminstance = :iteminstance AND gi.itemmodule = :itemmodule AND g.userid = :userid";
-        $params = ['iteminstance' => $moduleinstance->id, 'itemmodule' => 'flexbook', 'userid' => $userid];
-        $grades = $DB->get_records_sql($sql, $params);
-    } else {
-        $sql = "SELECT g.userid AS userid, g.rawgrade AS rawgrade, g.usermodified AS usermodified
-                FROM {grade_grades} g
-                LEFT JOIN {grade_items} gi ON g.itemid = gi.id
-                WHERE gi.iteminstance = :iteminstance AND gi.itemmodule = :itemmodule";
-        $params = ['iteminstance' => $moduleinstance->id, 'itemmodule' => 'flexbook'];
-        $grades = $DB->get_records_sql($sql, $params);
+        $sql .= "
+               AND g.userid = :userid";
+        $params['userid'] = $userid;
     }
-    return $grades;
+
+    return $DB->get_records_sql($sql, $params);
 }
 
 /**

@@ -540,11 +540,12 @@ const init = async(
         const $btn = $('#annotation-list-paste');
 
         if (!canPaste) {
-            $footer.addClass('d-none');
+            // d-none and d-flex both use !important; they must not coexist.
+            $footer.addClass('d-none').removeClass('d-flex');
             return;
         }
 
-        $footer.removeClass('d-none');
+        $footer.removeClass('d-none').addClass('d-flex');
         $btn.prop('disabled', false);
         $btn.addClass('btn-primary text-white').removeClass('btn-light');
         $btn.find('i').removeClass('bi-clipboard').addClass('bi-clipboard-plus');

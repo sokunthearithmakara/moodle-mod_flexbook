@@ -1214,7 +1214,7 @@
     line-height: 1 !important;
 }
 
-.path-mod-flexbook.kidtheme #chapter-container-left.fb li.anno img,
+.path-mod-flexbook.kidtheme #chapter-container-left.fb li.anno > span:first-child img,
 .path-mod-flexbook.kidtheme #chapter-container-left.fb li.anno > span:first-child > i:not(:first-child) {
     width: 30px;
     height: 30px;

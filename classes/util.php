@@ -1091,13 +1091,23 @@ class util extends \interactivevideo_util {
                     $log->completionid = $record->id;  // Store the completion id.
                     $log->id = $DB->insert_record('flexbook_log', $log);
                     // Files of the log, such as a recording, are kept as @@PLUGINFILE@@.
-                    $encoded = \mod_interactivevideo\local\recording_store::encode_urls($details, \context_module::instance($cmid)->id, 'mod_flexbook', $log->id);
+                    $encoded = \mod_interactivevideo\local\recording_store::encode_urls(
+                        $details,
+                        \context_module::instance($cmid)->id,
+                        'mod_flexbook',
+                        $log->id
+                    );
                     if ($encoded !== $details) {
                         $DB->set_field('flexbook_log', 'text1', $encoded, ['id' => $log->id]);
                     }
                 } else {
                     // Files of the log, such as a recording, are kept as @@PLUGINFILE@@.
-                    $existing->text1 = \mod_interactivevideo\local\recording_store::encode_urls($details, \context_module::instance($cmid)->id, 'mod_flexbook', $existing->id);
+                    $existing->text1 = \mod_interactivevideo\local\recording_store::encode_urls(
+                        $details,
+                        \context_module::instance($cmid)->id,
+                        'mod_flexbook',
+                        $existing->id
+                    );
                     $existing->timemodified = time();
                     $existing->completionid = $record->id;  // Store the completion id.
                     $DB->update_record('flexbook_log', $existing);
@@ -1723,7 +1733,12 @@ class util extends \interactivevideo_util {
         }
         if (isset($record->text1)) {
             // Files of the log, such as a recording, are kept as @@PLUGINFILE@@.
-            $encoded = \mod_interactivevideo\local\recording_store::encode_urls($record->text1, (int) $contextid, 'mod_flexbook', (int) $record->id);
+            $encoded = \mod_interactivevideo\local\recording_store::encode_urls(
+                $record->text1,
+                (int) $contextid,
+                'mod_flexbook',
+                (int) $record->id
+            );
             if ($encoded !== $record->text1) {
                 $DB->set_field('flexbook_log', 'text1', $encoded, ['id' => $record->id]);
                 // The caller still gets the addresses, to show the files now.

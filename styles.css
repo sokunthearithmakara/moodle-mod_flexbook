@@ -444,6 +444,17 @@
     width: 100%;
 }
 
+/* Aspect-ratio sizing writes an inline pixel width on #video-wrapper. The Bootstrap
+   column would otherwise keep that width as its minimum and overflow when the frame
+   narrows (activity modal wide → narrow). */
+.path-mod-flexbook #interactivevideo-container > .row,
+.path-mod-flexbook #interactivevideo-container > .row > .col-12,
+.path-mod-flexbook #wrapper,
+.path-mod-flexbook #video-wrapper.fb[data-ratio] {
+    min-width: 0;
+    max-width: 100%;
+}
+
 .path-mod-interactivevideo.path-mod-flexbook #video-info #play {
     top: 50%;
     left: 50%;
@@ -1319,9 +1330,15 @@
     background: #000;
 }
 
+/* Embed mode sizes the player to the full iframe height; the card padding/outline would overflow it. */
+.path-mod-flexbook.kidtheme.embed-mode #interactivevideo-container {
+    padding: 0;
+}
+
 .path-mod-flexbook.kidtheme.embed-mode #video-wrapper.fb {
     border-radius: 0 !important;
     box-shadow: none !important;
+    outline: none;
 }
 
 .path-mod-flexbook.kidtheme #wrapper.fullscreen #video-wrapper.fb {

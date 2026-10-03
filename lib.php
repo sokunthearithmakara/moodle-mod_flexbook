@@ -123,6 +123,9 @@ function flexbook_display_options($moduleinstance) {
         'openchapterpanel' => in_array('openchapterpanel', $defaultappearance) ? 1 : 0,
         'character' => 'none',
         'limitedwidth' => (empty($defaultappearanceraw) || in_array('limitedwidth', $defaultappearance)) ? 1 : 0,
+        'showoutcomesonstartscreen' => 0,
+        'showoutcomesonendscreen' => 0,
+        'showoutcomesonreport' => 0,
     ];
 
     foreach ($fields as $field => $default) {
@@ -291,6 +294,13 @@ function flexbook_update_instance($moduleinstance, $mform = null) {
     flexbook_grade_item_update($moduleinstance);
     flexbook_update_grades($moduleinstance);
 
+    // Attaching an outcome here creates its grade item once this function returns, so a
+    // rating pass is queued to catch up learners who already have progress.
+    \mod_interactivevideo\local\outcome_mapping::queue_backfill_for_activity(
+        $moduleinstance,
+        'flexbook',
+        (int) $moduleinstance->id
+    );
     // Handle external plugins.
     $subplugins = flexbook_get_subplugins('fbmform');
     foreach ($subplugins as $subplugin) {
@@ -389,6 +399,42 @@ function flexbook_get_file_info($browser, $areas, $course, $cm, $context, $filea
 }
 
 /**
+ * Whether a file area holds a learner's own submitted files.
+ *
+ * @param string $filearea
+ * @return bool
+ */
+function flexbook_is_user_owned_filearea($filearea) {
+    return in_array($filearea, ['attachments', 'text1', 'text2', 'text3'], true);
+}
+
+/**
+ * Whether the current user may read the files attached to a flexbook log.
+ *
+ * @param int $logid
+ * @param \context $context
+ * @return bool
+ */
+function flexbook_can_access_log_file($logid, $context) {
+    global $DB, $USER;
+
+    $log = $DB->get_record('flexbook_log', ['id' => $logid], 'id, userid');
+    if (!$log) {
+        return false;
+    }
+    if ((int) $log->userid === (int) $USER->id) {
+        return true;
+    }
+    if (has_capability('mod/flexbook:viewreport', $context)) {
+        return true;
+    }
+    if (class_exists(\local_ivpeerwork\access::class)) {
+        return \local_ivpeerwork\access::reviewer_can_read('flexbook', (int) $log->id, (int) $USER->id);
+    }
+    return false;
+}
+
+/**
  * Serves the files from the mod_flexbook file areas.
  *
  * @param \stdClass $course The course object.
@@ -413,6 +459,11 @@ function flexbook_pluginfile($course, $cm, $context, $filearea, $args, $forcedow
     } else {
         $filepath = '/' . implode('/', $args) . '/';
     }
+
+    if (flexbook_is_user_owned_filearea($filearea) && !flexbook_can_access_log_file($itemid, $context)) {
+        send_file_not_found();
+    }
+
     // Retrieve the file from the Files API.
     $fs = get_file_storage();
     $file = $fs->get_file($context->id, 'mod_flexbook', $filearea, $itemid, $filepath, $filename);
@@ -795,13 +846,17 @@ function flexbook_reset_userdata($data) {
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text2');
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text3');
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'attachments');
+                if (class_exists(\local_ivpeerwork\service::class)) {
+                    \local_ivpeerwork\service::delete_public_copies($contextid, 'mod_flexbook');
+                }
             }
         }
 
-        // Get all related modules and reset their grades.
+        // Get all related modules and reset their grades, outcome ratings included.
         $flexbooks = $DB->get_records('flexbook', ['course' => $courseid]);
         foreach ($flexbooks as $flexbook) {
             flexbook_grade_item_update($flexbook, 'reset');
+            \mod_interactivevideo\local\outcome_mapping::reset_ratings('flexbook', (int) $flexbook->id);
         }
 
         $status[] = [

@@ -1272,6 +1272,10 @@ export default class Base {
             if (details.hasDetails) {
                 completionDetails.hasDetails = true;
             }
+            if (details.pending) {
+                // Waiting for the teacher to give the XP, in the report
+                completionDetails.pending = true;
+            }
             completionDetails.xp = (details.xp !== undefined && details.xp !== null) ? details.xp : thisItem.xp;
             completionDetails.percent = (details.percent !== undefined && details.percent !== null) ? details.percent : 1;
             // eslint-disable-next-line no-nested-ternary
@@ -1707,6 +1711,37 @@ export default class Base {
      * @param {Number} replaceexisting replace existing log flag
      * @returns {Promise}
      */
+    /**
+     * Store a learner's recording from H5P content (such as a spoken answer that a teacher
+     * grades) as a file of their log for this interaction. Only its address goes back to the
+     * content, which keeps it in its saved state.
+     *
+     * @param {Object} annotation The interaction
+     * @param {Blob} blob The recording
+     * @param {Object} info extension (webm, m4a, ogg...) and duration in seconds
+     * @returns {Promise<Object>} url of the stored file
+     */
+    async uploadRecording(annotation, blob, info) {
+        // The recording as base64, without the data: prefix
+        const data = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result).split(',')[1] || '');
+            reader.onerror = () => reject(reader.error);
+            reader.readAsDataURL(blob);
+        });
+        const saved = await Ajax.call([{
+            methodname: 'mod_flexbook_upload_recording',
+            args: {
+                contextid: M.cfg.contextid,
+                cmid: this.cm,
+                annotationid: annotation.id,
+                extension: (info && info.extension) || 'webm',
+                data: data,
+            }
+        }])[0];
+        return {url: saved.url};
+    }
+
     async saveLog(annotation, data, userid, replaceexisting = 1) {
         const log = await Ajax.call([{
             methodname: 'mod_flexbook_save_log',

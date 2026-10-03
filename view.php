@@ -417,6 +417,28 @@ $datafortemplate['containers'] = [
 ];
 $datafortemplate['moodleversion'] = $CFG->branch;
 
+
+// The activity's outcomes, and where the learner stands on each. Both screens are rendered
+// now and refreshed in place as progress is saved.
+$outcomerows = \mod_interactivevideo\local\outcome_mapping::screen_rows(
+    'flexbook',
+    (int) $cm->instance,
+    (int) $USER->id,
+    $modulecontext
+);
+$showoutcomesonstartscreen = !empty($outcomerows)
+    && !empty($moduleinstance->displayoptions['showoutcomesonstartscreen']);
+$showoutcomesonendscreen = !empty($outcomerows)
+    && !empty($moduleinstance->displayoptions['showoutcomesonendscreen']);
+$datafortemplate['outcomes'] = $outcomerows;
+$datafortemplate['showoutcomesonstartscreen'] = $showoutcomesonstartscreen;
+$datafortemplate['showoutcomesonendscreen'] = $showoutcomesonendscreen;
+$datafortemplate['startscreendocument'] = !empty($moduleinstance->displayasstartscreen) || $showoutcomesonstartscreen;
+$datafortemplate['endscreendocument'] = !empty($moduleinstance->endscreentext) || $showoutcomesonendscreen;
+// The description is shown on the start screen only when the teacher asked for it.
+$datafortemplate['showintro'] = !empty($moduleinstance->displayasstartscreen)
+    && !empty($datafortemplate['hasintro']);
+$datafortemplate['hascontent'] = $datafortemplate['showintro'] || $showoutcomesonstartscreen;
 echo $OUTPUT->render_from_template('mod_flexbook/canvas/player', $datafortemplate);
 
 $PAGE->requires->js_call_amd('mod_flexbook/view', 'init', [[

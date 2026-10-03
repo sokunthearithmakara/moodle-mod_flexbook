@@ -290,6 +290,10 @@ class util extends \interactivevideo_util {
             $item->timecreated = time();
             $item->timemodified = time();
             $item->contextid = $contextid;
+            $item->advanced = \mod_interactivevideo\local\outcome_mapping::restrict_to_course(
+                $item->advanced ?? null,
+                (int) $tocourse
+            );
             $item->id = $DB->insert_record('flexbook_items', $item);
             $idmap[$oldid] = (int) $item->id;
             $newids[] = (int) $item->id;
@@ -385,6 +389,10 @@ class util extends \interactivevideo_util {
             $item->annotationid = $instanceid;
             $item->timecreated = time();
             $item->timemodified = time();
+            $item->advanced = \mod_interactivevideo\local\outcome_mapping::restrict_to_course(
+                $item->advanced ?? null,
+                (int) $courseid
+            );
             $item->id = $DB->insert_record('flexbook_items', $item);
             $idmap[$oldid] = (int) $item->id;
             $newids[] = (int) $item->id;
@@ -696,6 +704,7 @@ class util extends \interactivevideo_util {
      */
     public static function delete_item($id, $cmid, $contextid) {
         global $DB;
+        $deleteditem = $DB->get_record('flexbook_items', ['id' => $id], 'id, annotationid, advanced', IGNORE_MISSING);
         $DB->delete_records('flexbook_items', ['id' => $id]);
         $logs = $DB->get_records('flexbook_log', ['annotationid' => $id]);
         $fs = get_file_storage();
@@ -710,6 +719,9 @@ class util extends \interactivevideo_util {
         if ($logs) {
             foreach ($logs as $log) {
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'attachments', $log->id);
+                if (class_exists(\local_ivpeerwork\service::class)) {
+                    \local_ivpeerwork\service::delete_public_copies($contextid, 'mod_flexbook', (int) $log->id);
+                }
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text1', $log->id);
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text2', $log->id);
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text3', $log->id);
@@ -718,6 +730,11 @@ class util extends \interactivevideo_util {
         }
         $cache = \cache::make('mod_flexbook', 'fb_items');
         $cache->delete($cmid);
+
+        // An interaction that fed outcomes leaves ratings behind that no longer add up.
+        if ($deleteditem && \mod_interactivevideo\local\outcome_mapping::parse_mapping($deleteditem)) {
+            \mod_interactivevideo\local\outcome_mapping::queue_backfill('flexbook', (int) $deleteditem->annotationid);
+        }
 
         return $id;
     }
@@ -1052,6 +1069,17 @@ class util extends \interactivevideo_util {
                     'completionid' => $record->id,
                 ]);
                 if (!$existing) {
+                    // A log made before the completion, such as one holding a recording
+                    // from H5P content: use it, so there's one log for the interaction.
+                    $existing = $DB->get_record_select(
+                        'flexbook_log',
+                        'annotationid = :annotationid AND userid = :userid AND completionid IS NULL',
+                        ['annotationid' => $completionid, 'userid' => $userid],
+                        '*',
+                        IGNORE_MULTIPLE
+                    );
+                }
+                if (!$existing) {
                     $log = new \stdClass();
                     $log->userid = $userid;
                     $log->cmid = $cmid;
@@ -1061,9 +1089,15 @@ class util extends \interactivevideo_util {
                     $log->text1 = $details;
                     $log->timemodified = time();
                     $log->completionid = $record->id;  // Store the completion id.
-                    $DB->insert_record('flexbook_log', $log);
+                    $log->id = $DB->insert_record('flexbook_log', $log);
+                    // Files of the log, such as a recording, are kept as @@PLUGINFILE@@.
+                    $encoded = \mod_interactivevideo\local\recording_store::encode_urls($details, \context_module::instance($cmid)->id, 'mod_flexbook', $log->id);
+                    if ($encoded !== $details) {
+                        $DB->set_field('flexbook_log', 'text1', $encoded, ['id' => $log->id]);
+                    }
                 } else {
-                    $existing->text1 = $details;
+                    // Files of the log, such as a recording, are kept as @@PLUGINFILE@@.
+                    $existing->text1 = \mod_interactivevideo\local\recording_store::encode_urls($details, \context_module::instance($cmid)->id, 'mod_flexbook', $existing->id);
                     $existing->timemodified = time();
                     $existing->completionid = $record->id;  // Store the completion id.
                     $DB->update_record('flexbook_log', $existing);
@@ -1087,6 +1121,29 @@ class util extends \interactivevideo_util {
             $record->gradeitem = $gradeitem;
         }
 
+        // Rate the activity's outcomes from the stored progress, never from the request.
+        $outcomecm = get_coursemodule_from_id('flexbook', $cmid, 0, false, IGNORE_MISSING);
+        if ($outcomecm) {
+            [$outcomedetails, $outcomecompleted] = \mod_interactivevideo\local\outcome_mapping::decode_progress($record);
+            \mod_interactivevideo\local\outcome_mapping::rate_user(
+                'flexbook',
+                (int) $outcomecm->instance,
+                (int) $userid,
+                \mod_flexbook\local\outcome_source::gradable_items_for_cm((int) $cmid),
+                $outcomedetails,
+                $outcomecompleted
+            );
+
+            // The screens showing these outcomes were rendered before this attempt, so hand
+            // back the fresh standing for them to redraw with.
+            $record->outcomes = \mod_interactivevideo\local\outcome_mapping::screen_rows(
+                'flexbook',
+                (int) $outcomecm->instance,
+                (int) $userid,
+                \context_module::instance((int) $cmid)
+            );
+        }
+
         // Update completion state.
         if ($updatestate) {
             $modinfo = get_fast_modinfo($courseid);
@@ -1099,6 +1156,10 @@ class util extends \interactivevideo_util {
                 $completion->update_state($cm);
                 $record->overallcomplete = $completion->internal_get_state($cm, $userid, null);
             }
+        }
+
+        if ($type === 'peerwork' && $completionid && class_exists(\local_ivpeerwork\score::class)) {
+            \local_ivpeerwork\score::sync('flexbook', (int) $userid, (int) $completionid);
         }
 
         return $record;
@@ -1215,6 +1276,17 @@ class util extends \interactivevideo_util {
             );
         }
 
+        // The outcome column's data, read once for the whole report rather than per row.
+        // The completion table is keyed by course module id, the grade items by instance id.
+        $outcomecm = get_coursemodule_from_id('flexbook', $cmid, 0, false, IGNORE_MISSING);
+        $outcomeinstance = $outcomecm ? (int) $outcomecm->instance : 0;
+        $outcometotal = $outcomeinstance > 0
+            ? count(\mod_interactivevideo\local\outcome_mapping::get_outcome_grade_items('flexbook', $outcomeinstance))
+            : 0;
+        $outcomeratings = $outcometotal > 0
+            ? \mod_interactivevideo\local\outcome_mapping::report_ratings('flexbook', $outcomeinstance)
+            : [];
+
         $records = [];
         $rs = $DB->get_recordset_sql($sql, $params);
         foreach ($rs as $record) {
@@ -1249,6 +1321,13 @@ class util extends \interactivevideo_util {
                 }
             }
 
+            if ($outcometotal > 0) {
+                $record->outcomes = \mod_interactivevideo\local\outcome_mapping::report_row(
+                    $outcomeratings[$record->id] ?? [],
+                    $outcometotal
+                );
+            }
+
             $records[$record->id] = $record;
         }
         $rs->close();
@@ -1267,12 +1346,16 @@ class util extends \interactivevideo_util {
      */
     public static function delete_progress_by_id($contextid, $recordid, $courseid, $cmid) {
         global $DB, $CFG;
+        $owner = $DB->get_field('flexbook_completion', 'userid', ['id' => $recordid], IGNORE_MISSING);
         $DB->delete_records('flexbook_completion', ['id' => $recordid]);
         $logs = $DB->get_records('flexbook_log', ['completionid' => $recordid], 'id', 'id, userid');
         if ($logs) {
             $fs = get_file_storage();
             foreach ($logs as $log) {
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'attachments', $log->id);
+                if (class_exists(\local_ivpeerwork\service::class)) {
+                    \local_ivpeerwork\service::delete_public_copies($contextid, 'mod_flexbook', (int) $log->id);
+                }
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text1', $log->id);
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text2', $log->id);
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text3', $log->id);
@@ -1292,6 +1375,15 @@ class util extends \interactivevideo_util {
                 $completion->update_state($cm, null, $userid);
             }
         }
+        // With no progress left there is no evidence for any outcome.
+        if ($owner) {
+            \mod_interactivevideo\local\outcome_mapping::clear_user(
+                'flexbook',
+                (int) $cm->instance,
+                (int) $owner,
+                \mod_flexbook\local\outcome_source::gradable_items_for_cm((int) $cmid)
+            );
+        }
         return 'deleted';
     }
 
@@ -1306,12 +1398,19 @@ class util extends \interactivevideo_util {
      */
     public static function delete_progress_by_ids($contextid, $recordids, $courseid, $cmid) {
         global $DB, $CFG;
+        $owners = array_column(
+            $DB->get_records_list('flexbook_completion', 'id', $recordids, '', 'id, userid'),
+            'userid'
+        );
         $DB->delete_records_list('flexbook_completion', 'id', $recordids);
         $logs = $DB->get_records_list('flexbook_log', 'completionid', $recordids, 'id', 'id, userid');
         if ($logs) {
             $fs = get_file_storage();
             foreach ($logs as $log) {
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'attachments', $log->id);
+                if (class_exists(\local_ivpeerwork\service::class)) {
+                    \local_ivpeerwork\service::delete_public_copies($contextid, 'mod_flexbook', (int) $log->id);
+                }
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text1', $log->id);
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text2', $log->id);
                 $fs->delete_area_files($contextid, 'mod_flexbook', 'text3', $log->id);
@@ -1331,6 +1430,11 @@ class util extends \interactivevideo_util {
                 $completion->update_state($cm, null, $userid);
             }
         }
+        // With no progress left there is no evidence for any outcome.
+        $items = \mod_flexbook\local\outcome_source::gradable_items_for_cm((int) $cmid);
+        foreach (array_values(array_unique($owners)) as $userid) {
+            \mod_interactivevideo\local\outcome_mapping::clear_user('flexbook', (int) $cm->instance, (int) $userid, $items);
+        }
         return 'deleted';
     }
 
@@ -1348,14 +1452,24 @@ class util extends \interactivevideo_util {
         if (!$logs) {
             return;
         }
+        $reviewedauthors = [];
+        if (class_exists(\local_ivpeerwork\score::class)) {
+            $reviewedauthors = \local_ivpeerwork\score::authors_in_logs($logs);
+        }
         $fs = get_file_storage();
         foreach ($logs as $log) {
             $fs->delete_area_files($contextid, 'mod_flexbook', 'attachments', $log->id);
+            if (class_exists(\local_ivpeerwork\service::class)) {
+                \local_ivpeerwork\service::delete_public_copies($contextid, 'mod_flexbook', (int) $log->id);
+            }
             $fs->delete_area_files($contextid, 'mod_flexbook', 'text1', $log->id);
             $fs->delete_area_files($contextid, 'mod_flexbook', 'text2', $log->id);
             $fs->delete_area_files($contextid, 'mod_flexbook', 'text3', $log->id);
         }
         $DB->delete_records('flexbook_log', ['userid' => $userid, 'annotationid' => $itemid]);
+        foreach ($reviewedauthors as $authorid) {
+            \local_ivpeerwork\score::sync('flexbook', (int) $authorid, (int) $itemid);
+        }
     }
 
     /**
@@ -1391,12 +1505,26 @@ class util extends \interactivevideo_util {
             }, $completiondetails);
             $completion->completiondetails = json_encode(array_values($completiondetails));
             // Remove from details (timespent and views).
-            $details = json_decode($completion->details, true);
+            $details = json_decode((string) $completion->details, true);
             if (is_array($details) && isset($details[$itemid])) {
                 unset($details[$itemid]);
                 $completion->details = json_encode($details);
             }
             $DB->update_record('flexbook_completion', $completion);
+
+            // The interaction no longer counts, so the outcomes it fed are recomputed.
+            $outcomecm = get_coursemodule_from_id('flexbook', $completion->cmid, 0, false, IGNORE_MISSING);
+            if ($outcomecm) {
+                [$outcomedetails, $outcomecompleted] = \mod_interactivevideo\local\outcome_mapping::decode_progress($completion);
+                \mod_interactivevideo\local\outcome_mapping::rate_user(
+                    'flexbook',
+                    (int) $outcomecm->instance,
+                    (int) $completion->userid,
+                    \mod_flexbook\local\outcome_source::gradable_items_for_cm((int) $completion->cmid),
+                    $outcomedetails,
+                    $outcomecompleted
+                );
+            }
             self::delete_interaction_logs($userid, $itemid, $contextid);
             return json_encode(['id' => $id, 'itemid' => $itemid]);
         }
@@ -1498,6 +1626,8 @@ class util extends \interactivevideo_util {
                     }
                 }
                 $found = true;
+                // The teacher's XP grades work that was waiting for it.
+                $decoded = \mod_interactivevideo\report_helper::mark_graded($decoded);
                 $updateditemdetail = $decoded;
             }
             return json_encode($decoded);
@@ -1538,6 +1668,16 @@ class util extends \interactivevideo_util {
             $gradeobj->rawgrade = ($grade === null || $grade <= 0) ? null : $grade;
             grade_update('mod/flexbook', $courseid, 'mod', 'flexbook', $instanceid, 0, $gradeobj);
         }
+
+        // The override is the teacher's word on the score, so the outcomes follow it too.
+        \mod_interactivevideo\local\outcome_mapping::rate_user(
+            'flexbook',
+            (int) $instanceid,
+            (int) $userid,
+            $items,
+            $decodeddetails,
+            $completeditems
+        );
 
         return json_encode([
             'id' => $id,
@@ -1580,6 +1720,14 @@ class util extends \interactivevideo_util {
             }
         } else {
             $record->id = $DB->insert_record('flexbook_log', $record);
+        }
+        if (isset($record->text1)) {
+            // Files of the log, such as a recording, are kept as @@PLUGINFILE@@.
+            $encoded = \mod_interactivevideo\local\recording_store::encode_urls($record->text1, (int) $contextid, 'mod_flexbook', (int) $record->id);
+            if ($encoded !== $record->text1) {
+                $DB->set_field('flexbook_log', 'text1', $encoded, ['id' => $record->id]);
+                // The caller still gets the addresses, to show the files now.
+            }
         }
         $record->formattedtimecreated = userdate($record->timecreated, get_string('strftimedatetime', 'langconfig'));
         $record->formattedtimemodified = userdate($record->timemodified, get_string('strftimedatetime', 'langconfig'));

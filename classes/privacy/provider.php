@@ -80,6 +80,9 @@ class provider implements
             "text3" => "privacy:metadata:text3",
         ], "privacy:metadata:flexbook_log");
 
+        // Outcome ratings computed from interaction scores live in the gradebook.
+        $collection->add_subsystem_link('core_grades', [], 'privacy:metadata:core_grades');
+
         return $collection;
     }
 

@@ -26,6 +26,7 @@ import {get_string as getString, get_strings as getStrings} from 'core/str';
 import {dispatchEvent} from 'core/event_dispatcher';
 import {add as addToast} from './toast';
 import Ajax from 'core/ajax';
+import Templates from 'core/templates';
 import Notification from 'core/notification';
 import 'mod_interactivevideo/libraries/jquery-ui';
 import state from './state';
@@ -181,6 +182,63 @@ const init = async config => {
         stopInteractionTimer();
     });
 
+    /**
+     * The outcome rows a save_progress response carries, if any.
+     *
+     * The two modules answer differently: one returns the record as a JSON string, the
+     * other wraps it in a web service envelope.
+     *
+     * @param {Object|String} response The response passed on the completionupdated event.
+     * @returns {Array|null} The rows, or null when the response holds none.
+     */
+    const outcomeRowsFrom = (response) => {
+        let payload = response;
+        if (payload && typeof payload === 'object' && typeof payload.data === 'string') {
+            payload = payload.data;
+        }
+        if (typeof payload === 'string') {
+            try {
+                payload = JSON.parse(payload);
+            } catch (e) {
+                return null;
+            }
+        }
+        return payload && payload.outcomes ? payload.outcomes : null;
+    };
+
+    /**
+     * Redraws the outcome lists on the start and end screens.
+     *
+     * Both screens were rendered before this attempt, so the ratings they show are stale as
+     * soon as the learner completes anything.
+     *
+     * @param {Object|String} response The response passed on the completionupdated event.
+     * @returns {void}
+     */
+    const refreshOutcomeLists = (response) => {
+        const $lists = $('[data-region="outcomelist"]');
+        if ($lists.length === 0) {
+            return;
+        }
+        const rows = outcomeRowsFrom(response);
+        if (!rows) {
+            return;
+        }
+        Templates.render('mod_interactivevideo/player/outcomelist', {outcomes: rows})
+            .then((html) => {
+                $('[data-region="outcomelist"]').replaceWith(html);
+                return html;
+            })
+            .catch(() => {
+                // Leave the list as it was rendered on load.
+                return false;
+            });
+    };
+
+    $(document).on('completionupdated', function(e) {
+        refreshOutcomeLists((e.originalEvent || e).detail.response);
+    });
+
     $(document).on('fb:ended', function() {
         if (!uprogress.timeended && !state.reachendSent) {
             saveInteractionData(true);
@@ -278,7 +336,8 @@ const init = async config => {
                 maxWidth: limited ? '' : 'unset',
                 maxHeight: '',
                 margin: '',
-                marginTop: doptions.kidtheme == 1 ? 5 : '',
+                // Embed mode fills the iframe exactly; any top offset there makes it scroll.
+                marginTop: doptions.kidtheme == 1 && !$body.hasClass('embed-mode') ? 5 : '',
             });
             return;
         }
@@ -292,7 +351,23 @@ const init = async config => {
         if (doptions.distractionfreemode != 1) {
             availableHeight -= 40;
         }
+        // #wrapper follows the stage's inline pixel width. After the activity modal
+        // leaves wide mode that width is still the old one, and flex min-content keeps
+        // the container stretched, so both report the wide size. Cap with the iframe
+        // viewport, which does shrink.
+        const stage = document.getElementById('interactivevideo-container');
+        const viewportWidth = document.documentElement.clientWidth;
         let availableWidth = $wrapper.width();
+        if (stage && viewportWidth > 0) {
+            const stageStyle = window.getComputedStyle(stage);
+            const stagePad = (parseFloat(stageStyle.paddingLeft) || 0) + (parseFloat(stageStyle.paddingRight) || 0);
+            const stageContent = Math.max(0, stage.clientWidth - stagePad);
+            let viewportContent = Math.max(0, viewportWidth - stagePad);
+            if (stage.classList.contains('chapter-open') && window.innerWidth >= 1200 && stageContent > viewportContent) {
+                viewportContent = Math.max(0, viewportContent - 400);
+            }
+            availableWidth = Math.min(stageContent, viewportContent) || availableWidth;
+        }
 
         if (!document.fullscreenElement) {
             const $navbar = $('.fixed-top, #nav-drawer'); // Moodle navbar.
@@ -427,9 +502,16 @@ const init = async config => {
     );
 
     if (window.ResizeObserver) {
-        new ResizeObserver(() => {
+        const resizeObserver = new ResizeObserver(() => {
             window.requestAnimationFrame(resizeVideoWrapper);
-        }).observe($wrapper[0]);
+        });
+        // #wrapper does not shrink once the stage has an inline width. Watch the
+        // container and the iframe viewport, which follow the activity modal.
+        const stage = document.getElementById('interactivevideo-container');
+        if (stage) {
+            resizeObserver.observe(stage);
+        }
+        resizeObserver.observe(document.documentElement);
     }
     $(window).on('resize', resizeVideoWrapper);
 

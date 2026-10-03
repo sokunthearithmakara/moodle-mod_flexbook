@@ -112,6 +112,13 @@ $functions = [
         'type' => 'write',
         'ajax' => true,
     ],
+    'mod_flexbook_upload_recording' => [
+        'classname' => 'mod_flexbook\external\actions',
+        'methodname' => 'upload_recording',
+        'description' => 'Store a recording from H5P content as a file of the learner\'s log',
+        'type' => 'write',
+        'ajax' => true,
+    ],
     'mod_flexbook_delete_own_completion_data' => [
         'classname' => 'mod_flexbook\external\actions',
         'methodname' => 'delete_own_completion_data',

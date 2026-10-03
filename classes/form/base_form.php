@@ -24,6 +24,12 @@ namespace mod_flexbook\form;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class base_form extends \core_form\dynamic_form {
+    /** @var bool Whether the outcomes section has been added to this form. */
+    protected $outcomesectionadded = false;
+
+    /** @var string[] Keys of the completion tracking options this form offers. */
+    protected $completiontrackingoptions = [];
+
     /**
      * Returns form context
      *
@@ -86,7 +92,7 @@ class base_form extends \core_form\dynamic_form {
             $data->requiremintimeview = $this->optional_param('requiremintime', 0, PARAM_INT);
             $data->requiremintime = 0;
         }
-        $advancedsettings = json_decode($this->optional_param('advanced', null, PARAM_RAW));
+        $advancedsettings = json_decode($this->optional_param('advanced', '', PARAM_RAW) ?: '{}');
 
         // Load course-level defaults for this interaction type when adding a new item.
         if ($data->id == 0) {
@@ -118,6 +124,7 @@ class base_form extends \core_form\dynamic_form {
                 $data->{$key} = $value;
             }
         }
+        $data = \mod_interactivevideo\local\outcome_mapping::flatten_for_form($data, 'flexbook', (int) ($data->annotationid ?? 0));
 
         $instructions = $data->instructions ?? '';
         $format = $data->instructionsformat ?? FORMAT_HTML;
@@ -208,6 +215,7 @@ class base_form extends \core_form\dynamic_form {
         unset($annotations['nextinteraction']);
 
         $mform->addElement('hidden', 'annotations');
+        $mform->setType('annotations', PARAM_RAW);
         $nextannotations = ['' => get_string('next', 'mod_flexbook')] + $annotations;
         $prevannotations = [
             '' => get_string('previous', 'mod_flexbook'),
@@ -287,7 +295,7 @@ class base_form extends \core_form\dynamic_form {
         } else {
             $data->hascompletion = 1;
         }
-        if ($data->completiontracking == 'view') {
+        if (($data->completiontracking ?? '') == 'view') {
             $data->requiremintime = $data->requiremintimeview;
         }
         return $data;
@@ -344,6 +352,7 @@ class base_form extends \core_form\dynamic_form {
      * @return string
      */
     public function process_advanced_settings($data) {
+        global $DB;
         if (isset($data->instructionseditor) && is_array($data->instructionseditor)) {
             $data->instructions = $data->instructionseditor['text'] ?? '';
             $data->instructionsformat = $data->instructionseditor['format'] ?? FORMAT_HTML;
@@ -381,6 +390,28 @@ class base_form extends \core_form\dynamic_form {
             }
             $adv->{$key} = $value;
         }
+
+        // Outcome links. The stored row is read back so a changed mapping can queue a rating
+        // pass over everyone's existing progress.
+        $instanceid = (int) ($data->annotationid ?? 0);
+        $old = !empty($data->id)
+            ? $DB->get_record('flexbook_items', ['id' => $data->id], 'id, advanced, xp', IGNORE_MISSING)
+            : null;
+        $mapping = \mod_interactivevideo\local\outcome_mapping::collect_from_form(
+            $data,
+            'flexbook',
+            $instanceid,
+            $old ? $old->advanced : null
+        );
+        \mod_interactivevideo\local\outcome_mapping::encode($adv, $mapping);
+        \mod_interactivevideo\local\outcome_mapping::queue_backfill_if_changed(
+            'flexbook',
+            $instanceid,
+            $old ? $old->advanced : null,
+            $mapping,
+            $old ? $old->xp : null,
+            $data->xp ?? null
+        );
 
         return json_encode($adv);
     }
@@ -441,6 +472,7 @@ class base_form extends \core_form\dynamic_form {
                 'view' => get_string('completiononview', 'mod_interactivevideo'),
             ];
         }
+        $this->completiontrackingoptions = array_keys($options);
         $this->render_dropdown(
             'completiontracking',
             '<i class="bi bi-check2-square iv-mr-2"></i>' . get_string('completiontracking', 'mod_interactivevideo'),
@@ -503,6 +535,10 @@ class base_form extends \core_form\dynamic_form {
         ];
 
         $mform = &$this->_form;
+
+        if ($options['hascompletion']) {
+            $this->outcome_form_fields();
+        }
 
         $mform->addElement('header', 'advanced', get_string('advanced', 'mod_interactivevideo'));
         // Collapse the advanced fields by default.
@@ -725,12 +761,39 @@ class base_form extends \core_form\dynamic_form {
     }
 
     /**
+     * Adds the "Outcomes" section, once, when the site has outcomes enabled.
+     *
+     * Called from advanced_form_fields() so the section sits before "Advanced", and from
+     * close_form() for the few scored types that never add an advanced section.
+     *
+     * @return void
+     */
+    public function outcome_form_fields() {
+        if ($this->outcomesectionadded || !\mod_interactivevideo\local\outcome_mapping::is_enabled()) {
+            return;
+        }
+        $this->outcomesectionadded = true;
+
+        \mod_interactivevideo\local\outcome_mapping::add_form_fields(
+            $this->_form,
+            'flexbook',
+            (int) $this->optional_param('annotationid', 0, PARAM_INT),
+            (int) $this->optional_param('cmid', 0, PARAM_INT),
+            \mod_interactivevideo\local\outcome_mapping::default_mode_for_tracking($this->completiontrackingoptions),
+            \mod_interactivevideo\local\outcome_mapping::has_mapping($this->optional_param('advanced', null, PARAM_RAW))
+        );
+    }
+
+    /**
      * Standard close form element
      *
      * @return void
      */
     public function close_form() {
         $mform = &$this->_form;
+        if ($mform->elementExists('xp') || $mform->elementExists('completiontracking')) {
+            $this->outcome_form_fields();
+        }
         $mform->addElement('static', 'buttonar', '');
         $mform->closeHeaderBefore('buttonar');
         $this->set_display_vertical();
@@ -745,6 +808,11 @@ class base_form extends \core_form\dynamic_form {
      */
     public function validation($data, $files) {
         $errors = parent::validation($data, $files);
+        $errors += \mod_interactivevideo\local\outcome_mapping::validate_form(
+            (array) $data,
+            'flexbook',
+            (int) ($data['annotationid'] ?? 0)
+        );
 
         if (isset($data['interactiontype'])) {
             $type = $data['interactiontype'];

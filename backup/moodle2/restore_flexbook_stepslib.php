@@ -368,6 +368,11 @@ class restore_flexbook_activity_structure_step extends restore_activity_structur
         foreach ($items as $item) {
             $item->content = $this->decode_text($item->content);
             $item->advanced = $this->decode_text($item->advanced);
+            // Outcome links point at the outcomes of the source course; follow them to the
+            // restored ones, dropping any that did not come across.
+            $item->advanced = \mod_interactivevideo\local\outcome_mapping::remap_for_restore($item->advanced, function ($oldid) {
+                return (int) $this->get_mappingid('outcome', $oldid);
+            });
             $item->text1 = $this->decode_text($item->text1);
             $item->text2 = $this->decode_text($item->text2);
             $item->text3 = $this->decode_text($item->text3);

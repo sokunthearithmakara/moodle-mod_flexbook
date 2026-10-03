@@ -39,6 +39,7 @@ import {get_string as getString} from 'core/str';
 import state from 'mod_flexbook/state';
 import {getMoodleVersion, safeParse} from 'mod_flexbook/utils';
 import ReportBase from 'mod_interactivevideo/report_base';
+import * as ReportOutcomes from 'mod_interactivevideo/report_outcomes';
 import Base from 'mod_flexbook/type/base';
 
 /**
@@ -292,6 +293,12 @@ const init = async(config) => {
         }
     ]);
 
+    // The outcome column, when the activity's report asks for one.
+    const outcomedefinitions = ReportOutcomes.getDefinitions();
+    if (outcomedefinitions.length > 0) {
+        columns.push(ReportOutcomes.column());
+    }
+
     let datatableOptions = ReportBase.getDataTableOptions({
         columns,
         exportOptions,
@@ -461,6 +468,8 @@ const init = async(config) => {
     $('#filterregion :input:not([type=date])').on('keyup change', function(e) {
         filterTimer = ReportBase.applyFilter(tabledata, $(this), e, filterTimer);
     });
+
+    ReportOutcomes.init(tabledata, ModalFactory, outcomedefinitions);
 
     ReportBase.registerSearchFilters(tabledata, columns);
     ReportBase.registerClickHandlers(tabledata, columns);

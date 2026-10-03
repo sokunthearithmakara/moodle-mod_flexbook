@@ -144,6 +144,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
         $this->standard_grading_coursemodule_elements();
         flexbook_remove_scale_grade_option($this->_form);
         $this->standard_coursemodule_elements();
+        $this->add_outcome_screen_elements();
 
         $this->add_action_buttons();
         $mform->addElement('html', \mod_flexbook\util::render_moodle_version());
@@ -247,6 +248,67 @@ class mod_flexbook_mod_form extends moodleform_mod {
     }
 
     /**
+     * Adds the outcome screen settings to the standard Outcomes section.
+     *
+     * Core builds that section, so the elements are moved into it rather than appended
+     * after it. With outcomes off site-wide, or none available in the course, there is no
+     * section and nothing to add.
+     *
+     * @return void
+     */
+    protected function add_outcome_screen_elements() {
+        $mform = $this->_form;
+        if (!$mform->elementExists('modoutcomes') || !$mform->elementExists('modstandardelshdr')) {
+            return;
+        }
+
+        // Grouped under one label so the pair reads as settings about the outcomes above,
+        // rather than as two more outcomes to tick.
+        $checkboxes = [];
+        $checkboxes[] = $mform->createElement(
+            'advcheckbox',
+            'showoutcomesonstartscreen',
+            '',
+            get_string('showoutcomesonstartscreen', 'mod_flexbook'),
+            null,
+            [0, 1]
+        );
+        $checkboxes[] = $mform->createElement(
+            'advcheckbox',
+            'showoutcomesonendscreen',
+            '',
+            get_string('showoutcomesonendscreen', 'mod_flexbook'),
+            null,
+            [0, 1]
+        );
+
+        $checkboxes[] = $mform->createElement(
+            'advcheckbox',
+            'showoutcomesonreport',
+            '',
+            get_string('showoutcomesonreport', 'mod_flexbook'),
+            null,
+            [0, 1]
+        );
+
+        $group = $mform->createElement(
+            'group',
+            'showoutcomesgroup',
+            get_string('showoutcomes', 'mod_flexbook'),
+            $checkboxes,
+            ' ',
+            false
+        );
+        $mform->insertElementBefore($group, 'modstandardelshdr');
+        $mform->addHelpButton('showoutcomesgroup', 'showoutcomes', 'mod_flexbook');
+
+        foreach (['showoutcomesonstartscreen', 'showoutcomesonendscreen', 'showoutcomesonreport'] as $name) {
+            $mform->setType($name, PARAM_INT);
+            $mform->setDefault($name, 0);
+        }
+    }
+
+    /**
      * Prepare data before applying to populating form.
      *
      * @param array $defaultvalues The default values.
@@ -293,6 +355,9 @@ class mod_flexbook_mod_form extends moodleform_mod {
 
             // Handle display options.
             $displayoptions = [
+                'showoutcomesonstartscreen',
+                'showoutcomesonendscreen',
+                'showoutcomesonreport',
                 'showdescriptiononheader',
                 'darkmode',
                 'theme',

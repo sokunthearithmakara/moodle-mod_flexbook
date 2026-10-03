@@ -18,13 +18,14 @@ namespace mod_flexbook\external;
 
 defined('MOODLE_INTERNAL') || die();
 
-use external_function_parameters;
-use external_single_structure;
-use external_api;
-use external_value;
+use core_external\external_api;
+use core_external\external_function_parameters;
+use core_external\external_single_structure;
+use core_external\external_value;
 use mod_flexbook\util;
+use mod_interactivevideo\local\external_compat;
 
-require_once($CFG->libdir . '/externallib.php');
+external_compat::load();
 
 /**
  * Class actions
@@ -959,6 +960,78 @@ class actions extends external_api {
             'data' => new external_value(PARAM_RAW, 'The saved log as JSON string'),
         ]);
     }
+    /**
+     * Upload recording parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function upload_recording_parameters() {
+        return new external_function_parameters([
+            'contextid' => new external_value(PARAM_INT, 'The context ID', VALUE_REQUIRED),
+            'cmid' => new external_value(PARAM_INT, 'The course module ID', VALUE_REQUIRED),
+            'annotationid' => new external_value(PARAM_INT, 'The interaction ID', VALUE_REQUIRED),
+            'extension' => new external_value(PARAM_ALPHANUM, 'File extension, such as webm or m4a', VALUE_REQUIRED),
+            'data' => new external_value(PARAM_RAW, 'The recording, base64 encoded', VALUE_REQUIRED),
+        ]);
+    }
+
+    /**
+     * Store a recording from H5P content, such as a spoken answer a teacher grades, as a
+     * file of the current user's log for the interaction.
+     *
+     * @param int $contextid The context ID.
+     * @param int $cmid The course module ID.
+     * @param int $annotationid The interaction ID.
+     * @param string $extension File extension.
+     * @param string $data The recording, base64 encoded.
+     * @return array
+     */
+    public static function upload_recording($contextid, $cmid, $annotationid, $extension, $data) {
+        global $DB, $USER;
+        $params = self::validate_parameters(self::upload_recording_parameters(), [
+            'contextid' => $contextid,
+            'cmid' => $cmid,
+            'annotationid' => $annotationid,
+            'extension' => $extension,
+            'data' => $data,
+        ]);
+
+        self::validate_view_context($params['contextid']);
+        $context = \context::instance_by_id($params['contextid']);
+        if ($context->contextlevel != CONTEXT_MODULE || (int) $context->instanceid !== (int) $params['cmid']) {
+            throw new \moodle_exception('invalidcoursemodule', 'error');
+        }
+        if (!$DB->record_exists('flexbook_items', ['id' => $params['annotationid'], 'cmid' => $params['cmid']])) {
+            throw new \moodle_exception('invalidrecord', 'error');
+        }
+
+        $logid = \mod_interactivevideo\local\recording_store::get_log_id(
+            'flexbook',
+            $USER->id,
+            $params['annotationid'],
+            $params['cmid']
+        );
+        $url = \mod_interactivevideo\local\recording_store::save(
+            $context,
+            'mod_flexbook',
+            $logid,
+            $params['extension'],
+            $params['data']
+        );
+        return ['url' => $url];
+    }
+
+    /**
+     * Upload recording returns
+     *
+     * @return \external_description
+     */
+    public static function upload_recording_returns() {
+        return new external_single_structure([
+            'url' => new external_value(PARAM_URL, 'The address of the stored recording'),
+        ]);
+    }
+
     /**
      * Create interaction parameters
      *

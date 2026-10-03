@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.4.0] - 2026-09-22
+
+Requires **Interactive Video 2.1.0** or later.
+
+### Added
+- **Outcome links survive copying safely:** An interaction copied or imported into a course
+  keeps only the outcome links that course can honour, so a pack from another site cannot
+  attach an interaction to an unrelated outcome. Backup and restore continue to remap links
+  properly. Attaching an outcome to an activity now queues a rating pass, so learners who
+  already have progress are rated without having to attempt the activity again.
+- **Outcomes on the report:** A third setting adds an outcome column to the report, showing
+  how many of the activity's outcomes each learner has been rated on. Selecting the column
+  heading opens a summary of how the learners currently in the table are spread across each
+  outcome's scale, and selecting a cell shows that learner's rating on every outcome with
+  their result on each interaction feeding it. Both modals name the interactions each
+  outcome is rated from. The heading also filters the table by rated or unrated, and the
+  footer gives the share of learners rated. Outcome short names are shown in brackets
+  throughout. The column costs one extra query for the whole report, whatever the
+  number of learners.
+- **Outcomes on the start and end screens:** Two new activity settings, in the Outcomes
+  section of the activity form, list the outcomes attached to the activity and the learner's
+  current rating on each. Where the description (start screen) or the end screen text is
+  shown, the list follows it; otherwise the screen shows the list on its own. The list is
+  redrawn as the learner completes interactions, so the end screen reflects what they just
+  earned.
+- **Outcome rating from interactions:** Same feature as Interactive Video 2.1.0. Every scored
+  interaction form gains an "Outcomes" section when the site has outcomes enabled; ratings
+  are computed from the learner's score (thresholds) or awarded as a fixed level on
+  completion, averaged across the interactions feeding each outcome, and written to the
+  activity's outcome grade items on every progress change. A mapping change queues a
+  re-rating of existing progress. Mappings survive backup and restore.
+
 ## [1.2] - 2026-08-02
 
 Requires **Interactive Video 1.9.3** or later.

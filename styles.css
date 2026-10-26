@@ -2616,7 +2616,7 @@ body.fb-embed-interaction {
 }
 
 @media (min-width: 768px) {
-    .path-mod-interactivevideo.path-mod-flexbook:not(.kidtheme, .default-mode) [data-region="chapterwrapper"] {
+    .path-mod-interactivevideo.path-mod-flexbook:not(.kidtheme, .default-mode, .embed-mode) [data-region="chapterwrapper"] {
         background: var(--bs-white, #fff);
         top: 0.75rem;
         z-index: 100;
@@ -2678,8 +2678,11 @@ body.fb-embed-interaction {
     background: var(--bs-white, #fff);
 }
 
-#page-mod-flexbook-view.fb-full-width.darkmode #wrapper {
-    background: var(--bs-black, #000);
+/* :not(.embed-mode) matches the light rule's specificity, so dark mode wins outside embeds too.
+   A literal colour: dark themes swap --bs-black and --bs-white. */
+#page-mod-flexbook-view.fb-full-width.darkmode #wrapper,
+#page-mod-flexbook-view.fb-full-width.darkmode:not(.embed-mode) #wrapper {
+    background: #1d2125;
 }
 
 .path-mod-flexbook #completiontoggle {
@@ -2691,8 +2694,4 @@ body.fb-embed-interaction {
 .path-mod-flexbook.darkmode #completiontoggle,
 [data-bs-theme="dark"] .path-mod-flexbook #completiontoggle {
     color: #fff;
-}
-
-.path-mod-flexbook #completiontoggle.btn-success {
-    color: var(--ivsuccess);
 }

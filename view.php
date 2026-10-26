@@ -439,6 +439,8 @@ $datafortemplate['endscreendocument'] = !empty($moduleinstance->endscreentext) |
 $datafortemplate['showintro'] = !empty($moduleinstance->displayasstartscreen)
     && !empty($datafortemplate['hasintro']);
 $datafortemplate['hascontent'] = $datafortemplate['showintro'] || $showoutcomesonstartscreen;
+// No description or outcomes to show: a returning learner skips straight past the start screen.
+$datafortemplate['startscreenempty'] = !$datafortemplate['hascontent'] && !$new;
 echo $OUTPUT->render_from_template('mod_flexbook/canvas/player', $datafortemplate);
 
 $PAGE->requires->js_call_amd('mod_flexbook/view', 'init', [[

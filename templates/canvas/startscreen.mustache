@@ -27,6 +27,7 @@
 {{#startscreendocument}}
 <div id="start-screen"
      class="w-100 position-absolute h-100 bg-white bottom-0"
+     {{#startscreenempty}}data-empty="1"{{/startscreenempty}}
      role="region"
      aria-label="{{#str}}startscreen, mod_interactivevideo{{/str}}">
     <div class="intro-content {{#hascontent}}hasintro bg-light{{/hascontent}} {{^hascontent}}{{#posterimage}}bg-transparent{{/posterimage}}{{^posterimage}}bg-light{{/posterimage}}{{/hascontent}} w-100 p-0 align-items-start">
@@ -63,6 +64,7 @@
 {{^startscreendocument}}
 <div id="start-screen"
      class="w-100 position-absolute h-100 bottom-0 {{#square}}square{{/square}}"
+     {{#startscreenempty}}data-empty="1"{{/startscreenempty}}
      role="region"
      aria-label="{{#str}}startscreen, mod_interactivevideo{{/str}}"
      {{#posterimage}}style="background: url('{{{posterimage}}}') center center / cover no-repeat;"{{/posterimage}}

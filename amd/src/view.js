@@ -1441,9 +1441,10 @@ const init = async config => {
     // Automatically resume if 'aid' is in the URL.
     const url = new URL(window.location);
     const aid = url.searchParams.get('aid');
+    let autostart = false;
     if (aid) {
         if (annotations.find(x => x.id == aid) || aid == 'endscreen') {
-            $('#play').trigger('click');
+            autostart = true;
         } else {
             // Invalid aid, notify user and clean up URL.
             url.searchParams.delete('aid');
@@ -1451,6 +1452,10 @@ const init = async config => {
 
             addToast(await getString('annotationnotfound', 'mod_flexbook'), {type: 'warning', emoji: '🔍'});
         }
+    }
+    // A start screen with nothing on it but the play button is skipped as well.
+    if (autostart || $startscreen.is('[data-empty]')) {
+        $('#play').trigger('click');
     }
 };
 

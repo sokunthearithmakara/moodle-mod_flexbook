@@ -122,7 +122,7 @@ function flexbook_display_options($moduleinstance) {
         'kidtheme' => in_array('kidtheme', $defaultappearance) ? 1 : 0,
         'openchapterpanel' => in_array('openchapterpanel', $defaultappearance) ? 1 : 0,
         'character' => 'none',
-        'limitedwidth' => (empty($defaultappearanceraw) || in_array('limitedwidth', $defaultappearance)) ? 1 : 0,
+        'limitedwidth' => in_array('limitedwidth', $defaultappearance) ? 1 : 0,
         'showoutcomesonstartscreen' => 0,
         'showoutcomesonendscreen' => 0,
         'showoutcomesonreport' => 0,
@@ -1281,7 +1281,7 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
         );
 
         $mform->addGroup($group, 'appearancegroup', '', '', false);
-        $mform->setDefault('limitedwidth', 1);
+        $mform->setDefault('limitedwidth', 0);
         $mform->hideIf('limitedwidth', 'aspectratio', 'neq', '');
 
         $characters = [

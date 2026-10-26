@@ -25,11 +25,11 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component    = 'mod_flexbook';
-$plugin->release      = '1.5';
-$plugin->version      = 2026100100;
+$plugin->release      = '1.6';
+$plugin->version      = 2026102600;
 $plugin->requires = 2021112800;
 $plugin->supported = [400, 503];
 $plugin->maturity = MATURITY_STABLE;
 $plugin->dependencies = [
-    'mod_interactivevideo' => 2026100100,
+    'mod_interactivevideo' => 2026102600,
 ];

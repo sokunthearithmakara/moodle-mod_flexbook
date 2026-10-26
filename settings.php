@@ -148,7 +148,7 @@ $asettings->add(new admin_setting_configmulticheckbox(
         'interactioncounter' => 1,
         'interactionnavigation' => 1,
         'kidtheme' => 0,
-        'limitedwidth' => 1,
+        'limitedwidth' => 0,
     ],
     [
         'distractionfreemode' => get_string('distractionfreemode', 'mod_flexbook'),

@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.0] - 2026-10-26
+
+Requires **Interactive Video 2.2.0** or later.
+### Changed
+- UI improvements, especially for BS5 dark mode.
+
 ## [1.4.0] - 2026-09-22
 
 Requires **Interactive Video 2.1.0** or later.

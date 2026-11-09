@@ -102,12 +102,10 @@ class cover {
         );
 
         $intro = format_module_intro('flexbook', $flexbook, $cm->id);
-        $typename = get_string('modulename', 'mod_flexbook');
         return [
             'cmid' => $cm->id,
             'courseid' => $cm->course,
             'contextid' => $context->id,
-            'eyebrow' => $grademax ? get_string('covergraded', 'mod_flexbook', $typename) : $typename,
             'title' => $cm->get_formatted_name(),
             'poster' => $cm->customdata['posterimage'] ?? null,
             'intro' => trim(strip_tags($intro, '<img><iframe><video><audio>')) !== '' ? $intro : null,

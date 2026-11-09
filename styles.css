@@ -2758,11 +2758,6 @@ body.fb-embed-interaction {
     min-width: 0;
 }
 
-.fb-cover-eyebrow {
-    margin: 0 0 8px;
-    color: var(--fb-cover-muted);
-}
-
 .fb-cover .fb-cover-title {
     margin: 0 0 24px;
     font-size: 32px;

@@ -67,7 +67,6 @@ $string['copynothingselected'] = 'Select one or more interactions to copy.';
 $string['copysuccess'] = '{$a} interaction(s) copied. Open another Flexbook and paste.';
 $string['courseindex'] = 'Course index';
 $string['coverdue'] = 'Due {$a}';
-$string['covergraded'] = '{$a} · Graded';
 $string['coverhideoutcomes'] = 'Hide learning outcomes';
 $string['coverpoints'] = 'Graded · {$a} points';
 $string['coverprogress'] = '{$a}% done';

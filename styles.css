@@ -2712,11 +2712,262 @@ body.fb-embed-interaction {
     color: #fff;
 }
 
-/* Start screen only: the start screen on its own in a 16:9 frame. Square corners once it spans the viewport. */
-#page-mod-flexbook-view #flexbook-startframe {
+/* Start screen only: the cover the page shows instead of the book, laid out like a course card. */
+/* The cover has the title: the page heading stays for screen readers only. */
+.fb-startscreenonly #page-header .page-context-header {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    overflow: hidden !important;
+    clip: rect(0, 0, 0, 0) !important;
+    white-space: nowrap !important;
+}
+
+.fb-cover {
+    --fb-cover-tint: var(--bs-tertiary-bg, #f0f6ff);
+    --fb-cover-line: var(--bs-border-color, #c1cbdb);
+    --fb-cover-muted: var(--bs-secondary-color, #48546e);
+    --fb-cover-link: var(--bs-link-color, #0056d2);
+    --fb-cover-done: var(--bs-success-text-emphasis, #197d12);
+    overflow: hidden;
+    max-width: 968px;
+    margin: 0 auto;
+    border: 1px solid var(--fb-cover-line);
+    border-radius: 16px;
+}
+
+.fb-cover button:not(.btn) {
+    padding: 0;
+    font-family: inherit;
+    color: inherit;
+    text-align: start;
+    border: 0;
+    background: none;
+}
+
+.fb-cover-hero {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 40px 48px;
+    background-color: var(--fb-cover-tint);
+}
+
+.fb-cover-lead {
+    flex: 1;
+    min-width: 0;
+}
+
+.fb-cover-eyebrow {
+    margin: 0 0 8px;
+    color: var(--fb-cover-muted);
+}
+
+.fb-cover .fb-cover-title {
+    margin: 0 0 24px;
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 40px;
+}
+
+.fb-cover-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 16px;
+}
+
+.fb-cover-open {
+    padding: 12px 32px;
+    font-weight: 600;
+}
+
+.fb-cover-muted {
+    color: var(--fb-cover-muted);
+}
+
+.fb-cover-art {
+    flex: none;
+    width: 280px;
+}
+
+.fb-cover-poster {
+    display: block;
     width: 100%;
     aspect-ratio: 16 / 9;
-    border-radius: max(0px, min(0.75rem, calc((100vw - 100% - 2rem) * 9999)));
+    border-radius: 12px;
+    object-fit: cover;
+}
+
+.fb-cover-body {
+    display: flex;
+    align-items: flex-start;
+    gap: 32px;
+    padding: 32px 48px 40px;
+}
+
+.fb-cover-about {
+    flex: 1;
+    min-width: 0;
+}
+
+/* No description and no outcomes: the expectations take the body alone. */
+.fb-cover-about:not(:has(*)) {
+    display: none;
+}
+
+.fb-cover-clamp {
+    max-height: 72px;
+    overflow: hidden;
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.fb-cover-clamp.is-expanded {
+    max-height: none;
+}
+
+.fb-cover-clamp p:last-child {
+    margin-bottom: 0;
+}
+
+.fb-cover .fb-cover-link {
+    margin-top: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+    color: var(--fb-cover-link);
+}
+
+.fb-cover .fb-cover-link:hover {
+    text-decoration: underline;
+}
+
+[aria-expanded="false"] > .fb-cover-when-expanded,
+[aria-expanded="true"] > .fb-cover-when-collapsed {
+    display: none;
+}
+
+.fb-cover-outcomes {
+    margin-top: 16px;
+}
+
+.fb-cover .fb-cover-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-top: 0;
+    font-size: 14px;
+    line-height: 20px;
+    color: inherit;
+}
+
+.fb-cover-toggle .bi {
+    transition: transform 0.2s ease;
+}
+
+.fb-cover-toggle[aria-expanded="true"] .bi {
+    transform: rotate(180deg);
+}
+
+/* Each outcome with the learner's rating on it. */
+.fb-cover-outcome-list {
+    margin: 8px 0 0;
+    padding-inline-start: 24px;
+    font-size: 16px;
+    line-height: 24px;
+}
+
+.fb-cover-outcome-list > li + li {
+    margin-top: 8px;
+}
+
+.fb-cover-outcome-name {
+    margin-inline-end: 8px;
+}
+
+.fb-cover-outcome-list .badge {
+    font-weight: 600;
+    vertical-align: text-bottom;
+}
+
+.fb-cover-outcome-list .fb-cover-rated {
+    color: var(--bs-success-text-emphasis, #197d12);
+    background-color: var(--bs-success-bg-subtle, #e0f4dc);
+}
+
+.fb-cover-outcome-list .fb-cover-notrated {
+    color: var(--fb-cover-muted);
+    background-color: var(--bs-secondary-bg, #e9eef7);
+}
+
+.fb-cover-expect {
+    flex: none;
+    width: 320px;
+    padding: 20px 24px;
+    border: 1px solid var(--fb-cover-line);
+    border-radius: 12px;
+}
+
+.fb-cover .fb-cover-expect-title {
+    margin: 0 0 12px;
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.fb-cover-expect-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.fb-cover-expect-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 2px 0;
+}
+
+.fb-cover-expect-list .bi {
+    flex: none;
+    font-size: 18px;
+    line-height: inherit;
+}
+
+/* A condition wraps as a whole. */
+.fb-cover-condition {
+    white-space: nowrap;
+}
+
+/* A completion condition already met. */
+.fb-cover-condition.is-done {
+    color: var(--fb-cover-done);
+}
+
+@media (max-width: 767.98px) {
+    .fb-cover-hero,
+    .fb-cover-body {
+        padding: 24px;
+    }
+
+    .fb-cover-body {
+        flex-direction: column;
+    }
+
+    .fb-cover-expect {
+        width: 100%;
+    }
+
+    .fb-cover .fb-cover-title {
+        font-size: 24px;
+        line-height: 32px;
+    }
+}
+
+@media (max-width: 575.98px) {
+    .fb-cover-art {
+        display: none;
+    }
 }
 
 /* The popup the book opens in (a modal-fullscreen dialog). */

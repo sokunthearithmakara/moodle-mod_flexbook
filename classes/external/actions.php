@@ -1504,11 +1504,11 @@ class actions extends external_api {
     }
 
     /**
-     * Get completion parameters
+     * Get cover parameters
      *
      * @return external_function_parameters
      */
-    public static function get_cm_completion_parameters() {
+    public static function get_cover_parameters() {
         return new external_function_parameters([
             'cmid' => new external_value(PARAM_INT, 'The course module ID'),
             'contextid' => new external_value(PARAM_INT, 'The module context ID'),
@@ -1516,15 +1516,15 @@ class actions extends external_api {
     }
 
     /**
-     * The current user's completion of a flexbook, as the activity header shows it.
+     * The cover of a start-screen-only flexbook for the current user, to redraw it when its popup closes.
      *
      * @param int $cmid The course module ID.
      * @param int $contextid The module context ID.
      * @return array
      */
-    public static function get_cm_completion($cmid, $contextid) {
-        global $CFG, $DB, $OUTPUT, $PAGE, $USER;
-        self::validate_parameters(self::get_cm_completion_parameters(), [
+    public static function get_cover($cmid, $contextid) {
+        global $OUTPUT, $USER;
+        self::validate_parameters(self::get_cover_parameters(), [
             'cmid' => $cmid,
             'contextid' => $contextid,
         ]);
@@ -1536,40 +1536,22 @@ class actions extends external_api {
         }
 
         [, $cm] = get_course_and_cm_from_cmid($cmid, 'flexbook');
-        $response = [
-            'overallcompletion' => false,
-            'completion' => '',
-            'hasprogress' => $DB->record_exists('flexbook_completion', ['cmid' => $cm->id, 'userid' => $USER->id]),
+        $cover = \mod_flexbook\local\cover::export($cm, (int) $USER->id);
+        return [
+            'overallcompletion' => $cover['overallcompletion'],
+            'html' => $OUTPUT->render_from_template('mod_flexbook/cover', $cover),
         ];
-        if ($cm->completion == COMPLETION_TRACKING_NONE) {
-            return $response;
-        }
-
-        $completiondetails = \core_completion\cm_completion_details::get_instance($cm, $USER->id);
-        $response['overallcompletion'] = $completiondetails->get_overall_completion() == COMPLETION_COMPLETE;
-        // The same markup view.php puts in the activity header.
-        if ($CFG->branch < 404) {
-            $response['completion'] = $OUTPUT->activity_information($cm, $completiondetails, []);
-        } else {
-            $activitycompletion = new \core_course\output\activity_completion($cm, $completiondetails);
-            $data = (array) $activitycompletion->export_for_template($PAGE->get_renderer('core'));
-            if ($data['hascompletion']) {
-                $response['completion'] = $OUTPUT->render_from_template('core_course/activity_info', $data);
-            }
-        }
-        return $response;
     }
 
     /**
-     * Get completion return fields
+     * Get cover return fields
      *
      * @return external_single_structure
      */
-    public static function get_cm_completion_returns() {
+    public static function get_cover_returns() {
         return new external_single_structure([
             'overallcompletion' => new external_value(PARAM_BOOL, 'Whether the activity is complete'),
-            'completion' => new external_value(PARAM_RAW, 'The activity header completion HTML'),
-            'hasprogress' => new external_value(PARAM_BOOL, 'Whether the user has started the book'),
+            'html' => new external_value(PARAM_RAW, 'The cover HTML'),
         ]);
     }
 }

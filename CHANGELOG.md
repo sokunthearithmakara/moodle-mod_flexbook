@@ -6,10 +6,13 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 - **Show start screen only:** A new appearance setting, available when distraction-free mode
-  is off. The activity page shows only the start screen in a 16:9 frame, and Start or Resume
-  opens the book in a popup that fills the browser window. The book loads only when the popup
-  opens, and the activity view is recorded then. Closing the popup saves the learner's place
-  and updates the activity completion without reloading the page.
+  is off. Instead of the book, the activity page shows a cover: the title and poster with a
+  Start, Resume or Review button and the learner's progress, the description, the learning
+  outcomes with the learner's rating on each, and what to expect (due date, points and the
+  completion conditions, with the ones met marked). The button opens the book in a popup that
+  fills the browser window. The book loads only when the popup opens, and the activity view is
+  recorded then. Closing the popup saves the learner's place and redraws the cover without
+  reloading the page.
 
 ## [1.6.0] - 2026-10-26
 

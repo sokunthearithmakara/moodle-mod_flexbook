@@ -243,6 +243,10 @@ if ($moduleinstance->displayoptions['distractionfreemode'] == 1) {
     $PAGE->add_body_class('distraction-free');
 } else {
     $PAGE->add_body_class('default-mode');
+    if ($startscreenonly) {
+        // The cover has the title, completion and dates.
+        $PAGE->activityheader->disable();
+    }
     if ($moduleinstance->displayasstartscreen == 1 || $moduleinstance->displayoptions['showdescriptiononheader'] == 0) {
         // Don't repeat the description in the header unless it is specifically requested.
         $PAGE->activityheader->set_attrs(['description' => '']);
@@ -304,6 +308,14 @@ $PAGE->requires->js(
 );
 
 echo $OUTPUT->header();
+
+if ($startscreenonly) {
+    // Just the cover. The launch module opens the book in a popup from its button, and redraws it on close.
+    echo $OUTPUT->render_from_template('mod_flexbook/cover', \mod_flexbook\local\cover::export($cm, (int) $USER->id));
+    $PAGE->requires->js_call_amd('mod_flexbook/launch', 'init');
+    echo $OUTPUT->footer();
+    die();
+}
 
 // Display page navigation.
 $courseindex = '';
@@ -384,19 +396,13 @@ if ($rendernav) {
     echo $OUTPUT->render_from_template('mod_flexbook/pagenav', $datafortemplate);
 }
 
-// Get user progress. The start-screen-only page only needs to know whether there is any, so it creates none:
-// the popup's book does that, and would otherwise welcome a new learner back.
-if ($startscreenonly) {
-    $progress = null;
-    $new = !$DB->record_exists('flexbook_completion', ['cmid' => $cm->id, 'userid' => $USER->id]);
-} else {
-    [$progress, $new] = mod_flexbook\util::get_progress(
-        $cm->id,
-        $USER->id,
-        $course->id,
-        $preview && has_capability('mod/flexbook:edit', $modulecontext) ? true : false
-    );
-}
+// Get user progress.
+[$progress, $new] = mod_flexbook\util::get_progress(
+    $cm->id,
+    $USER->id,
+    $course->id,
+    $preview && has_capability('mod/flexbook:edit', $modulecontext) ? true : false
+);
 
 // Display player.
 $datafortemplate = [
@@ -458,20 +464,6 @@ $datafortemplate['showintro'] = !empty($moduleinstance->displayasstartscreen)
 $datafortemplate['hascontent'] = $datafortemplate['showintro'] || $showoutcomesonstartscreen;
 // No description or outcomes to show: a returning learner skips straight past the start screen.
 $datafortemplate['startscreenempty'] = !$datafortemplate['hascontent'] && !$new;
-
-if ($startscreenonly) {
-    // Just the start screen in a 16:9 frame. The launch module opens the book in a popup on Start or Resume.
-    $datafortemplate['startscreenonly'] = true;
-    $datafortemplate['startscreenempty'] = false;
-    $datafortemplate['cmid'] = $cm->id;
-    $datafortemplate['courseid'] = $course->id;
-    $datafortemplate['contextid'] = $modulecontext->id;
-    unset($datafortemplate['containers']);
-    echo $OUTPUT->render_from_template('mod_flexbook/canvas/startscreenpage', $datafortemplate);
-    $PAGE->requires->js_call_amd('mod_flexbook/launch', 'init');
-    echo $OUTPUT->footer();
-    die();
-}
 
 echo $OUTPUT->render_from_template('mod_flexbook/canvas/player', $datafortemplate);
 

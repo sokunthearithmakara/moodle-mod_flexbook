@@ -26,14 +26,15 @@ require_once($CFG->dirroot . '/mod/flexbook/lib.php');
 require_once($CFG->libdir . '/completionlib.php');
 
 /**
- * The start-screen-only option, and the completion the popup reads back when it closes.
+ * The start-screen-only option, and the cover the page redraws when its popup closes.
  *
  * @package    mod_flexbook
  * @category   test
  * @copyright  2026 Sokunthearith Makara <sokunthearithmakara@gmail.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  * @covers     \flexbook_display_options
- * @covers     \mod_flexbook\external\actions::get_cm_completion
+ * @covers     \mod_flexbook\external\actions::get_cover
+ * @covers     \mod_flexbook\local\cover
  */
 final class startscreenonly_test extends \advanced_testcase {
     /**
@@ -51,9 +52,9 @@ final class startscreenonly_test extends \advanced_testcase {
     }
 
     /**
-     * The completion endpoint reports progress and completion for the current user.
+     * The cover shows the current user's progress and completion.
      */
-    public function test_get_cm_completion(): void {
+    public function test_get_cover(): void {
         global $DB;
         $this->resetAfterTest();
         $generator = $this->getDataGenerator();
@@ -68,11 +69,11 @@ final class startscreenonly_test extends \advanced_testcase {
         $this->setUser($student);
 
         $result = external_api::clean_returnvalue(
-            actions::get_cm_completion_returns(),
-            actions::get_cm_completion($cm->id, $context->id)
+            actions::get_cover_returns(),
+            actions::get_cover($cm->id, $context->id)
         );
-        $this->assertFalse($result['hasprogress']);
         $this->assertFalse($result['overallcompletion']);
+        $this->assertStringContainsString('>' . get_string('start', 'mod_flexbook') . '<', $result['html']);
 
         $DB->insert_record('flexbook_completion', [
             'cmid' => $cm->id,
@@ -81,24 +82,36 @@ final class startscreenonly_test extends \advanced_testcase {
             'timecreated' => time(),
             'timecompleted' => 0,
             'completeditems' => '[]',
-            'completionpercentage' => 0,
+            'completionpercentage' => 40,
             'completiondetails' => '[]',
+            'lastviewed' => 0,
         ]);
+
+        // Started: the button resumes, and the progress shows.
+        $result = external_api::clean_returnvalue(
+            actions::get_cover_returns(),
+            actions::get_cover($cm->id, $context->id)
+        );
+        $this->assertStringContainsString('>' . get_string('resume', 'mod_flexbook') . '<', $result['html']);
+        $this->assertStringContainsString(get_string('coverprogress', 'mod_flexbook', 40), $result['html']);
+
         $completion = new \completion_info($course);
         $completion->update_state(get_fast_modinfo($course)->get_cm($cm->id), COMPLETION_COMPLETE, $student->id);
 
         $result = external_api::clean_returnvalue(
-            actions::get_cm_completion_returns(),
-            actions::get_cm_completion($cm->id, $context->id)
+            actions::get_cover_returns(),
+            actions::get_cover($cm->id, $context->id)
         );
-        $this->assertTrue($result['hasprogress']);
         $this->assertTrue($result['overallcompletion']);
+        // Complete: the button offers to review, and progress is no longer shown.
+        $this->assertStringContainsString('>' . get_string('review', 'mod_flexbook') . '<', $result['html']);
+        $this->assertStringNotContainsString(get_string('coverprogress', 'mod_flexbook', 40), $result['html']);
     }
 
     /**
      * A context that is not the course module's is refused.
      */
-    public function test_get_cm_completion_wrong_context(): void {
+    public function test_get_cover_wrong_context(): void {
         $this->resetAfterTest();
         $this->setAdminUser();
         $generator = $this->getDataGenerator();
@@ -107,6 +120,6 @@ final class startscreenonly_test extends \advanced_testcase {
         $cm = get_coursemodule_from_instance('flexbook', $instance->id, 0, false, MUST_EXIST);
 
         $this->expectException(\moodle_exception::class);
-        actions::get_cm_completion($cm->id, \context_course::instance($course->id)->id);
+        actions::get_cover($cm->id, \context_course::instance($course->id)->id);
     }
 }

@@ -1,0 +1,115 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_flexbook/cover
+
+    The page of a start-screen-only flexbook: what the book is, where the learner stands, and the button that
+    opens it in a full window popup. Re-rendered in place when the popup closes.
+
+    Example context (json):
+    {
+        "cmid": 12,
+        "courseid": 2,
+        "contextid": 34,
+        "eyebrow": "Flexbook · Graded",
+        "title": "Reflection: your journey",
+        "poster": null,
+        "intro": "<p>Check your understanding.</p>",
+        "button": "Resume",
+        "progress": "40% done",
+        "hasexpect": true,
+        "expect": [
+            {"text": "Due 28/10/26, 23:59", "isdue": true},
+            {"text": "Graded · 10 points", "isgrade": true},
+            {"iscompletion": true, "conditions": [{"text": "View", "isdone": true, "islast": true}]}
+        ],
+        "hasoutcomes": true,
+        "outcomes": [
+            {"name": "Describes the stages of the water cycle", "shortname": "WC-1", "rating": "Competent",
+                "notrated": false}
+        ]
+    }
+}}
+<div id="flexbook-cover" class="fb-cover"
+     data-id="{{cmid}}"
+     data-course="{{courseid}}"
+     data-contextid="{{contextid}}"
+     data-name="{{title}}">
+    <div class="fb-cover-hero">
+        <div class="fb-cover-lead">
+            <p class="fb-cover-eyebrow">{{eyebrow}}</p>
+            <h2 class="fb-cover-title">{{title}}</h2>
+            <div class="fb-cover-actions">
+                <button type="button" class="btn btn-primary fb-cover-open" data-action="fbopen">{{button}}</button>
+                {{#progress}}<span class="fb-cover-muted">{{progress}}</span>{{/progress}}
+            </div>
+        </div>
+        {{#poster}}
+        <div class="fb-cover-art"><img class="fb-cover-poster" src="{{poster}}" alt=""></div>
+        {{/poster}}
+    </div>
+    <div class="fb-cover-body">
+        <div class="fb-cover-about">
+            {{#intro}}
+            <div class="fb-cover-clamp" id="fb-cover-intro-{{cmid}}">{{{intro}}}</div>
+            <button type="button" class="fb-cover-link" data-action="fbshowmore"
+                    aria-controls="fb-cover-intro-{{cmid}}" aria-expanded="false" hidden>
+                <span class="fb-cover-when-collapsed">{{#str}}showmore, mod_interactivevideo{{/str}}</span>
+                <span class="fb-cover-when-expanded">{{#str}}showless, mod_interactivevideo{{/str}}</span>
+            </button>
+            {{/intro}}
+            {{#hasoutcomes}}
+            <div class="fb-cover-outcomes">
+                <button type="button" class="fb-cover-link fb-cover-toggle" data-action="fbtoggle"
+                        aria-controls="fb-cover-outcomes-{{cmid}}" aria-expanded="false">
+                    <span class="fb-cover-when-collapsed">{{#str}}covershowoutcomes, mod_flexbook{{/str}}</span>
+                    <span class="fb-cover-when-expanded">{{#str}}coverhideoutcomes, mod_flexbook{{/str}}</span>
+                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
+                </button>
+                <ol class="fb-cover-outcome-list" id="fb-cover-outcomes-{{cmid}}" hidden>
+                    {{#outcomes}}
+                    <li>
+                        <span class="fb-cover-outcome-name">
+                            {{{name}}}{{#shortname}} <span class="fb-cover-muted">({{{shortname}}})</span>{{/shortname}}
+                        </span>
+                        <span class="badge iv-rounded-pill {{#notrated}}fb-cover-notrated{{/notrated}}{{^notrated}}fb-cover-rated{{/notrated}}">{{rating}}</span>
+                    </li>
+                    {{/outcomes}}
+                </ol>
+            </div>
+            {{/hasoutcomes}}
+        </div>
+        {{#hasexpect}}
+        <div class="fb-cover-expect">
+            <h3 class="fb-cover-expect-title">{{#str}}coverwhattoexpect, mod_flexbook{{/str}}</h3>
+            <ul class="fb-cover-expect-list">
+                {{#expect}}
+                <li>
+                    {{#isdue}}<i class="bi bi-calendar4" aria-hidden="true"></i>{{/isdue}}
+                    {{#isgrade}}<i class="bi bi-bullseye" aria-hidden="true"></i>{{/isgrade}}
+                    {{#iscompletion}}<i class="bi bi-check-circle" aria-hidden="true"></i>{{/iscompletion}}
+                    {{^iscompletion}}<span>{{text}}</span>{{/iscompletion}}
+                    {{#iscompletion}}
+                    <span>{{#conditions}}<span class="fb-cover-condition{{#isdone}} is-done{{/isdone}}">{{text}}{{#isdone}}<span class="visually-hidden sr-only"> ({{#str}}completion-y, completion{{/str}})</span>{{/isdone}}</span>{{^islast}}, {{/islast}}{{/conditions}}</span>
+                    {{/iscompletion}}
+                </li>
+                {{/expect}}
+            </ul>
+        </div>
+        {{/hasexpect}}
+    </div>
+</div>

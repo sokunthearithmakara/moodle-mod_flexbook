@@ -23,7 +23,6 @@
 import $ from 'jquery';
 import Ajax from 'core/ajax';
 import Templates from 'core/templates';
-import {getString} from 'core/str';
 
 let popup = null;
 
@@ -42,10 +41,31 @@ const getModalFactory = async() => {
 };
 
 /**
+ * Offers "Show more" only when the description is longer than the space it is given.
+ *
+ * @param {jQuery} $cover The cover.
+ */
+const setUpCover = ($cover) => {
+    const clamp = $cover.find('.fb-cover-clamp').get(0);
+    if (!clamp) {
+        return;
+    }
+    const check = () => {
+        const button = $cover.find('[data-action="fbshowmore"]').get(0);
+        if (button && !clamp.classList.contains('is-expanded')) {
+            button.hidden = clamp.scrollHeight <= clamp.clientHeight + 1;
+        }
+    };
+    check();
+    // Images in the description change its height as they load.
+    clamp.querySelectorAll('img').forEach((img) => img.addEventListener('load', check, {once: true}));
+};
+
+/**
  * Closes the popup and brings the page up to date, without a reload where possible.
  *
  * @param {Object} modal The popup.
- * @param {jQuery} $frame The start screen frame.
+ * @param {jQuery} $frame The cover.
  */
 const closePopup = async(modal, $frame) => {
     if (modal.closing) {
@@ -71,24 +91,22 @@ const closePopup = async(modal, $frame) => {
     root.find('#fbplayer').remove();
 
     let reload = false;
+    let $cover = $frame;
     try {
         const data = await Ajax.call([{
-            methodname: 'mod_flexbook_get_cm_completion',
+            methodname: 'mod_flexbook_get_cover',
             args: {cmid: Number($frame.data('id')), contextid: Number($frame.data('contextid'))},
         }])[0];
-        // The outcomes list is rendered by the server, and finishing may unlock other activities.
-        reload = $('[data-region="outcomelist"]').length > 0 || (withavailability && data.overallcompletion);
+        // Finishing may unlock other activities, which only a reload shows.
+        reload = withavailability && data.overallcompletion;
         if (!reload) {
-            if (data.completion) {
-                $('[data-region="activity-information"]').html($(data.completion).html());
-            }
-            if (data.hasprogress) {
-                const label = await getString('resume', 'mod_flexbook');
-                $frame.find('#play').attr('aria-label', label).find('span').text(label);
-            }
+            // The cover again, with the learner's completion, progress and outcome ratings as they are now.
+            $cover = $(data.html.trim());
+            $frame.replaceWith($cover);
+            setUpCover($cover);
         }
     } catch (error) {
-        // The page shows older completion until the next visit.
+        // The cover shows where the learner stood when the page loaded, until the next visit.
     }
     if (reload) {
         window.location.reload();
@@ -99,13 +117,13 @@ const closePopup = async(modal, $frame) => {
     delete modal.hide;
     modal.destroy();
     popup = null;
-    $frame.find('#play').trigger('focus');
+    $cover.find('[data-action="fbopen"]').trigger('focus');
 };
 
 /**
  * Opens the book in the popup.
  *
- * @param {jQuery} $frame The start screen frame.
+ * @param {jQuery} $frame The cover.
  */
 const openPopup = async($frame) => {
     if (popup) {
@@ -146,8 +164,24 @@ const openPopup = async($frame) => {
 };
 
 export const init = () => {
-    $(document).on('click', '#flexbook-startframe #play', function(e) {
+    setUpCover($('#flexbook-cover'));
+
+    $(document).on('click', '#flexbook-cover [data-action="fbopen"]', function(e) {
         e.preventDefault();
-        openPopup($(this).closest('#flexbook-startframe'));
+        openPopup($(this).closest('#flexbook-cover'));
     });
+
+    // Show more or less of the description, and show or hide the outcomes.
+    $(document).on('click', '#flexbook-cover [data-action="fbshowmore"], #flexbook-cover [data-action="fbtoggle"]',
+        function(e) {
+            e.preventDefault();
+            const expanded = this.getAttribute('aria-expanded') !== 'true';
+            const target = document.getElementById(this.getAttribute('aria-controls'));
+            this.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+            if (this.dataset.action === 'fbshowmore') {
+                target.classList.toggle('is-expanded', expanded);
+            } else {
+                target.hidden = !expanded;
+            }
+        });
 };

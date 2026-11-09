@@ -2977,9 +2977,10 @@ body.fb-embed-interaction {
     padding-inline: max(48px, calc((100% - 830px) / 2));
 }
 
+/* The player's own dark colour, so the cover stands apart from the page (--ivdark) around it. */
 .path-mod-flexbook.darkmode #start-screen.fb-start-screen {
     color: #dee2e6;
-    background-color: var(--ivdark, #212529);
+    background-color: #1d2125;
 }
 
 .path-mod-flexbook.darkmode .fb-cover {

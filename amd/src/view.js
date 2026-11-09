@@ -34,6 +34,7 @@ import {effects} from 'mod_interactivevideo/sound';
 import {safeParse} from './utils';
 import {isGlobalInteraction, buildNavigationSequence} from './interaction-utils';
 import {init as initInstructions} from './instructions';
+import {init as initCover} from './cover';
 
 const isBS5 = $('body').hasClass('bs-5');
 const bsAffix = isBS5 ? '-bs' : '';
@@ -208,7 +209,7 @@ const init = async config => {
     };
 
     /**
-     * Redraws the outcome lists on the start and end screens.
+     * Redraws the outcome lists on the start screen (the cover) and the end screen.
      *
      * Both screens were rendered before this attempt, so the ratings they show are stale as
      * soon as the learner completes anything.
@@ -217,23 +218,28 @@ const init = async config => {
      * @returns {void}
      */
     const refreshOutcomeLists = (response) => {
-        const $lists = $('[data-region="outcomelist"]');
-        if ($lists.length === 0) {
+        const lists = [
+            ['[data-region="outcomelist"]', 'mod_interactivevideo/player/outcomelist'],
+            ['[data-region="fbcover-outcomes"]', 'mod_flexbook/cover_outcomes'],
+        ].filter(([selector]) => $(selector).length);
+        if (lists.length === 0) {
             return;
         }
         const rows = outcomeRowsFrom(response);
         if (!rows) {
             return;
         }
-        Templates.render('mod_interactivevideo/player/outcomelist', {outcomes: rows})
-            .then((html) => {
-                $('[data-region="outcomelist"]').replaceWith(html);
-                return html;
-            })
-            .catch(() => {
-                // Leave the list as it was rendered on load.
-                return false;
-            });
+        lists.forEach(([selector, template]) => {
+            Templates.render(template, {outcomes: rows})
+                .then((html) => {
+                    $(selector).replaceWith(html);
+                    return html;
+                })
+                .catch(() => {
+                    // Leave the list as it was rendered on load.
+                    return false;
+                });
+        });
     };
 
     $(document).on('completionupdated', function(e) {
@@ -317,6 +323,7 @@ const init = async config => {
     });
 
     $startscreen.find('#start').focus();
+    initCover();
 
     const toggleFullscreen = () => {
         const elem = document.getElementById('wrapper');

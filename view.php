@@ -311,7 +311,10 @@ echo $OUTPUT->header();
 
 if ($startscreenonly) {
     // Just the cover. The launch module opens the book in a popup from its button, and redraws it on close.
-    echo $OUTPUT->render_from_template('mod_flexbook/cover', \mod_flexbook\local\cover::export($cm, (int) $USER->id));
+    echo $OUTPUT->render_from_template(
+        'mod_flexbook/cover',
+        ['standalone' => true] + \mod_flexbook\local\cover::export($cm, (int) $USER->id)
+    );
     $PAGE->requires->js_call_amd('mod_flexbook/launch', 'init');
     echo $OUTPUT->footer();
     die();
@@ -449,21 +452,16 @@ $outcomerows = \mod_interactivevideo\local\outcome_mapping::screen_rows(
     (int) $USER->id,
     $modulecontext
 );
-$showoutcomesonstartscreen = !empty($outcomerows)
-    && !empty($moduleinstance->displayoptions['showoutcomesonstartscreen']);
 $showoutcomesonendscreen = !empty($outcomerows)
     && !empty($moduleinstance->displayoptions['showoutcomesonendscreen']);
 $datafortemplate['outcomes'] = $outcomerows;
-$datafortemplate['showoutcomesonstartscreen'] = $showoutcomesonstartscreen;
 $datafortemplate['showoutcomesonendscreen'] = $showoutcomesonendscreen;
-$datafortemplate['startscreendocument'] = !empty($moduleinstance->displayasstartscreen) || $showoutcomesonstartscreen;
 $datafortemplate['endscreendocument'] = !empty($moduleinstance->endscreentext) || $showoutcomesonendscreen;
-// The description is shown on the start screen only when the teacher asked for it.
-$datafortemplate['showintro'] = !empty($moduleinstance->displayasstartscreen)
-    && !empty($datafortemplate['hasintro']);
-$datafortemplate['hascontent'] = $datafortemplate['showintro'] || $showoutcomesonstartscreen;
-// No description or outcomes to show: a returning learner skips straight past the start screen.
-$datafortemplate['startscreenempty'] = !$datafortemplate['hascontent'] && !$new;
+// The start screen is the book's cover, in every mode.
+$cover = \mod_flexbook\local\cover::export($cm, (int) $USER->id);
+$datafortemplate['cover'] = $cover;
+// A cover with nothing on it but its title and button: a returning learner skips straight past it.
+$datafortemplate['startscreenempty'] = !$new && empty($cover['intro']) && !$cover['hasoutcomes'] && !$cover['hasexpect'];
 
 echo $OUTPUT->render_from_template('mod_flexbook/canvas/player', $datafortemplate);
 

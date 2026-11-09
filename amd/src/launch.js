@@ -23,6 +23,7 @@
 import $ from 'jquery';
 import Ajax from 'core/ajax';
 import Templates from 'core/templates';
+import {init as initCover, setUp as setUpCover} from './cover';
 
 let popup = null;
 
@@ -38,27 +39,6 @@ const getModalFactory = async() => {
     }
     const ModalFactory = await import('core/modal_factory');
     return ModalFactory.default || ModalFactory;
-};
-
-/**
- * Offers "Show more" only when the description is longer than the space it is given.
- *
- * @param {jQuery} $cover The cover.
- */
-const setUpCover = ($cover) => {
-    const clamp = $cover.find('.fb-cover-clamp').get(0);
-    if (!clamp) {
-        return;
-    }
-    const check = () => {
-        const button = $cover.find('[data-action="fbshowmore"]').get(0);
-        if (button && !clamp.classList.contains('is-expanded')) {
-            button.hidden = clamp.scrollHeight <= clamp.clientHeight + 1;
-        }
-    };
-    check();
-    // Images in the description change its height as they load.
-    clamp.querySelectorAll('img').forEach((img) => img.addEventListener('load', check, {once: true}));
 };
 
 /**
@@ -103,7 +83,7 @@ const closePopup = async(modal, $frame) => {
             // The cover again, with the learner's completion, progress and outcome ratings as they are now.
             $cover = $(data.html.trim());
             $frame.replaceWith($cover);
-            setUpCover($cover);
+            setUpCover($cover.get(0));
         }
     } catch (error) {
         // The cover shows where the learner stood when the page loaded, until the next visit.
@@ -164,18 +144,10 @@ const openPopup = async($frame) => {
 };
 
 export const init = () => {
-    setUpCover($('#flexbook-cover'));
+    initCover();
 
     $(document).on('click', '#flexbook-cover [data-action="fbopen"]', function(e) {
         e.preventDefault();
         openPopup($(this).closest('#flexbook-cover'));
-    });
-
-    // Show more or less of the description.
-    $(document).on('click', '#flexbook-cover [data-action="fbshowmore"]', function(e) {
-        e.preventDefault();
-        const expanded = this.getAttribute('aria-expanded') !== 'true';
-        this.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-        document.getElementById(this.getAttribute('aria-controls')).classList.toggle('is-expanded', expanded);
     });
 };

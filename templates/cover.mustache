@@ -17,12 +17,16 @@
 {{!
     @template mod_flexbook/cover
 
-    The page of a start-screen-only flexbook: what the book is, where the learner stands, and the button that
-    opens it in a full window popup. Re-rendered in place when the popup closes.
+    The flexbook's start screen: what the book is, where the learner stands, and the button that starts it.
+
+    In the player (all modes) it fills the start screen and its button is the player's #play. As the page of a
+    start-screen-only flexbook (standalone) its button opens the book in a full window popup, and it is
+    re-rendered in place when the popup closes.
 
     Example context (json):
     {
         "cmid": 12,
+        "standalone": true,
         "courseid": 2,
         "contextid": 34,
         "title": "Reflection: your journey",
@@ -43,16 +47,16 @@
         ]
     }
 }}
-<div id="flexbook-cover" class="fb-cover"
+<div class="fb-cover"{{#standalone}} id="flexbook-cover"
      data-id="{{cmid}}"
      data-course="{{courseid}}"
      data-contextid="{{contextid}}"
-     data-name="{{title}}">
+     data-name="{{title}}"{{/standalone}}>
     <div class="fb-cover-hero">
         <div class="fb-cover-lead">
             <h2 class="fb-cover-title">{{title}}</h2>
             <div class="fb-cover-actions">
-                <button type="button" class="btn btn-primary fb-cover-open" data-action="fbopen">{{button}}</button>
+                <button type="button" class="btn btn-primary fb-cover-open" {{#standalone}}data-action="fbopen"{{/standalone}}{{^standalone}}id="play"{{/standalone}}>{{button}}</button>
                 {{#progress}}<span class="fb-cover-muted">{{progress}}</span>{{/progress}}
             </div>
         </div>
@@ -71,19 +75,7 @@
             </button>
             {{/intro}}
             {{#hasoutcomes}}
-            <div class="fb-cover-outcomes">
-                <h3 class="fb-cover-outcomes-title">{{#str}}coveroutcomes, mod_flexbook{{/str}}</h3>
-                <ol class="fb-cover-outcome-list">
-                    {{#outcomes}}
-                    <li>
-                        <span class="fb-cover-outcome-name">
-                            {{{name}}}{{#shortname}} <span class="fb-cover-muted">({{{shortname}}})</span>{{/shortname}}
-                        </span>
-                        <span class="badge iv-rounded-pill {{#notrated}}fb-cover-notrated{{/notrated}}{{^notrated}}fb-cover-rated{{/notrated}}">{{rating}}</span>
-                    </li>
-                    {{/outcomes}}
-                </ol>
-            </div>
+            {{> mod_flexbook/cover_outcomes}}
             {{/hasoutcomes}}
         </div>
         {{#hasexpect}}

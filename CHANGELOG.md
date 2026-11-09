@@ -14,6 +14,11 @@ All notable changes to this project will be documented in this file.
   recorded then. Closing the popup saves the learner's place and redraws the cover without
   reloading the page.
 
+### Changed
+- **Start screen:** The player's start screen, in default and distraction-free modes, is now
+  the same cover. It always shows the description and the learning outcomes when there are
+  any; a returning learner skips it only when it has nothing but the title and button.
+
 ## [1.6.0] - 2026-10-26
 
 Requires **Interactive Video 2.2.0** or later.

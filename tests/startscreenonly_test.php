@@ -74,6 +74,10 @@ final class startscreenonly_test extends \advanced_testcase {
         );
         $this->assertFalse($result['overallcompletion']);
         $this->assertStringContainsString('>' . get_string('start', 'mod_flexbook') . '<', $result['html']);
+        // The page's cover: its button opens the popup, rather than being the player's own.
+        $this->assertStringContainsString('id="flexbook-cover"', $result['html']);
+        $this->assertStringContainsString('data-action="fbopen"', $result['html']);
+        $this->assertStringNotContainsString('id="play"', $result['html']);
 
         $DB->insert_record('flexbook_completion', [
             'cmid' => $cm->id,

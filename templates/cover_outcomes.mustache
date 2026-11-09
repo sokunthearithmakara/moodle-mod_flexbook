@@ -1,0 +1,45 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_flexbook/cover_outcomes
+
+    The learning objectives on the flexbook's cover, with the learner's rating on each. Redrawn in place as the
+    learner's progress is saved.
+
+    Example context (json):
+    {
+        "outcomes": [
+            {"name": "Describes the stages of the water cycle", "shortname": "WC-1", "rating": "Competent",
+                "notrated": false},
+            {"name": "Interprets a precipitation chart", "shortname": "WC-2", "rating": "No outcome",
+                "notrated": true}
+        ]
+    }
+}}
+<div class="fb-cover-outcomes" data-region="fbcover-outcomes">
+    <h3 class="fb-cover-outcomes-title">{{#str}}coveroutcomes, mod_flexbook{{/str}}</h3>
+    <ol class="fb-cover-outcome-list">
+        {{#outcomes}}
+        <li>
+            <span class="fb-cover-outcome-name">
+                {{{name}}}{{#shortname}} <span class="fb-cover-muted">({{{shortname}}})</span>{{/shortname}}
+            </span>
+            <span class="badge iv-rounded-pill {{#notrated}}fb-cover-notrated{{/notrated}}{{^notrated}}fb-cover-rated{{/notrated}}">{{rating}}</span>
+        </li>
+        {{/outcomes}}
+    </ol>
+</div>

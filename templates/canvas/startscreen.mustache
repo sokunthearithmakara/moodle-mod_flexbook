@@ -17,81 +17,25 @@
 {{!
     @template mod_flexbook/canvas/startscreen
 
-    TODO describe template startscreen
+    The start screen over the player, in every mode: the flexbook's cover, whose button (#play) starts or
+    resumes the book. With nothing to read on it, a returning learner skips past it (data-empty).
 
     Example context (json):
     {
+        "startscreenempty": false,
+        "cover": {
+            "cmid": 12,
+            "title": "Reflection: your journey",
+            "button": "Start",
+            "hasexpect": false,
+            "hasoutcomes": false
+        }
     }
 }}
-
-{{#startscreendocument}}
 <div id="start-screen"
-     class="w-100 position-absolute h-100 bg-white bottom-0"
+     class="w-100 position-absolute h-100 bottom-0 fb-start-screen"
      {{#startscreenempty}}data-empty="1"{{/startscreenempty}}
      role="region"
      aria-label="{{#str}}startscreen, mod_interactivevideo{{/str}}">
-    <div class="intro-content {{#hascontent}}hasintro bg-light{{/hascontent}} {{^hascontent}}{{#posterimage}}bg-transparent{{/posterimage}}{{^posterimage}}bg-light{{/posterimage}}{{/hascontent}} w-100 p-0 align-items-start">
-        <div id="title-section"
-             class="bg-secondary w-100 d-flex align-items-center justify-content-between p-3 overflow-hidden position-sticky"
-             role="banner">
-            <div class="d-flex flex-column justify-content-center" style="max-width: calc(100% - 3rem);">
-                <div class="metadata d-block d-md-none" aria-live="polite"></div>
-                <h2 class="line-height-100 mb-0 title">{{{title}}}</h2>
-            </div>
-
-            <button id="play"
-                class="btn btn-danger btn-rounded btn-lg"
-                type="button"
-                aria-label="{{#new}}{{#str}}start, mod_flexbook{{/str}}{{/new}}{{^new}}{{#str}}resume, mod_flexbook{{/str}}{{/new}}">
-            <i class="bi bi-play-fill text-white fs-25px" aria-hidden="true"></i>
-            <span class="text-uppercase iv-ml-2">{{#new}}{{#str}}start, mod_flexbook{{/str}}{{/new}}{{^new}}{{#str}}resume, mod_flexbook{{/str}}{{/new}}</span>
-            </button>
-        </div>
-
-        {{#showintro}}
-        <div class="p-2 p-md-3" id="intro-text" role="document">
-            {{{intro}}}
-        </div>
-        {{/showintro}}
-
-        {{#showoutcomesonstartscreen}}
-        {{> mod_interactivevideo/player/outcomelist}}
-        {{/showoutcomesonstartscreen}}
-    </div>
+    {{#cover}}{{> mod_flexbook/cover}}{{/cover}}
 </div>
-{{/startscreendocument}}
-
-{{^startscreendocument}}
-<div id="start-screen"
-     class="w-100 position-absolute h-100 bottom-0 {{#square}}square{{/square}}"
-     {{#startscreenempty}}data-empty="1"{{/startscreenempty}}
-     role="region"
-     aria-label="{{#str}}startscreen, mod_interactivevideo{{/str}}"
-     {{#posterimage}}style="background: url('{{{posterimage}}}') center center / cover no-repeat;"{{/posterimage}}
-     data-poster="{{{posterimage}}}">
-    <div class="intro-content d-flex align-items-center justify-content-center position-absolute w-100"
-         role="presentation"></div>
-
-    <div id="video-info"
-         class="p-1 p-sm-3 text-white w-100 h-100 position-absolute align-items-start flex-column justify-content-between d-flex"
-         role="group"
-         aria-label="{{#str}}videoinformation, mod_interactivevideo{{/str}}">
-        <div class="justify-content-between w-100 h-100 d-flex flex-column">
-            <div class="metadata d-block d-md-none text-shadow" aria-live="polite"></div>
-            {{#title}}
-                <h1 class="h1 text-white iv-font-weight-bold line-height-100 m-1 m-sm-2 p-sm-2 p-1">
-                    {{{title}}}
-                </h1>
-            {{/title}}
-        </div>
-
-        <button id="play"
-                class="btn btn-danger btn-rounded position-absolute btn-lg"
-                type="button"
-                aria-label="{{#new}}{{#str}}start, mod_flexbook{{/str}}{{/new}}{{^new}}{{#str}}resume, mod_flexbook{{/str}}{{/new}}">
-            <i class="bi bi-play-fill text-white fs-25px" aria-hidden="true"></i>
-            <span class="text-uppercase iv-ml-2">{{#new}}{{#str}}start, mod_flexbook{{/str}}{{/new}}{{^new}}{{#str}}resume, mod_flexbook{{/str}}{{/new}}</span>
-        </button>
-    </div>
-</div>
-{{/startscreendocument}}

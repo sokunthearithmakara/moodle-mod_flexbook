@@ -1539,7 +1539,7 @@ class actions extends external_api {
         $cover = \mod_flexbook\local\cover::export($cm, (int) $USER->id);
         return [
             'overallcompletion' => $cover['overallcompletion'],
-            'html' => $OUTPUT->render_from_template('mod_flexbook/cover', $cover),
+            'html' => $OUTPUT->render_from_template('mod_flexbook/cover', ['standalone' => true] + $cover),
         ];
     }
 

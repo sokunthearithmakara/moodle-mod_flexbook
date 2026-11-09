@@ -538,9 +538,9 @@
         max-width: unset;
     }
 
-    /* Embed: container already shifts right — do not subtract 400px again. */
+    /* Embed: the bar is fixed to the window and spans it, so it gives the open chapter panel its 400px. */
     .path-mod-interactivevideo.embed-mode #interactivevideo-container.chapter-open #controller.fb {
-        width: calc(100% - 2rem);
+        width: calc(100% - 400px);
     }
 }
 

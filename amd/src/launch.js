@@ -55,11 +55,12 @@ const closePopup = async(modal, $frame) => {
     const root = modal.getRoot();
     const iframe = root.find('#fbplayer').get(0);
 
-    // Read what we need, and save the learner's place, before the iframe and its document go.
-    let withavailability = false;
+    // This page's own flag: it was not complete on load and others depend on it. The book in the iframe
+    // records its view before it checks, so it may already count itself complete and leave the flag off.
+    const withavailability = document.body.classList.contains('withavailability');
+    // Save the learner's place before the iframe and its document go.
     try {
         const win = iframe?.contentWindow;
-        withavailability = win?.document.body.classList.contains('withavailability');
         if (win?.flexbookSaveProgress) {
             await win.flexbookSaveProgress();
         }

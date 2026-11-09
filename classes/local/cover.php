@@ -41,7 +41,13 @@ class cover {
         require_once($CFG->libdir . '/gradelib.php');
 
         $context = context_module::instance($cm->id);
-        $flexbook = $DB->get_record('flexbook', ['id' => $cm->instance], 'id, intro, introformat', MUST_EXIST);
+        $flexbook = $DB->get_record(
+            'flexbook',
+            ['id' => $cm->instance],
+            'id, intro, introformat, displayasstartscreen, displayoptions',
+            MUST_EXIST
+        );
+        $options = json_decode($flexbook->displayoptions ?? '', true) ?: [];
 
         // A learner has a progress record from their first open; they have started once there is anything in it.
         $progress = $DB->get_record(
@@ -93,15 +99,16 @@ class cover {
             $expect[] = ['iscompletion' => true, 'conditions' => $conditions];
         }
 
-        // The outcomes the book rates, and the learner's standing on each.
-        $outcomes = \mod_interactivevideo\local\outcome_mapping::screen_rows(
+        // The outcomes the book rates, and the learner's standing on each, when the teacher shows them here.
+        $outcomes = empty($options['showoutcomesonstartscreen']) ? [] : \mod_interactivevideo\local\outcome_mapping::screen_rows(
             'flexbook',
             (int) $cm->instance,
             $userid,
             $context
         );
 
-        $intro = format_module_intro('flexbook', $flexbook, $cm->id);
+        // The description, when the teacher displays it as the start screen.
+        $intro = empty($flexbook->displayasstartscreen) ? '' : format_module_intro('flexbook', $flexbook, $cm->id);
         return [
             'cmid' => $cm->id,
             'courseid' => $cm->course,

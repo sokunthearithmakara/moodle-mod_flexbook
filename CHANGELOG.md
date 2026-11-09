@@ -16,8 +16,9 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 - **Start screen:** The player's start screen, in default and distraction-free modes, is now
-  the same cover. It always shows the description and the learning outcomes when there are
-  any; a returning learner skips it only when it has nothing but the title and button.
+  the same cover. The description and the learning outcomes appear on it as the "Display as
+  start screen" and start screen outcome settings say, and a returning learner still skips it
+  when neither is shown.
 
 ## [1.6.0] - 2026-10-26
 

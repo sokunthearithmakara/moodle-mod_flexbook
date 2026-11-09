@@ -460,8 +460,8 @@ $datafortemplate['endscreendocument'] = !empty($moduleinstance->endscreentext) |
 // The start screen is the book's cover, in every mode.
 $cover = \mod_flexbook\local\cover::export($cm, (int) $USER->id);
 $datafortemplate['cover'] = $cover;
-// A cover with nothing on it but its title and button: a returning learner skips straight past it.
-$datafortemplate['startscreenempty'] = !$new && empty($cover['intro']) && !$cover['hasoutcomes'] && !$cover['hasexpect'];
+// No description or outcomes to show: a returning learner skips straight past the start screen.
+$datafortemplate['startscreenempty'] = !$new && empty($cover['intro']) && !$cover['hasoutcomes'];
 
 echo $OUTPUT->render_from_template('mod_flexbook/canvas/player', $datafortemplate);
 

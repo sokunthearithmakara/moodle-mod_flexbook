@@ -62,6 +62,8 @@ $tabmenu = ob_get_contents();
 ob_end_clean();
 
 echo $OUTPUT->header();
+// The container class lines it up with the tabs below, which sit in a container of their own.
+echo $OUTPUT->heading(get_string('managetitle', 'mod_flexbook'), 2, 'container');
 echo '<div class="container">' . $tabmenu . '</div>';
 
 if ($tab === 'settings' && get_config('mod_flexbook', 'enablecoursesettings')) {

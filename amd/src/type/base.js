@@ -1203,8 +1203,8 @@ export default class Base {
         } else if (action == 'mark-undone') {
             $toggleButton
                 .removeClass('btn-success mark-undone').addClass('btn-secondary mark-done');
-            // Play a popup sound.
-            state.audio?.pop.play();
+            // Play the undo sound.
+            state.audio?.undo.play();
             $badge.removeClass('alert-success').addClass('iv-badge-secondary');
             $delete.addClass('d-none');
         }

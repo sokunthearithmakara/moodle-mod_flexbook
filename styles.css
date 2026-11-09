@@ -572,6 +572,11 @@
     align-items: center;
 }
 
+.path-mod-flexbook.darkmode #closechapter,
+[data-bs-theme="dark"] .path-mod-flexbook #closechapter {
+    color: #fff;
+}
+
 .path-mod-flexbook:not(.darkmode) #wrapper:not(.fullscreen) #controller.fb .btn-dark {
     color: #000 !important;
     border: 0;
@@ -2447,7 +2452,7 @@
 }
 
 .path-mod-flexbook.darkmode #video-wrapper.fb #message #title:not(.hide-header) .btn-secondary i {
-    color: var(--bs-black, #000);
+    color: inherit;
 }
 
 @media (min-width: 1199.98px) {
@@ -2689,6 +2694,17 @@ body.fb-embed-interaction {
     background-color: transparent;
     font-weight: 500;
     margin: 0 !important;
+}
+
+/* No background here, so the completed state's white text would be invisible: dark text in light mode... */
+.path-mod-flexbook #completiontoggle.btn-success {
+    color: var(--bs-body-color, #1d2125);
+}
+
+/* ...and white text in dark mode. */
+.path-mod-flexbook.darkmode #completiontoggle.btn-success,
+[data-bs-theme="dark"] .path-mod-flexbook #completiontoggle.btn-success {
+    color: #fff;
 }
 
 .path-mod-flexbook.darkmode #completiontoggle,

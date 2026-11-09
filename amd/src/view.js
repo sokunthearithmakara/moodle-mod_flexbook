@@ -30,6 +30,7 @@ import Templates from 'core/templates';
 import Notification from 'core/notification';
 import 'mod_interactivevideo/libraries/jquery-ui';
 import state from './state';
+import {effects} from 'mod_interactivevideo/sound';
 import {safeParse} from './utils';
 import {isGlobalInteraction, buildNavigationSequence} from './interaction-utils';
 import {init as initInstructions} from './instructions';
@@ -664,15 +665,8 @@ const init = async config => {
     // Render the annotations on the control bar.
     renderAnnotationItems(annotations);
     state.annotations = annotations;
-    // Preload audio.
-    const pop = new Audio(M.cfg.wwwroot + '/mod/interactivevideo/sounds/pop.mp3');
-    const point = new Audio(
-        M.cfg.wwwroot + '/mod/interactivevideo/sounds/point-awarded.mp3'
-    );
-    state.audio = {
-        pop,
-        point
-    };
+    // Sound effects, for the interaction plugins too.
+    state.audio = effects();
 
     const validateAnnotationAccess = async annotation => {
         // If it's the same annotation, always allow access (used for refreshing).

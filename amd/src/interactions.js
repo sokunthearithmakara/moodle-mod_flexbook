@@ -34,6 +34,7 @@ import Ajax from 'core/ajax';
 import {safeParse, getMoodleVersion} from './utils';
 import {isGlobalInteraction, sortForEditList, enforceGlobalPrefixInDom} from './interaction-utils';
 import state from './state';
+import {effects} from 'mod_interactivevideo/sound';
 import {init as initInstructions} from './instructions';
 
 const addNotification = (msg, type = "info") => {
@@ -82,15 +83,8 @@ const init = async(
 
     require(['theme_boost/bootstrap/modal']);
 
-    // Preload audio.
-    const pop = new Audio(M.cfg.wwwroot + '/mod/interactivevideo/sounds/pop.mp3');
-    const point = new Audio(
-        M.cfg.wwwroot + '/mod/interactivevideo/sounds/point-awarded.mp3'
-    );
-    state.audio = {
-        pop,
-        point
-    };
+    // Sound effects, for the interaction plugins too.
+    state.audio = effects();
 
     // DOM elements.
     const $annotationlist = $('#annotation-list');

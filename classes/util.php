@@ -629,7 +629,9 @@ class util extends \interactivevideo_util {
      */
     public static function get_items($cmid, $contextid, $hascompletion = false) {
         global $DB, $PAGE;
-        if ($contextid) {
+        // Once the page is printing its context is set and can't change (this runs from other pages too, such as
+        // the completion state a course page asks for).
+        if ($contextid && $PAGE->state == \moodle_page::STATE_BEFORE_HEADER) {
             $PAGE->set_context(\context::instance_by_id($contextid));
         }
         $cache = \cache::make('mod_flexbook', 'fb_items');

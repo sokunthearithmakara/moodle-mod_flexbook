@@ -72,13 +72,8 @@
             {{/intro}}
             {{#hasoutcomes}}
             <div class="fb-cover-outcomes">
-                <button type="button" class="fb-cover-link fb-cover-toggle" data-action="fbtoggle"
-                        aria-controls="fb-cover-outcomes-{{cmid}}" aria-expanded="false">
-                    <span class="fb-cover-when-collapsed">{{#str}}covershowoutcomes, mod_flexbook{{/str}}</span>
-                    <span class="fb-cover-when-expanded">{{#str}}coverhideoutcomes, mod_flexbook{{/str}}</span>
-                    <i class="bi bi-chevron-down" aria-hidden="true"></i>
-                </button>
-                <ol class="fb-cover-outcome-list" id="fb-cover-outcomes-{{cmid}}" hidden>
+                <h3 class="fb-cover-outcomes-title">{{#str}}coveroutcomes, mod_flexbook{{/str}}</h3>
+                <ol class="fb-cover-outcome-list">
                     {{#outcomes}}
                     <li>
                         <span class="fb-cover-outcome-name">

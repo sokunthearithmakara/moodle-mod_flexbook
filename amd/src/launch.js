@@ -171,17 +171,11 @@ export const init = () => {
         openPopup($(this).closest('#flexbook-cover'));
     });
 
-    // Show more or less of the description, and show or hide the outcomes.
-    $(document).on('click', '#flexbook-cover [data-action="fbshowmore"], #flexbook-cover [data-action="fbtoggle"]',
-        function(e) {
-            e.preventDefault();
-            const expanded = this.getAttribute('aria-expanded') !== 'true';
-            const target = document.getElementById(this.getAttribute('aria-controls'));
-            this.setAttribute('aria-expanded', expanded ? 'true' : 'false');
-            if (this.dataset.action === 'fbshowmore') {
-                target.classList.toggle('is-expanded', expanded);
-            } else {
-                target.hidden = !expanded;
-            }
-        });
+    // Show more or less of the description.
+    $(document).on('click', '#flexbook-cover [data-action="fbshowmore"]', function(e) {
+        e.preventDefault();
+        const expanded = this.getAttribute('aria-expanded') !== 'true';
+        this.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+        document.getElementById(this.getAttribute('aria-controls')).classList.toggle('is-expanded', expanded);
+    });
 };

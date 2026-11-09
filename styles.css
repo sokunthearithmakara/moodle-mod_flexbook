@@ -2847,22 +2847,11 @@ body.fb-embed-interaction {
     margin-top: 16px;
 }
 
-.fb-cover .fb-cover-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    margin-top: 0;
-    font-size: 14px;
-    line-height: 20px;
-    color: inherit;
-}
-
-.fb-cover-toggle .bi {
-    transition: transform 0.2s ease;
-}
-
-.fb-cover-toggle[aria-expanded="true"] .bi {
-    transform: rotate(180deg);
+.fb-cover .fb-cover-outcomes-title {
+    margin: 0 0 4px;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
 }
 
 /* Each outcome with the learner's rating on it. */
@@ -2899,9 +2888,6 @@ body.fb-embed-interaction {
 .fb-cover-expect {
     flex: none;
     width: 320px;
-    padding: 20px 24px;
-    border: 1px solid var(--fb-cover-line);
-    border-radius: 12px;
 }
 
 .fb-cover .fb-cover-expect-title {

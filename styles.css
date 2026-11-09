@@ -2951,13 +2951,30 @@ body.fb-embed-interaction {
     }
 }
 
-/* The cover as the player's start screen, in every mode: it scrolls within the player, and follows the
-   player's width rather than the window's. */
+/* The cover as the player's start screen, in every mode: it fills the player edge to edge and scrolls within it,
+   with its content kept to 830px, and follows the player's width rather than the window's. */
 .path-mod-flexbook #start-screen.fb-start-screen {
     container-type: inline-size;
     overflow-y: auto;
-    padding: 24px;
     background-color: var(--bs-body-bg, #fff);
+}
+
+.fb-start-screen .fb-cover {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    max-width: none;
+    border: 0;
+    border-radius: 0;
+}
+
+.fb-start-screen .fb-cover-hero {
+    padding-inline: max(48px, calc((100% - 830px) / 2));
+}
+
+.fb-start-screen .fb-cover-body {
+    flex: 1;
+    padding-inline: max(48px, calc((100% - 830px) / 2));
 }
 
 .path-mod-flexbook.darkmode #start-screen.fb-start-screen {
@@ -2996,12 +3013,6 @@ body.fb-embed-interaction {
 @container (max-width: 575.98px) {
     .fb-start-screen .fb-cover-art {
         display: none;
-    }
-}
-
-@media (max-width: 575.98px) {
-    .path-mod-flexbook #start-screen.fb-start-screen {
-        padding: 12px;
     }
 }
 

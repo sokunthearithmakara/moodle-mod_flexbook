@@ -1502,4 +1502,74 @@ class actions extends external_api {
     public static function delete_default_returns() {
         return self::default_returns();
     }
+
+    /**
+     * Get completion parameters
+     *
+     * @return external_function_parameters
+     */
+    public static function get_cm_completion_parameters() {
+        return new external_function_parameters([
+            'cmid' => new external_value(PARAM_INT, 'The course module ID'),
+            'contextid' => new external_value(PARAM_INT, 'The module context ID'),
+        ]);
+    }
+
+    /**
+     * The current user's completion of a flexbook, as the activity header shows it.
+     *
+     * @param int $cmid The course module ID.
+     * @param int $contextid The module context ID.
+     * @return array
+     */
+    public static function get_cm_completion($cmid, $contextid) {
+        global $CFG, $DB, $OUTPUT, $PAGE, $USER;
+        self::validate_parameters(self::get_cm_completion_parameters(), [
+            'cmid' => $cmid,
+            'contextid' => $contextid,
+        ]);
+
+        self::validate_view_context($contextid);
+        $context = \context::instance_by_id($contextid);
+        if ($context->contextlevel != CONTEXT_MODULE || $context->instanceid != $cmid) {
+            throw new \moodle_exception('invalidcoursemodule', 'error');
+        }
+
+        [, $cm] = get_course_and_cm_from_cmid($cmid, 'flexbook');
+        $response = [
+            'overallcompletion' => false,
+            'completion' => '',
+            'hasprogress' => $DB->record_exists('flexbook_completion', ['cmid' => $cm->id, 'userid' => $USER->id]),
+        ];
+        if ($cm->completion == COMPLETION_TRACKING_NONE) {
+            return $response;
+        }
+
+        $completiondetails = \core_completion\cm_completion_details::get_instance($cm, $USER->id);
+        $response['overallcompletion'] = $completiondetails->get_overall_completion() == COMPLETION_COMPLETE;
+        // The same markup view.php puts in the activity header.
+        if ($CFG->branch < 404) {
+            $response['completion'] = $OUTPUT->activity_information($cm, $completiondetails, []);
+        } else {
+            $activitycompletion = new \core_course\output\activity_completion($cm, $completiondetails);
+            $data = (array) $activitycompletion->export_for_template($PAGE->get_renderer('core'));
+            if ($data['hascompletion']) {
+                $response['completion'] = $OUTPUT->render_from_template('core_course/activity_info', $data);
+            }
+        }
+        return $response;
+    }
+
+    /**
+     * Get completion return fields
+     *
+     * @return external_single_structure
+     */
+    public static function get_cm_completion_returns() {
+        return new external_single_structure([
+            'overallcompletion' => new external_value(PARAM_BOOL, 'Whether the activity is complete'),
+            'completion' => new external_value(PARAM_RAW, 'The activity header completion HTML'),
+            'hasprogress' => new external_value(PARAM_BOOL, 'Whether the user has started the book'),
+        ]);
+    }
 }

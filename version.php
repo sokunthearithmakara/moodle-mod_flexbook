@@ -25,8 +25,8 @@
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component    = 'mod_flexbook';
-$plugin->release      = '1.6';
-$plugin->version      = 2026110300;
+$plugin->release      = '1.6.1';
+$plugin->version      = 2026110900;
 $plugin->requires = 2021112800;
 $plugin->supported = [400, 503];
 $plugin->maturity = MATURITY_STABLE;

@@ -136,6 +136,7 @@ $asettings->add(new admin_setting_configmulticheckbox(
     get_string('defaultappearance_desc', 'mod_interactivevideo'),
     [
         'distractionfreemode' => 1,
+        'startscreenonly' => 0,
         'darkmode' => 1,
         'showdescriptiononheader' => 0,
         'courseindex' => 0,
@@ -152,6 +153,7 @@ $asettings->add(new admin_setting_configmulticheckbox(
     ],
     [
         'distractionfreemode' => get_string('distractionfreemode', 'mod_flexbook'),
+        'startscreenonly' => get_string('startscreenonly', 'mod_flexbook'),
         'darkmode' => get_string('darkmode', 'mod_flexbook'),
         'showdescriptiononheader' => get_string('displaydescriptiononactivityheader', 'mod_flexbook'),
         'courseindex' => get_string('courseindex', 'mod_flexbook'),

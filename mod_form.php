@@ -362,6 +362,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
                 'darkmode',
                 'theme',
                 'distractionfreemode',
+                'startscreenonly',
                 'courseindex',
                 'beforecompletion',
                 'aftercompletion',
@@ -468,7 +469,7 @@ class mod_flexbook_mod_form extends moodleform_mod {
             if ($settings) {
                 $displayoptions = json_decode($settings->displayoptions ?? '', true) ?: [];
                 $scalars = [
-                    'theme', 'aspectratio', 'distractionfreemode', 'darkmode', 'kidtheme',
+                    'theme', 'aspectratio', 'distractionfreemode', 'startscreenonly', 'darkmode', 'kidtheme',
                     'courseindex', 'openchapterpanel', 'limitedwidth', 'character', 'showdescriptiononheader', 'type',
                 ];
                 foreach ($scalars as $option) {

@@ -123,6 +123,7 @@ function flexbook_display_options($moduleinstance) {
         'openchapterpanel' => in_array('openchapterpanel', $defaultappearance) ? 1 : 0,
         'character' => 'none',
         'limitedwidth' => in_array('limitedwidth', $defaultappearance) ? 1 : 0,
+        'startscreenonly' => in_array('startscreenonly', $defaultappearance) ? 1 : 0,
         'showoutcomesonstartscreen' => 0,
         'showoutcomesonendscreen' => 0,
         'showoutcomesonreport' => 0,
@@ -1230,6 +1231,17 @@ function flexbook_appearanceandbehavior_form($mform, $current, $sections = ['app
             ['group' => 1],
             [0, 1]
         );
+
+        // Start screen only: the book opens in a full viewport popup (default mode only).
+        $group[] = $mform->createElement(
+            'advcheckbox',
+            'startscreenonly',
+            '',
+            get_string('startscreenonly', 'mod_flexbook'),
+            ['group' => 1],
+            [0, 1]
+        );
+        $mform->hideIf('startscreenonly', 'distractionfreemode', 'eq', 1);
 
         // Dark mode.
         $group[] = $mform->createElement(

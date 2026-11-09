@@ -1,0 +1,45 @@
+{{!
+    This file is part of Moodle - http://moodle.org/
+
+    Moodle is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    Moodle is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
+}}
+{{!
+    @template mod_flexbook/launchmodal
+
+    The full viewport popup that holds the book in an embed iframe.
+
+    Example context (json):
+    {
+        "wwwroot": "https://example.com",
+        "id": 12,
+        "name": "Safety at the workshop"
+    }
+}}
+<div class="fb-launch-bar d-flex align-items-center flex-shrink-0 text-white">
+    <button type="button" data-action="hidemodal"
+            class="btn border-0 p-1 text-white"
+            aria-label="{{#str}}closebuttontitle, core{{/str}}"
+            title="{{#str}}closebuttontitle, core{{/str}}">
+        <i class="dir-rtl-hide bi bi-arrow-left fs-25px" aria-hidden="true"></i>
+        <i class="dir-ltr-hide bi bi-arrow-right fs-25px" aria-hidden="true"></i>
+    </button>
+    <span class="h5 mb-0 iv-ml-2 text-truncate">{{name}}</span>
+</div>
+<iframe id="fbplayer"
+    src="{{wwwroot}}/mod/flexbook/view.php?id={{id}}&embed=1&autostart=1"
+    class="w-100 border-0 d-block flex-grow-1"
+    allow="autoplay; fullscreen"
+    allowfullscreen
+    title="{{name}}">
+</iframe>

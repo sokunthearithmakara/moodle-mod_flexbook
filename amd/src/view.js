@@ -296,6 +296,10 @@ const init = async config => {
         return saveInteractionData(reachend, force);
     };
 
+    // The start-screen-only popup saves the learner's place this way before it closes.
+    // Nothing is open yet if it closes before the book starts, and saving then would lose the resume point.
+    window.flexbookSaveProgress = () => (state.currentanno ? saveInteractionData(false, true) : Promise.resolve());
+
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
             saveInteractionData();
@@ -1435,7 +1439,8 @@ const init = async config => {
     // Automatically resume if 'aid' is in the URL.
     const url = new URL(window.location);
     const aid = url.searchParams.get('aid');
-    let autostart = false;
+    // The start-screen-only popup asks to start straight away: the learner already clicked Start on the page.
+    let autostart = url.searchParams.get('autostart') == '1';
     if (aid) {
         if (annotations.find(x => x.id == aid) || aid == 'endscreen') {
             autostart = true;

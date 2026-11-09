@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.6.1] - 2026-11-09
+
+### Added
+- **Show start screen only:** A new appearance setting, available when distraction-free mode
+  is off. The activity page shows only the start screen in a 16:9 frame, and Start or Resume
+  opens the book in a popup that fills the browser window. The book loads only when the popup
+  opens, and the activity view is recorded then. Closing the popup saves the learner's place
+  and updates the activity completion without reloading the page.
+
 ## [1.6.0] - 2026-10-26
 
 Requires **Interactive Video 2.2.0** or later.

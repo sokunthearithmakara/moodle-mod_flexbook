@@ -253,6 +253,7 @@ $string['showoutcomesonstartscreen'] = 'Start screen';
 $string['showoutcomesonstartscreen_help'] = 'List the outcomes attached to this activity, and the learner\'s current rating on each, on the start screen. When the description is shown there the list follows it; otherwise the start screen shows the list on its own.';
 $string['showprogressbar'] = 'Show progress bar';
 $string['start'] = 'Start';
+$string['startscreenonly'] = 'Show start screen only, open the book on start';
 $string['studentscompleted'] = 'Students completed';
 $string['studentsended'] = 'Students reached the end';
 $string['studentsstarted'] = 'Students started';

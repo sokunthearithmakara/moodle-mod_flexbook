@@ -2711,3 +2711,25 @@ body.fb-embed-interaction {
 [data-bs-theme="dark"] .path-mod-flexbook #completiontoggle {
     color: #fff;
 }
+
+/* Start screen only: the start screen on its own in a 16:9 frame. Square corners once it spans the viewport. */
+#page-mod-flexbook-view #flexbook-startframe {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: max(0px, min(0.75rem, calc((100vw - 100% - 2rem) * 9999)));
+}
+
+/* The popup the book opens in (a modal-fullscreen dialog). */
+.fb-launch-modal .modal-body {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* The back arrow gets a bar of its own, so it covers none of the book's controls. */
+.fb-launch-modal .fb-launch-bar {
+    height: 3rem;
+    padding: 0 0.5rem;
+    background: #1d2125;
+}

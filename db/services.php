@@ -70,6 +70,13 @@ $functions = [
         'type' => 'write',
         'ajax' => true,
     ],
+    'mod_flexbook_get_cm_completion' => [
+        'classname' => 'mod_flexbook\external\actions',
+        'methodname' => 'get_cm_completion',
+        'description' => 'Get the current user\'s completion of a flexbook, as the activity header shows it',
+        'type' => 'read',
+        'ajax' => true,
+    ],
     'mod_flexbook_get_report_data' => [
         'classname' => 'mod_flexbook\external\actions',
         'methodname' => 'get_report_data',

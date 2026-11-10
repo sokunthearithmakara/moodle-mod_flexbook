@@ -112,21 +112,39 @@ const openPopup = async($frame) => {
     popup = true;
     try {
         const Factory = await getModalFactory();
-        const modal = await Factory.create({
-            body: await Templates.render('mod_flexbook/launchmodal', {
+        const [book, loading] = await Promise.all([
+            Templates.render('mod_flexbook/launchmodal', {
                 wwwroot: M.cfg.wwwroot,
                 id: $frame.data('id'),
                 name: $frame.data('name'),
             }),
+            // The spinner shows until the book's page has loaded in the iframe.
+            Templates.render('mod_interactivevideo/backgroundloading', {show: true}),
+        ]);
+        const modal = await Factory.create({
+            body: book + loading,
             show: false,
             removeOnClose: false,
         });
         popup = modal;
         const root = modal.getRoot();
-        root.addClass('fb-launch-modal');
-        root.find('.modal-dialog').addClass('modal-fullscreen');
+        // Interactive Video's full-screen modal classes go on the .modal root, not the dialog.
+        root.addClass('fb-launch-modal iv-modal modal-fullscreen');
         root.find('.modal-header').remove();
         root.find('.modal-footer').remove();
+
+        const iframe = root.find('#fbplayer').get(0);
+        const hideLoading = () => root.find('#background-loading').hide();
+        iframe.addEventListener('load', hideLoading, {once: true});
+        // The page may already have loaded while the modal was being set up.
+        try {
+            if (iframe.contentWindow.location.href !== 'about:blank'
+                && iframe.contentDocument.readyState === 'complete') {
+                hideLoading();
+            }
+        } catch (error) {
+            // Not readable yet: the load event will hide the spinner.
+        }
 
         // Every way out (back arrow, Escape) goes through closePopup.
         modal.hide = () => closePopup(modal, $frame);

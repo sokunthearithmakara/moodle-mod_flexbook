@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [1.6.1] - 2026-11-09
 
+Requires **Interactive Video 2.4** or later.
+
 ### Added
 - **Show start screen only:** A new appearance setting, available when distraction-free mode
   is off. Instead of the book, the activity page shows a cover: the title and poster with a
@@ -19,6 +21,19 @@ All notable changes to this project will be documented in this file.
   the same cover. The description and the learning outcomes appear on it as the "Display as
   start screen" and start screen outcome settings say, and a returning learner still skips it
   when neither is shown.
+  In the player the cover fills the start screen edge to edge, and in distraction-free dark
+  mode it takes the player's colour instead of blending into the page.
+- **Sound effects:** Flexbook plays Interactive Video's generated sound effects instead of
+  loading its own audio files, and marking an interaction as not done plays its own sound.
+- **Manage page:** The page now has a heading.
+
+### Fixed
+- **Start screen popup:** When completing the book unlocks other activities, closing the popup
+  now reloads the page so they show.
+- **Embedded control bar:** In the popup, the control bar sits beside an open chapter panel
+  instead of running under it.
+- **Dark mode:** The close chapter button, the title button and the completion toggle have the
+  right colours.
 
 ## [1.6.0] - 2026-10-26
 

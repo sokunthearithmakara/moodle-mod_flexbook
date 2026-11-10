@@ -1020,7 +1020,8 @@ export default class Base {
          `${headerHidden ? ' header-hidden' : ''}${showClass}" tabindex="0">
          ${messageTitle !== '' ?
             `<div id="title" class="modal-header iv-rounded-0 ${hideheader ? "hide-header" : "shadow-sm"} ` +
-            `${state.config.darkmode ? 'btn-dark' : ''} ` +
+            // The page's own dark mode: the editor shows a dark-mode book on a light page.
+            `${$('body').hasClass('darkmode') ? 'btn-dark' : ''} ` +
             `${advanced.bottomheader == 1 ? "bottom-header" : ""}">
          ${messageTitle}</div>` : ''}
          <div class="modal-body" id="content"></div></div>`);

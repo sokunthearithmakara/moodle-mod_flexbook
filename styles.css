@@ -3017,8 +3017,8 @@ body.fb-embed-interaction {
     }
 }
 
-/* The popup the book opens in (a modal-fullscreen dialog). */
-.fb-launch-modal .modal-body {
+/* The popup the book opens in (Interactive Video's full-screen modal). */
+.fb-launch-modal.iv-modal.modal-fullscreen > .modal-dialog .modal-body {
     display: flex;
     flex-direction: column;
     padding: 0;
@@ -3029,5 +3029,11 @@ body.fb-embed-interaction {
 .fb-launch-modal .fb-launch-bar {
     height: 3rem;
     padding: 0 0.5rem;
-    background: #1d2125;
+    background: var(--bs-body-bg, #fff);
+    color: var(--bs-body-color, #1d2125);
+    border-bottom: 1px solid var(--bs-border-color, #dee2e6);
+}
+
+.fb-launch-modal .fb-launch-bar .btn {
+    color: inherit;
 }

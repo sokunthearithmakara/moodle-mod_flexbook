@@ -132,6 +132,10 @@ function flexbook_display_options($moduleinstance) {
     foreach ($fields as $field => $default) {
         $options[$field] = $moduleinstance->$field ?? $default;
     }
+    // Dark mode is a distraction-free option: the form hides it in default mode but still submits it.
+    if (empty($options['distractionfreemode'])) {
+        $options['darkmode'] = 0;
+    }
 
     $options['beforecompletion'] = $moduleinstance->beforecompletion ?? flexbook_default_appearance();
     $options['aftercompletion'] = $moduleinstance->aftercompletion ?? flexbook_default_appearance();

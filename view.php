@@ -76,6 +76,11 @@ if ($moduleinstance->displayoptions) {
 } else {
     $moduleinstance->displayoptions = [];
 }
+// Dark mode is a distraction-free option. Activities saved in default mode may still carry it,
+// and the start screen popup's embed (distraction-free) would otherwise turn it on.
+if (isset($moduleinstance->displayoptions['distractionfreemode']) && !$moduleinstance->displayoptions['distractionfreemode']) {
+    $moduleinstance->displayoptions['darkmode'] = 0;
+}
 
 if (!isset($moduleinstance->displayoptions['limitedwidth'])) {
     $moduleinstance->displayoptions['limitedwidth'] = 1;

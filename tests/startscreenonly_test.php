@@ -24,6 +24,8 @@ defined('MOODLE_INTERNAL') || die();
 global $CFG;
 require_once($CFG->dirroot . '/mod/flexbook/lib.php');
 require_once($CFG->libdir . '/completionlib.php');
+// Moodle 4.1 has the external API classes outside core_external: alias them before external_api is used.
+\mod_interactivevideo\local\external_compat::load();
 
 /**
  * The start-screen-only option, and the cover the page redraws when its popup closes.
